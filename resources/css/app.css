@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Sembunyikan scrollbar sidebar tapi tetap bisa di-scroll */
+.sidebar-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.sidebar-scroll::-webkit-scrollbar {
+    display: none;
+}
