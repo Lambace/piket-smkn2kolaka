@@ -20,17 +20,24 @@ class DashboardController extends Controller
     }
 
     public function tampil(Request $request)
-    {
-        $key = config('services.display.key');
+{
+    $key = config('services.display.key');
 
-        if ($key && $request->query('k') !== $key) {
-            abort(403, 'Akses ditolak. Tautan tidak valid.');
-        }
-
-         return Inertia::render('Tampil', $this->buildData($request) + [
-            'displayKey' => config('services.display.key'),
-        ]);
+    if ($key && $request->query('k') !== $key) {
+        abort(403, 'Akses ditolak. Tautan tidak valid.');
     }
+
+    // 🔒 KUNCI: TV SELALU menampilkan data HARI INI saja
+    // (mencegah rentang tanggal diubah lewat URL)
+    $request->merge([
+        'dari_tanggal'   => Carbon::today()->toDateString(),
+        'sampai_tanggal' => Carbon::today()->toDateString(),
+    ]);
+
+    return Inertia::render('Tampil', $this->buildData($request) + [
+        'displayKey' => config('services.display.key'),
+    ]);
+}
 
     private function buildData(Request $request): array
     {

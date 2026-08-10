@@ -112,7 +112,7 @@
         <div class="cover-emoji">🏫</div>
     @endif
 
-    <div class="cover-badge">PAPAN INFORMASI DIGITAL</div>
+   
     <h1>SISTEM INFORMASI PIKET<br><span>(SIPIKET)</span></h1>
     <p class="cover-school">{{ $pengaturan->nama_sekolah ?? 'SMKN 2 KOLAKA' }}</p>
     <p class="cover-tagline">"Tertib Tercatat, Otomatis Terkabar — Piket Lebih Mudah, Sekolah Lebih Tertib"</p>

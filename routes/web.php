@@ -26,28 +26,28 @@ Route::get('/tampil', [DashboardController::class, 'tampil'])->name('tampil');
 // Download laporan PDF dari Mode Tampil (dilindungi kunci rahasia)
 Route::get('/tampil/laporan', [LaporanController::class, 'pdf'])->name('tampil.laporan');
 
+// Papan Informasi Digital (PUBLIK, siap cetak PDF) — dinamis mengikuti Pengaturan
+Route::get('/papan-informasi', function () {
+    $pengaturan = Pengaturan::first();
+
+    $logoUrl = null;
+    if ($pengaturan && $pengaturan->logo) {
+        try {
+            $logoUrl = Storage::disk('public')->url($pengaturan->logo);
+        } catch (\Throwable $e) {
+            $logoUrl = asset('storage/' . $pengaturan->logo);
+        }
+    }
+
+    return view('papan-informasi', [
+        'logoUrl'    => $logoUrl,
+        'pengaturan' => $pengaturan,
+    ]);
+})->name('papan.informasi');
+
 // Semua halaman aplikasi wajib login
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // Papan Informasi Digital (siap cetak PDF) — dinamis mengikuti Pengaturan
-    Route::get('/papan-informasi', function () {
-        $pengaturan = Pengaturan::first();
-
-        $logoUrl = null;
-        if ($pengaturan && $pengaturan->logo) {
-            try {
-                $logoUrl = Storage::disk('public')->url($pengaturan->logo);
-            } catch (\Throwable $e) {
-                $logoUrl = asset('storage/' . $pengaturan->logo);
-            }
-        }
-
-        return view('papan-informasi', [
-            'logoUrl'    => $logoUrl,
-            'pengaturan' => $pengaturan,
-        ]);
-    })->name('papan.informasi');
 
     // Export & Import siswa
     Route::get('siswa/export', [SiswaController::class, 'export'])->name('siswa.export');

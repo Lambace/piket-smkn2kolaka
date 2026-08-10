@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 // ===== REKAP HARIAN OTOMATIS KE WALI KELAS =====
 // Jalan setiap hari pukul 15:00 (zona waktu aplikasi)
 Schedule::command('rekap:kirim-harian')->dailyAt('15:00');
+Schedule::command('tv:kirim-grup')->dailyAt('15:10');
