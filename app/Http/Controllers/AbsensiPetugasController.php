@@ -41,7 +41,10 @@ class AbsensiPetugasController extends Controller
             ]
         );
 
-        return back()->with('success', 'Absensi petugas tercatat!');
+        // ===== BARU: redirect ke dashboard setelah absen =====
+        return redirect()
+            ->route('dashboard')
+            ->with('success', '✅ Absensi tercatat! Selamat bertugas.');
     }
 
     public function destroy($id)
