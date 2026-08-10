@@ -1,4 +1,4 @@
-import AuthenticatedLayout from "@/layouts/AuthenticatedLayout";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router } from "@inertiajs/react";
 import FilterTanggal from "./Dashboard/Components/FilterTanggal";
 import KartuStatistik from "./Dashboard/Components/KartuStatistik";
