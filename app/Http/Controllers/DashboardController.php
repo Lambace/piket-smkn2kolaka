@@ -8,6 +8,7 @@ use App\Models\IzinKeluar;
 use App\Models\Keterlambatan;
 use App\Models\Pelanggaran;
 use App\Models\Siswa;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -178,19 +179,44 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
+        // ===== ABSENSI PETUGAS + ALPHA OTOMATIS =====
+        $tanggalHariIni = Carbon::today()->toDateString();
+        $jamSekarang    = now()->format('H:i');
+        $batasAlpha     = '08:00'; // setelah jam ini, petugas belum absen = ALPHA
+
+        // 1. Petugas yang SUDAH absen hari ini
+        $absensiTercatat = AbsensiPetugas::where('tanggal', $tanggalHariIni)
+            ->orderBy('jam_masuk')->get()
+            ->map(fn ($a) => [
+                'nama'    => $a->nama,
+                'jabatan' => $a->jabatan,
+                'jam'     => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null,
+                'status'  => $a->status, // tepat_waktu atau terlambat
+            ]);
+
+        // 2. Petugas yang BELUM absen → jadi ALPHA (jika jam sekarang >= 08:00)
+        $alphaList = collect();
+        if ($jamSekarang >= $batasAlpha) {
+            $namaSudahAbsen = $absensiTercatat->pluck('nama')->toArray();
+
+            $alphaList = User::where('role', 'petugas')
+                ->whereNotIn('name', $namaSudahAbsen)
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($u) => [
+                    'nama'    => $u->name,
+                    'jabatan' => 'Petugas Piket',
+                    'jam'     => null,
+                    'status'  => 'alpha',
+                ]);
+        }
+
+        // 3. Gabungkan: hadir dulu (urut jam), lalu alpha
+        $absensiPetugas = $absensiTercatat->merge($alphaList)->values();
+
         return [
             'stats' => $stats,
-
-            // ===== BARU: Absensi petugas hari ini untuk kartu teratas TV =====
-            'absensiPetugas' => AbsensiPetugas::where('tanggal', now()->toDateString())
-                ->orderBy('jam_masuk')->get()
-                ->map(fn ($a) => [
-                    'nama'    => $a->nama,
-                    'jabatan' => $a->jabatan,
-                    'jam'     => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null,
-                    'status'  => $a->status,
-                ])->values(),
-
+            'absensiPetugas' => $absensiPetugas,
             'chartData' => $chartData,
             'chartPelanggaran' => $chartPelanggaran,
             'donutJurusan' => $donutJurusan,
