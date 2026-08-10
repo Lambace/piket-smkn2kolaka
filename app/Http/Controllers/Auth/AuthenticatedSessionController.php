@@ -27,14 +27,14 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-        public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        // ===== PAKSA: setelah login → halaman Absensi (tanpa "intended") =====
-        return redirect()->route('absensi.index', absolute: false);
+        // ===== Setelah login → langsung halaman Absensi =====
+        return redirect()->route('absensi.index');
     }
 
     /**
