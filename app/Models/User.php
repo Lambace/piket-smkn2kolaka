@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -31,6 +31,17 @@ class User extends Authenticatable
         ];
     }
 
+    // ===== Helper Role =====
+    public function isKoordinator(): bool
+    {
+        return $this->role === 'koordinator';
+    }
+
+    public function isPetugas(): bool
+    {
+        return $this->role === 'petugas';
+    }
+
     public function jadwalPiket(): HasMany
     {
         return $this->hasMany(JadwalPiket::class, 'user_id');
@@ -40,5 +51,4 @@ class User extends Authenticatable
     {
         return $this->hasMany(Aktivitas::class, 'user_id');
     }
-
-    }
+}
