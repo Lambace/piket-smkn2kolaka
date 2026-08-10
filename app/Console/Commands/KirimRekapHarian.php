@@ -16,9 +16,13 @@ class KirimRekapHarian extends Command
     {
         $tanggal = $this->option('tanggal') ? Carbon::parse($this->option('tanggal')) : null;
 
-        $hasil = $service->kirimSemua($tanggal);
+        $hasil = $service->kirimSemua($tanggal) ?? [];
 
-        $this->info("✅ Dikirim: {$hasil['dikirim']} | ⏭ Dilewati (sudah kirim): {$hasil['dilewati']} | ❌ Gagal: {$hasil['gagal']}");
+        $dikirim  = $hasil['dikirim']  ?? 0;
+        $dilewati = $hasil['dilewati'] ?? 0;
+        $gagal    = $hasil['gagal']    ?? 0;
+
+        $this->info("✅ Dikirim: {$dikirim} | ⏭ Dilewati (sudah kirim): {$dilewati} | ❌ Gagal: {$gagal}");
 
         return Command::SUCCESS;
     }
