@@ -52,6 +52,18 @@ export default function Tampil(props) {
         <div className="min-h-screen bg-slate-900 p-6">
             <Head title="Papan Informasi Piket" />
 
+            {/* Tombol Tentang Aplikasi - melayang kanan bawah */}
+            <a
+                href={route("papan.informasi")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition hover:bg-white/20 hover:scale-105"
+                title="Buka informasi lengkap tentang aplikasi"
+            >
+                <span className="text-base">ℹ️</span>
+                <span>Tentang Aplikasi</span>
+            </a>
+
             {/* Header */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
