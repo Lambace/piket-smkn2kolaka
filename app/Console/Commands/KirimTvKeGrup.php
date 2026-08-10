@@ -7,7 +7,6 @@ use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 
 class KirimTvKeGrup extends Command
 {
@@ -42,15 +41,9 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // ===== Logo sekolah dari Pengaturan (icon pengganti 📺) =====
-        $logoUrl = null;
-        if ($pengaturan?->logo) {
-            try {
-                $logoUrl = Storage::disk('public')->url($pengaturan->logo);
-            } catch (\Throwable $e) {
-                $logoUrl = asset('storage/' . $pengaturan->logo);
-            }
-        }
+        // ===== Logo sekolah via route publik (bisa diunduh Fonnte) =====
+        $logoUrl = ($pengaturan?->logo) ? route('logo.public') : null;
+        $this->info('Logo URL: ' . ($logoUrl ?? '(logo belum di-upload)'));
 
         $key    = env('DISPLAY_KEY', 'piket2026');
         $urlTv  = url('/tampil') . '?k=' . $key;
@@ -85,10 +78,10 @@ class KirimTvKeGrup extends Command
             '   ❌ Alpha             : *' . $jumlahAlpha . ' orang*',
             '━━━━━━━━━━━━━━━━━━━━━━━',
             '',
-            '*🔴 HALAMAN LIVE*',
+            '*🔴 LIHAT HALAMAN LIVE*',
             $urlTv,
             '',
-            '*📄 LAPORAN HARIAN*',
+            '*📄 DOWNLOAD LAPORAN PDF*',
             $urlPdf,
             '',
             '━━━━━━━━━━━━━━━━━━━━━━━',
@@ -102,7 +95,7 @@ class KirimTvKeGrup extends Command
             'message' => $caption,
         ];
 
-        // Jika logo di-upload di Pengaturan, kirim sebagai gambar
+        // Jika logo ada, kirim sebagai gambar
         if ($logoUrl) {
             $payload['url'] = $logoUrl;
         }

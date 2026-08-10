@@ -35,6 +35,20 @@ Route::get('/tampil', [DashboardController::class, 'tampil'])->name('tampil');
 // Download laporan PDF dari Mode Tampil (dilindungi kunci rahasia)
 Route::get('/tampil/laporan', [LaporanController::class, 'pdf'])->name('tampil.laporan');
 
+// ===== LOGO SEKOLAH PUBLIK (gambar langsung, bisa diunduh Fonnte) =====
+Route::get('/logo.png', function () {
+    $p = Pengaturan::first();
+
+    if (!$p || !$p->logo || !Storage::disk('public')->exists($p->logo)) {
+        abort(404, 'Logo tidak ditemukan');
+    }
+
+    return response(Storage::disk('public')->get($p->logo), 200, [
+        'Content-Type'  => Storage::disk('public')->mimeType($p->logo) ?: 'image/png',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->name('logo.public');
+
 // Papan Informasi Digital (publik, siap cetak PDF) — dinamis mengikuti Pengaturan
 Route::get('/papan-informasi', function () {
     $pengaturan = Pengaturan::first();
