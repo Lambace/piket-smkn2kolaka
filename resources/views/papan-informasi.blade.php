@@ -2,14 +2,14 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Papan Informasi Digital — {{ $pengaturan->nama_sekolah ?? 'Sistem Informasi Piket' }}</title>
 <style>
   :root{--primary:#4f46e5;--dark:#0f172a;--slate:#475569;--light:#f8fafc;--green:#16a34a;--red:#dc2626;--amber:#d97706}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:'Segoe UI',system-ui,Arial,sans-serif;color:var(--dark);background:#e2e8f0}
-  .page{width:210mm;min-height:297mm;margin:8mm auto;background:#fff;position:relative;overflow:hidden;page-break-after:always}
+  .page{width:100%;max-width:210mm;min-height:297mm;margin:8mm auto;background:#fff;position:relative;overflow:hidden;page-break-after:always}
   @page{size:A4;margin:0}
-  @media print{body{background:#fff}.page{margin:0;box-shadow:none}}
 
   /* TOOLBAR (hilang saat cetak) */
   .toolbar{position:fixed;top:5mm;right:5mm;z-index:99;display:flex;gap:3mm}
@@ -18,7 +18,6 @@
   .btn.back:hover{background:#f1f5f9}
   .btn.print{background:#16a34a;color:#fff}
   .btn.print:hover{background:#15803d}
-  @media print{.toolbar{display:none!important}}
 
   /* COVER */
   .cover{background:linear-gradient(160deg,#1e1b4b 0%,#312e81 45%,#4f46e5 100%);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20mm}
@@ -31,7 +30,7 @@
   .cover-tagline{margin-top:8mm;font-size:12px;font-style:italic;color:#e0e7ff;max-width:140mm}
   .cover-chips{margin-top:10mm;display:flex;flex-wrap:wrap;gap:3mm;justify-content:center}
   .cover-chips span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);padding:2mm 5mm;border-radius:6mm;font-size:11px}
-  .cover-footer{position:absolute;bottom:8mm;font-size:10px;color:#c7d2fe}
+  .cover-footer{position:absolute;bottom:8mm;left:12mm;right:12mm;font-size:10px;color:#c7d2fe}
   /* HEAD & ISI */
   .page-head{background:linear-gradient(90deg,var(--primary),#0ea5e9);color:#fff;padding:8mm 12mm}
   .page-head h2{font-size:20px;letter-spacing:1px}
@@ -48,6 +47,46 @@
   .flow{margin:6mm 12mm 0;background:#eef2ff;border:1px dashed var(--primary);border-radius:3mm;padding:4mm;text-align:center;font-size:11px;color:#3730a3;font-weight:600}
   .foot{position:absolute;bottom:6mm;left:12mm;right:12mm;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:3mm}
   .tv-url{background:#0f172a;color:#4ade80;font-family:monospace;font-size:10px;padding:3mm;border-radius:2mm;margin:2mm 0;word-break:break-all}
+
+  /* ===== LAYAR KECIL (HP) ===== */
+  @media (max-width:760px){
+    .page{margin:0 auto 6mm;min-height:auto}
+    .grid,.cols{grid-template-columns:1fr;gap:4mm;padding:6mm}
+    .page-head{padding:6mm}
+    .page-head h2{font-size:16px}
+    .page-head p{font-size:10px}
+    .cover{padding:14mm 8mm}
+    .cover h1{font-size:22px}
+    .cover h1 span{font-size:15px}
+    .cover-logo{width:26mm;height:26mm}
+    .cover-emoji{font-size:20mm}
+    .cover-school{font-size:13px}
+    .cover-tagline{font-size:11px}
+    .toolbar{top:3mm;right:3mm}
+    .btn{padding:2mm 4mm;font-size:10px}
+    .flow{margin:4mm 6mm 0;font-size:10px}
+    .foot{left:6mm;right:6mm}
+  }
+
+  /* ===== SAAT DICETAK: KEMBALI A4 PENUH ===== */
+  @media print{
+    body{background:#fff}
+    .toolbar{display:none!important}
+    .page{margin:0;box-shadow:none;width:210mm;max-width:none;min-height:297mm}
+    .grid,.cols{grid-template-columns:1fr 1fr;padding:8mm 12mm}
+    .page-head{padding:8mm 12mm}
+    .page-head h2{font-size:20px}
+    .page-head p{font-size:11px}
+    .cover{padding:20mm}
+    .cover h1{font-size:30px}
+    .cover h1 span{font-size:20px}
+    .cover-logo{width:38mm;height:38mm}
+    .cover-emoji{font-size:28mm}
+    .cover-school{font-size:16px}
+    .cover-tagline{font-size:12px}
+    .flow{margin:6mm 12mm 0;font-size:11px}
+    .foot{left:12mm;right:12mm}
+  }
 </style>
 </head>
 <body>
