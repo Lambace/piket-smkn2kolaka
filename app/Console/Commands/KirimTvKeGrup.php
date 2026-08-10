@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AbsensiPetugas;
 use App\Models\Pengaturan;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -54,22 +56,32 @@ class KirimTvKeGrup extends Command
         $sekolah = $pengaturan?->nama_sekolah ?? 'SMKN 2 KOLAKA';
         $now     = now()->locale('id');
 
+        // ===== Statistik kehadiran petugas =====
+        $jumlahHadir = AbsensiPetugas::where('tanggal', now()->toDateString())->count();
+        $jumlahPetugas = User::where('role', 'petugas')->count();
+        $jumlahAlpha = max(0, $jumlahPetugas - $jumlahHadir);
+
+        // ===== CAPTION BERGAYA BANNER (format WhatsApp: *tebal*, _miring_) =====
         $caption = implode("\n", [
-            "📺 PIKET {$sekolah} — {$now->isoFormat('dddd, D MMMM Y')}",
-            "⏰ Screenshot Pukul {$now->isoFormat('HH.mm')} WITA",
+            '*📺 PIKET ' . strtoupper($sekolah) . '*',
+            '_' . $now->isoFormat('dddd, D MMMM Y') . '_',
+            '⏰ _Screenshot Pukul ' . $now->isoFormat('HH.mm') . ' WITA_',
             '',
-            'Papan Informasi Piket hari ini:',
+            '━━━━━━━━━━━━━━━━━━',
+            '👥 Petugas Hadir : *' . $jumlahHadir . ' orang*',
+            '❌ Alpha          : *' . $jumlahAlpha . ' orang*',
+            '━━━━━━━━━━━━━━━━━━',
             '',
-            '🔴 Lihat Halaman Live',
+            '*🔴 LIHAT HALAMAN LIVE*',
             $urlTv,
             '',
-            '📄 Lihat Laporan (Hari Ini)',
+            '*📄 LIHAT LAPORAN (HARI INI)*',
             $urlPdf,
             '',
-            '© Sistem Informasi Piket',
+            '_© Sistem Informasi Piket_',
         ]);
 
-        // ===== API Fonnte yang benar =====
+        // ===== API Fonnte =====
         $res = Http::withHeaders(['Authorization' => $token])
             ->timeout(60)
             ->asForm()
