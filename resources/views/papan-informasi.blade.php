@@ -68,6 +68,13 @@
     .foot{left:6mm;right:6mm}
   }
 
+  /* ===== LAYAR BESAR: tinggi halaman mengikuti isi (hilangkan ruang kosong) ===== */
+  @media screen and (min-width:761px){
+    .page{min-height:auto}
+    .cover{padding:18mm 20mm}
+  }
+
+
   /* ===== SAAT DICETAK: KEMBALI A4 PENUH ===== */
   @media print{
     body{background:#fff}
