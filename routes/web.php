@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BukuTamuController;
+use App\Http\Controllers\AbsensiPetugasController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IzinKeluarController;
 use App\Http\Controllers\KeterlambatanController;
@@ -48,6 +49,11 @@ Route::get('/papan-informasi', function () {
 // Semua halaman aplikasi wajib login
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Absensi petugas piket
+    Route::get('absensi-petugas', [AbsensiPetugasController::class, 'index'])->name('absensi.index');
+    Route::post('absensi-petugas', [AbsensiPetugasController::class, 'store'])->name('absensi.store');
+    Route::delete('absensi-petugas/{id}', [AbsensiPetugasController::class, 'destroy'])->name('absensi.destroy');
 
     // Export & Import siswa
     Route::get('siswa/export', [SiswaController::class, 'export'])->name('siswa.export');

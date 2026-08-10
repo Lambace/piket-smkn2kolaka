@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AbsensiPetugas;
 use App\Models\BukuTamu;
 use App\Models\IzinKeluar;
 use App\Models\Keterlambatan;
@@ -20,24 +21,23 @@ class DashboardController extends Controller
     }
 
     public function tampil(Request $request)
-{
-    $key = config('services.display.key');
+    {
+        $key = config('services.display.key');
 
-    if ($key && $request->query('k') !== $key) {
-        abort(403, 'Akses ditolak. Tautan tidak valid.');
+        if ($key && $request->query('k') !== $key) {
+            abort(403, 'Akses ditolak. Tautan tidak valid.');
+        }
+
+        // 🔒 KUNCI: TV SELALU menampilkan data HARI INI saja
+        $request->merge([
+            'dari_tanggal'   => Carbon::today()->toDateString(),
+            'sampai_tanggal' => Carbon::today()->toDateString(),
+        ]);
+
+        return Inertia::render('Tampil', $this->buildData($request) + [
+            'displayKey' => config('services.display.key'),
+        ]);
     }
-
-    // 🔒 KUNCI: TV SELALU menampilkan data HARI INI saja
-    // (mencegah rentang tanggal diubah lewat URL)
-    $request->merge([
-        'dari_tanggal'   => Carbon::today()->toDateString(),
-        'sampai_tanggal' => Carbon::today()->toDateString(),
-    ]);
-
-    return Inertia::render('Tampil', $this->buildData($request) + [
-        'displayKey' => config('services.display.key'),
-    ]);
-}
 
     private function buildData(Request $request): array
     {
@@ -180,6 +180,17 @@ class DashboardController extends Controller
 
         return [
             'stats' => $stats,
+
+            // ===== BARU: Absensi petugas hari ini untuk kartu teratas TV =====
+            'absensiPetugas' => AbsensiPetugas::where('tanggal', now()->toDateString())
+                ->orderBy('jam_masuk')->get()
+                ->map(fn ($a) => [
+                    'nama'    => $a->nama,
+                    'jabatan' => $a->jabatan,
+                    'jam'     => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null,
+                    'status'  => $a->status,
+                ])->values(),
+
             'chartData' => $chartData,
             'chartPelanggaran' => $chartPelanggaran,
             'donutJurusan' => $donutJurusan,
