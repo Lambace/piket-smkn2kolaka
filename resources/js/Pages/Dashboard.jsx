@@ -30,11 +30,20 @@ export default function Dashboard(props) {
     return (
         <AuthenticatedLayout
             header={
-                <div>
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                        Dashboard Piket
-                    </h2>
-                    <p className="text-sm text-gray-500">{props.hariIni}</p>
+                <div className="flex items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                            Dashboard Piket
+                        </h2>
+                        <p className="text-sm text-gray-500">{props.hariIni}</p>
+                    </div>
+                    <a
+                        href={route("papan.informasi")}
+                        className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-700"
+                        title="Buka Papan Informasi Digital — cetak / simpan sebagai PDF"
+                    >
+                        ℹ️ Tentang Aplikasi
+                    </a>
                 </div>
             }
         >
