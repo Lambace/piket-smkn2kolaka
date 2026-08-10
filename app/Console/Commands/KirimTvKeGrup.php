@@ -7,12 +7,13 @@ use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class KirimTvKeGrup extends Command
 {
     protected $signature = 'tv:kirim-grup {--grup= : ID grup WA (default: env WA_GROUP_ID)}';
 
-    protected $description = 'Kirim screenshot halaman live TV + laporan harian ke grup WhatsApp';
+    protected $description = 'Kirim laporan tim piket ke grup WhatsApp';
 
     public function handle(): int
     {
@@ -23,7 +24,7 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // ===== Token Fonnte: dari Pengaturan (seperti fitur WA lain), fallback env =====
+        // ===== Token Fonnte =====
         $pengaturan = Pengaturan::first();
 
         $token = env('FONNTE_TOKEN');
@@ -41,6 +42,16 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
+        // ===== Logo sekolah dari Pengaturan (icon pengganti 📺) =====
+        $logoUrl = null;
+        if ($pengaturan?->logo) {
+            try {
+                $logoUrl = Storage::disk('public')->url($pengaturan->logo);
+            } catch (\Throwable $e) {
+                $logoUrl = asset('storage/' . $pengaturan->logo);
+            }
+        }
+
         $key    = env('DISPLAY_KEY', 'piket2026');
         $urlTv  = url('/tampil') . '?k=' . $key;
         $urlPdf = url('/tampil/laporan') . '?' . http_build_query([
@@ -50,48 +61,57 @@ class KirimTvKeGrup extends Command
             'k'       => $key,
         ]);
 
-        // Screenshot halaman TV (layanan gratis thum.io)
-        $screenshot = 'https://image.thum.io/get/width/1280/crop/720/' . $urlTv;
-
         $sekolah = $pengaturan?->nama_sekolah ?? 'SMKN 2 KOLAKA';
         $now     = now()->locale('id');
+        $hari    = strtoupper($now->isoFormat('dddd'));
 
         // ===== Statistik kehadiran petugas =====
-        $jumlahHadir = AbsensiPetugas::where('tanggal', now()->toDateString())->count();
+        $jumlahHadir   = AbsensiPetugas::where('tanggal', now()->toDateString())->count();
         $jumlahPetugas = User::where('role', 'petugas')->count();
-        $jumlahAlpha = max(0, $jumlahPetugas - $jumlahHadir);
+        $jumlahAlpha   = max(0, $jumlahPetugas - $jumlahHadir);
 
-        // ===== CAPTION BERGAYA BANNER (format WhatsApp: *tebal*, _miring_) =====
+        // ===== CAPTION (tanpa separator atas, tanpa emoji 📺) =====
         $caption = implode("\n", [
-            '*📺 PIKET ' . strtoupper($sekolah) . '*',
-            '_' . $now->isoFormat('dddd, D MMMM Y') . '_',
-            '⏰ _Screenshot Pukul ' . $now->isoFormat('HH.mm') . ' WITA_',
+            '      *LAPORAN TIM PIKET*',
+            '           *' . $hari . '*',
+            '━━━━━━━━━━━━━━━━━━━━━━━',
+            '     _' . $sekolah . '_',
             '',
-            '━━━━━━━━━━━━━━━━━━',
-            '👥 Petugas Hadir : *' . $jumlahHadir . ' orang*',
-            '❌ Alpha          : *' . $jumlahAlpha . ' orang*',
-            '━━━━━━━━━━━━━━━━━━',
+            '   _' . $now->isoFormat('dddd, D MMMM Y') . '_',
+            '   _Pukul ' . $now->isoFormat('HH.mm') . ' WITA_',
             '',
-            '*🔴 LIHAT HALAMAN LIVE*',
+            '━━━━━━━━━━━━━━━━━━━━━━━',
+            '   👥 Petugas Hadir : *' . $jumlahHadir . ' orang*',
+            '   ❌ Alpha             : *' . $jumlahAlpha . ' orang*',
+            '━━━━━━━━━━━━━━━━━━━━━━━',
+            '',
+            '*🔴 HALAMAN LIVE*',
             $urlTv,
             '',
-            '*📄 LIHAT LAPORAN (HARI INI)*',
+            '*📄 LAPORAN HARIAN*',
             $urlPdf,
             '',
-            '_© Sistem Informasi Piket_',
+            '━━━━━━━━━━━━━━━━━━━━━━━',
+            '      _© Sistem Informasi Piket_',
+            '━━━━━━━━━━━━━━━━━━━━━━━',
         ]);
 
-        // ===== API Fonnte =====
+        // ===== API Fonnte (logo sekolah sebagai gambar + caption) =====
+        $payload = [
+            'target'  => $grup,
+            'message' => $caption,
+        ];
+
+        // Jika logo di-upload di Pengaturan, kirim sebagai gambar
+        if ($logoUrl) {
+            $payload['url'] = $logoUrl;
+        }
+
         $res = Http::withHeaders(['Authorization' => $token])
             ->timeout(60)
             ->asForm()
-            ->post('https://api.fonnte.com/send', [
-                'target'  => $grup,
-                'message' => $caption,
-                'url'     => $screenshot,
-            ]);
+            ->post('https://api.fonnte.com/send', $payload);
 
-        // Parse response aman (Fonnte kadang return HTML error)
         $body = [];
         if ($res->successful()) {
             try {
@@ -104,7 +124,7 @@ class KirimTvKeGrup extends Command
         $ok = $res->successful() && ($body['status'] ?? false);
 
         if ($ok) {
-            $this->info("✅ Screenshot TV + laporan harian terkirim ke {$grup}");
+            $this->info("✅ Laporan Tim Piket terkirim ke {$grup}");
             return Command::SUCCESS;
         }
 
