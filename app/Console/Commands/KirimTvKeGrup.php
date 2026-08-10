@@ -69,23 +69,34 @@ class KirimTvKeGrup extends Command
             '© Sistem Informasi Piket',
         ]);
 
-        $res = Http::asForm()
-            ->withToken($token)
+        // ===== API Fonnte yang benar =====
+        $res = Http::withHeaders(['Authorization' => $token])
             ->timeout(60)
-            ->post('https://fonnte.com/send', [
-                'to'      => $grup,
+            ->asForm()
+            ->post('https://api.fonnte.com/send', [
+                'target'  => $grup,
                 'message' => $caption,
-                'media'   => $screenshot,
+                'url'     => $screenshot,
             ]);
 
-        $ok = $res->successful() && ($res->json('status') ?? false);
+        // Parse response aman (Fonnte kadang return HTML error)
+        $body = [];
+        if ($res->successful()) {
+            try {
+                $body = $res->json() ?? [];
+            } catch (\Throwable $e) {
+                $body = ['status' => false, 'reason' => 'Response bukan JSON'];
+            }
+        }
+
+        $ok = $res->successful() && ($body['status'] ?? false);
 
         if ($ok) {
             $this->info("✅ Screenshot TV + laporan harian terkirim ke {$grup}");
             return Command::SUCCESS;
         }
 
-        $this->error('❌ Gagal kirim: ' . ($res->json('reason') ?? $res->body()));
+        $this->error('❌ Gagal kirim: ' . ($body['reason'] ?? ($res->successful() ? 'Status false' : 'HTTP ' . $res->status())));
         return Command::FAILURE;
     }
 }
