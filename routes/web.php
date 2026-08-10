@@ -18,10 +18,16 @@ use App\Models\Pengaturan;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
-// Halaman utama langsung redirect ke login
-Route::get('/', fn () => redirect()->route('login'));
+// ===== ROUTE ROOT CERDAS =====
+// Sudah login → langsung absensi | Belum login → halaman login
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('absensi.index');
+    }
+    return redirect()->route('login');
+});
 
-// ===== ROUTE PUBLIK =====
+// ===== ROUTE PUBLIK (tanpa login) =====
 
 // Papan informasi publik (tanpa login, tanpa sidebar)
 Route::get('/tampil', [DashboardController::class, 'tampil'])->name('tampil');
@@ -53,6 +59,11 @@ Route::get('/papan-informasi', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // ===== ABSENSI PETUGAS (semua user — landing page setelah login) =====
+    Route::get('absensi-petugas', [AbsensiPetugasController::class, 'index'])->name('absensi.index');
+    Route::post('absensi-petugas', [AbsensiPetugasController::class, 'store'])->name('absensi.store');
+    Route::delete('absensi-petugas/{id}', [AbsensiPetugasController::class, 'destroy'])->name('absensi.destroy');
+
     // Menu yang bisa diakses KOORDINATOR & PETUGAS
     Route::resource('wali-murid', WaliMuridController::class)->except(['create', 'show', 'edit']);
     Route::resource('keterlambatan', KeterlambatanController::class)->except(['create', 'show', 'edit']);
@@ -67,11 +78,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // ===== HANYA KOORDINATOR =====
     Route::middleware('role:koordinator')->group(function () {
-        // Absensi petugas piket
-        Route::get('absensi-petugas', [AbsensiPetugasController::class, 'index'])->name('absensi.index');
-        Route::post('absensi-petugas', [AbsensiPetugasController::class, 'store'])->name('absensi.store');
-        Route::delete('absensi-petugas/{id}', [AbsensiPetugasController::class, 'destroy'])->name('absensi.destroy');
-
         // Export & Import siswa
         Route::get('siswa/export', [SiswaController::class, 'export'])->name('siswa.export');
         Route::post('siswa/import', [SiswaController::class, 'import'])->name('siswa.import');

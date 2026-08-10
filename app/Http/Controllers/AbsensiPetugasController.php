@@ -29,7 +29,6 @@ class AbsensiPetugasController extends Controller
             'jabatan' => 'nullable|string|max:100',
         ]);
 
-        // Batas tepat waktu: 07:00
         $status = now()->format('H:i') < '07:00' ? 'tepat_waktu' : 'terlambat';
 
         AbsensiPetugas::firstOrCreate(
@@ -41,7 +40,6 @@ class AbsensiPetugasController extends Controller
             ]
         );
 
-        // ===== BARU: redirect ke dashboard setelah absen =====
         return redirect()
             ->route('dashboard')
             ->with('success', '✅ Absensi tercatat! Selamat bertugas.');
