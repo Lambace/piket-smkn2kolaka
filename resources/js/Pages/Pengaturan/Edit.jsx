@@ -401,7 +401,7 @@ export default function Edit({ pengaturan }) {
                                     type="text"
                                     value={telepon}
                                     onChange={(e) => setTelepon(e.target.value)}
-                                    placeholder="082346999111"
+                                    placeholder="01234567890"
                                     className={inputClass}
                                 />
                             </div>
