@@ -21,7 +21,7 @@ export default function Tampil(props) {
     const pengaturan = usePage().props.pengaturan ?? {};
 
     const [now, setNow] = useState(new Date());
-    const [periode, setPeriode] = useState("bulanan");
+    const [periode, setPeriode] = useState("harian");
 
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 1000);
