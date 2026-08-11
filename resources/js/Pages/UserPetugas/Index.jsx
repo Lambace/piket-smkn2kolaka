@@ -3,12 +3,19 @@ import { Head, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 
 // ===== Data Dropdown =====
-const GOLONGAN_OPTIONS = [
-    { group: "Golongan I", items: ["I/a", "I/b", "I/c", "I/d"] },
-    { group: "Golongan II", items: ["II/a", "II/b", "II/c", "II/d"] },
-    { group: "Golongan III", items: ["III/a", "III/b", "III/c", "III/d"] },
-    { group: "Golongan IV", items: ["IV/a", "IV/b", "IV/c", "IV/d", "IV/e"] },
-];
+    const GOLONGAN_OPTIONS = [
+        { group: "Golongan I", items: ["I/a", "I/b", "I/c", "I/d"] },
+        { group: "Golongan II", items: ["II/a", "II/b", "II/c", "II/d"] },
+        { group: "Golongan III", items: ["III/a", "III/b", "III/c", "III/d"] },
+        {
+            group: "Golongan IV",
+            items: ["IV/a", "IV/b", "IV/c", "IV/d", "IV/e"],
+        },
+        {
+            group: "Golongan IX - XVII",
+            items: ["IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII"],
+        },
+    ];
 
 const defaultForm = {
     name: "",
