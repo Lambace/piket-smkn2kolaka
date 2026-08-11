@@ -9,10 +9,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            foreach (['jenis_kelamin', 'nip', 'golongan', 'status_kepegawaian'] as $kolom) {
-                if (!Schema::hasColumn('users', $kolom)) {
-                    $table->string($kolom)->nullable();
-                }
+            if (!Schema::hasColumn('users', 'jenis_kelamin')) {
+                $table->string('jenis_kelamin', 1)->nullable()->after('role');
+            }
+            if (!Schema::hasColumn('users', 'nip')) {
+                $table->string('nip', 20)->nullable()->after('jenis_kelamin');
+            }
+            if (!Schema::hasColumn('users', 'golongan')) {
+                $table->string('golongan', 5)->nullable()->after('nip');
+            }
+            if (!Schema::hasColumn('users', 'status_kepegawaian')) {
+                $table->string('status_kepegawaian', 10)->nullable()->after('golongan');
             }
         });
     }
