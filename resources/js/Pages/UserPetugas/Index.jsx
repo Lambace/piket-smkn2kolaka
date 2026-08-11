@@ -328,12 +328,28 @@ export default function UserPetugasIndex(props) {
                                     className="w-full rounded-lg border-gray-300"
                                 >
                                     <option value="">-- Pilih Status --</option>
-                                    <option value="ASN">PNS</option>
-                                    <option value="PPPK">PPPK Guru</option>
-                                    <option value="PPPK">PPPK/PW Guru</option>
-                                    <option value="PPPK">PPPK/PW Staf TU</option>
-                                    <option value="PPPK">PPPK/Staf TU</option>
-                                    <option value="PPPK">Guru Honorer</option>
+                                    <optgroup label="PNS">
+                                        <option value="PNS">PNS</option>
+                                    </optgroup>
+                                    <optgroup label="PPPK">
+                                        <option value="PPPK Guru">
+                                            PPPK Guru
+                                        </option>
+                                        <option value="PPPK/PW Guru">
+                                            PPPK/PW Guru
+                                        </option>
+                                        <option value="PPPK/Staf TU">
+                                            PPPK/Staf TU
+                                        </option>
+                                        <option value="PPPK/PW Staf TU">
+                                            PPPK/PW Staf TU
+                                        </option>
+                                    </optgroup>
+                                    <optgroup label="Honorer">
+                                        <option value="Guru Honorer">
+                                            Guru Honorer
+                                        </option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
