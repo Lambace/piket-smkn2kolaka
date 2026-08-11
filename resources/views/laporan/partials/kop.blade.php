@@ -3,8 +3,12 @@
         @if($logo)<img src="{{ $logo }}" alt="Logo">@endif
     </div>
     <div class="kop-teks">
-        <p class="kop-sub">PEMERINTAH DAERAH</p>
-        <p class="kop-nama">{{ $pengaturan->nama_sekolah ?? 'SMKN 2 KOLAKA' }}</p>
-        <p class="kop-alamat">{{ $pengaturan->alamat ?? 'Jl. Pendidikan No. 1, Kolaka' }}</p>
+        <div class="kop-pemerintah">PEMERINTAH PROVINSI SULAWESI TENGGARA</div>
+        <div class="kop-nama">{{ $pengaturan->nama_sekolah ?? 'SMK NEGERI 2 KOLAKA' }}</div>
+        <div class="kop-alamat">
+            {{ $pengaturan->alamat ?? 'Jl. Poros Kolaka–Pomalaa KM.16, Kec. Baula, Kab. Kolaka, Sulawesi Tenggara' }}
+            @if($pengaturan->telepon ?? null) &bull; Telp: {{ $pengaturan->telepon }} @endif
+            @if($pengaturan->email ?? null) &bull; Email: {{ $pengaturan->email }} @endif
+        </div>
     </div>
 </div>
