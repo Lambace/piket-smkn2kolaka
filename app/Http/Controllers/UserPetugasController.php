@@ -30,7 +30,7 @@ class UserPetugasController extends Controller
     'jenis_kelamin'      => 'nullable|in:L,P',
     'nip'                => 'nullable|string|max:20',
     'golongan'           => 'nullable|string|max:5',
-    'status_kepegawaian' => 'nullable|in:ASN,PPPK',
+    'status_kepegawaian' => 'nullable|in:PNS,PPPK Guru,PPPK/PW Guru,PPPK/PW Staf TU,PPPK/Staf TU,Guru Honorer',
 ]);
 
 User::create([
