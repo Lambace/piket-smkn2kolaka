@@ -17,10 +17,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // ===== SET BAHASA INDONESIA UNTUK CARBON =====
-        // Dampak: semua isoFormat(), diffForHumans() otomatis bahasa Indonesia
         Carbon::setLocale('id');
         Carbon::setFallbackLocale('id');
-        Carbon::setUtf8(true);
 
         // Otomatisasi izin keluar: hanya untuk request web (bukan perintah console)
         if (! $this->app->runningInConsole()) {
