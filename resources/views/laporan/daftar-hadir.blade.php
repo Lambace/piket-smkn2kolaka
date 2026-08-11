@@ -31,6 +31,7 @@
     table.hadir th, table.hadir td { border: 1px solid #000; padding: 5px 6px; vertical-align: top; }
     table.hadir th { text-align: center; font-weight: bold; }
     .tengah { text-align: center; }
+    .cek { font-size: 12pt; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -77,7 +78,7 @@
             <th rowspan="2" style="width:110px">NIP</th>
             <th rowspan="2" style="width:36px">Gol</th>
             <th rowspan="2" style="width:110px">Status Kepegawaian</th>
-            <th colspan="5">Rekap Kehadiran</th>
+            <th colspan="5">Status Kehadiran</th>
             <th rowspan="2" style="width:46px">Ket.</th>
         </tr>
         <tr>
@@ -97,11 +98,11 @@
             <td>{{ $r['nip'] }}</td>
             <td class="tengah">{{ $r['gol'] }}</td>
             <td>{{ $r['status'] }}</td>
-            <td class="tengah">{{ $r['h'] }}</td>
-            <td class="tengah">{{ $r['a'] }}</td>
-            <td class="tengah">{{ $r['i'] }}</td>
-            <td class="tengah">{{ $r['s'] }}</td>
-            <td class="tengah">{{ $r['dl'] }}</td>
+            <td class="tengah cek">{{ $r['h'] > 0 ? '√' : '' }}</td>
+            <td class="tengah cek">{{ $r['a'] > 0 ? '√' : '' }}</td>
+            <td class="tengah cek">{{ $r['i'] ? '√' : '' }}</td>
+            <td class="tengah cek">{{ $r['s'] ? '√' : '' }}</td>
+            <td class="tengah cek">{{ $r['dl'] ? '√' : '' }}</td>
             <td>{{ $r['ket'] }}</td>
         </tr>
         @endforeach
