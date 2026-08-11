@@ -67,7 +67,7 @@ class LaporanController extends Controller
         return Excel::download(new LaporanExport($data, $labelPeriode, $jenis), $namaFile);
     }
 
-    // ===== METHOD PDF LENGKAP =====
+       // ===== METHOD PDF LENGKAP =====
     public function pdf(Request $request)
     {
         try {
@@ -188,28 +188,21 @@ class LaporanController extends Controller
                 ['label' => 'Kunjungan Tamu', 'nilai' => $tamu->count().' kunjungan'],
             ];
 
-        $pengaturan = Pengaturan::first();
+            // ===== KOP + LOGO (via Storage — WAJIB di Laravel Cloud) =====
+            $pengaturan = Pengaturan::first();
 
-        // Logo instansi (base64)
-        $logoInstansi = null;
-        if ($pengaturan?->logo_instansi) {
-            $path = storage_path('app/public/'.$pengaturan->logo_instansi);
-            if (file_exists($path)) {
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
-            $logoInstansi = 'data:image/'.$ext.';base64,'.base64_encode(file_get_contents($path));
-        }
-    }
-}
+            // Logo SEKOLAH (base64 via Storage)
+            $logo = null;
+            if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
+                $mime = Storage::disk('public')->mimeType($pengaturan->logo) ?: 'image/png';
+                $logo = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo));
+            }
+
+            // Logo INSTANSI (base64 via Storage)
             $logoInstansi = null;
-            if ($pengaturan?->logo_instansi) {
-                $path = storage_path('app/public/'.$pengaturan->logo_instansi);
-                if (file_exists($path)) {
-                    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-                    if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
-                        $logoInstansi = 'data:image/'.$ext.';base64,'.base64_encode(file_get_contents($path));
-                    }
-                }
+            if ($pengaturan?->logo_instansi && Storage::disk('public')->exists($pengaturan->logo_instansi)) {
+                $mime = Storage::disk('public')->mimeType($pengaturan->logo_instansi) ?: 'image/png';
+                $logoInstansi = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
             }
 
             $totalData = $absensiPetugas->count()
@@ -219,27 +212,27 @@ class LaporanController extends Controller
                        + $tamu->count();
 
             $data = [
-                'pengaturan' => $pengaturan,
-                'logoInstansi' => $logoInstansi,
-                'logo' => $logo,
-                'labelPeriode' => $labelPeriode,
-                'absensiPetugas' => $absensiPetugas,
-                'ringkasan' => $ringkasan,
-                'keterlambatan' => $keterlambatan,
-                'izinKeluar' => $izinKeluar,
-                'pelanggaran' => $pelanggaran,
-                'tamu' => $tamu,
-                'perKelas' => $perKelas,
-                'perJurusan' => $perJurusan,
-                'trend' => $trend,
+                'pengaturan'        => $pengaturan,
+                'logo'              => $logo,
+                'logoInstansi'      => $logoInstansi,
+                'labelPeriode'      => $labelPeriode,
+                'absensiPetugas'    => $absensiPetugas,
+                'ringkasan'         => $ringkasan,
+                'keterlambatan'     => $keterlambatan,
+                'izinKeluar'        => $izinKeluar,
+                'pelanggaran'       => $pelanggaran,
+                'tamu'              => $tamu,
+                'perKelas'          => $perKelas,
+                'perJurusan'        => $perJurusan,
+                'trend'             => $trend,
                 'statusPelanggaran' => $statusPelanggaran,
-                'jenisPelanggaran' => $jenisPelanggaran,
-                'aktivitas' => $aktivitas,
-                'topPoin' => $topPoin,
-                'topTerlambat' => $topTerlambat,
-                'totalData' => $totalData,
-                'dicetakOleh' => auth()->user()?->name ?? 'Sistem Otomatis',
-                'waktuCetak' => now()->format('d-m-Y H:i'),
+                'jenisPelanggaran'  => $jenisPelanggaran,
+                'aktivitas'         => $aktivitas,
+                'topPoin'           => $topPoin,
+                'topTerlambat'      => $topTerlambat,
+                'totalData'         => $totalData,
+                'dicetakOleh'       => auth()->user()?->name ?? 'Sistem Otomatis',
+                'waktuCetak'        => now()->format('d-m-Y H:i'),
             ];
 
             $pdf = Pdf::loadView('laporan.pdf', $data)->setPaper('a4', 'portrait');
@@ -249,12 +242,11 @@ class LaporanController extends Controller
             Log::error('PDF Error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
             return response()->json([
                 'error' => 'Gagal generate PDF: '.$e->getMessage(),
-                'file' => basename($e->getFile()),
-                'line' => $e->getLine(),
+                'file'  => basename($e->getFile()),
+                'line'  => $e->getLine(),
             ], 500);
         }
     }
-
     private function hitungRentang(string $periode, string $tanggal, string $semester): array
     {
         $date = Carbon::parse($tanggal);
