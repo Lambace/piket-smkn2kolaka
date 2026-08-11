@@ -17,40 +17,56 @@ class PengaturanController extends Controller
         ]);
     }
 
-    public function update(Request $request)
-    {
-        $pengaturan = $this->getOrCreatePengaturan();
+  public function update(Request $request)
+{
+    $validated = $request->validate([
+        'nama_sekolah'     => 'required|string|max:255',
+        'nama_instansi'    => 'nullable|string|max:255',
+        'warna_tema'       => 'required|string|max:20',
+        'logo'             => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
+        'logo_instansi'    => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
+        'kop_baris1'       => 'nullable|string|max:255',
+        'kop_baris2'       => 'nullable|string|max:255',
+        'kop_nama_sekolah' => 'nullable|string|max:255',
+        'alamat'           => 'nullable|string|max:255',
+        'telepon'          => 'nullable|string|max:50',
+        'email'            => 'nullable|string|max:100',
+        'website'          => 'nullable|string|max:100',
+        'server'           => 'nullable|string|max:100',
+    ]);
 
-        $data = $request->validate([
-            'nama_sekolah' => 'required|string|max:100',
-            'warna_tema' => [
-                'required',
-                'string',
-                'max:20',
-                'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
-            ],
-            'logo' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:5120',
-        ]);
+    $pengaturan = \App\Models\Pengaturan::first() ?? new \App\Models\Pengaturan();
 
-        if ($request->hasFile('logo')) {
-            try {
-                if ($pengaturan->logo && Storage::disk('public')->exists($pengaturan->logo)) {
-                    Storage::disk('public')->delete($pengaturan->logo);
-                }
-                $data['logo'] = $request->file('logo')->store('logo', 'public');
-            } catch (\Throwable $e) {
-                Log::error('Gagal upload logo: ' . $e->getMessage());
-                return back()->with('error', 'Gagal mengupload logo: ' . $e->getMessage());
-            }
-        } else {
-            unset($data['logo']);
-        }
-
-        $pengaturan->update($data);
-
-        return back()->with('success', 'Pengaturan berhasil disimpan.');
+    // Simpan semua field teks
+    $teksFields = [
+        'nama_sekolah', 'nama_instansi', 'warna_tema',
+        'kop_baris1', 'kop_baris2', 'kop_nama_sekolah',
+        'alamat', 'telepon', 'email', 'website', 'server',
+    ];
+    foreach ($teksFields as $field) {
+        $pengaturan->{$field} = $validated[$field] ?? null;
     }
 
+    // Upload logo sekolah
+    if ($request->hasFile('logo')) {
+        if ($pengaturan->logo && \Storage::disk('public')->exists($pengaturan->logo)) {
+            \Storage::disk('public')->delete($pengaturan->logo);
+        }
+        $pengaturan->logo = $request->file('logo')->store('logo-sekolah', 'public');
+    }
+
+    // Upload logo instansi
+    if ($request->hasFile('logo_instansi')) {
+        if ($pengaturan->logo_instansi && \Storage::disk('public')->exists($pengaturan->logo_instansi)) {
+            \Storage::disk('public')->delete($pengaturan->logo_instansi);
+        }
+        $pengaturan->logo_instansi = $request->file('logo_instansi')->store('logo-instansi', 'public');
+    }
+
+    $pengaturan->save();
+
+    return back()->with('success', 'Pengaturan berhasil disimpan.');
+}
     private function getOrCreatePengaturan(): Pengaturan
     {
         return Pengaturan::first() ?? Pengaturan::create([

@@ -1,24 +1,21 @@
 <div class="kop">
-    {{-- Logo INSTANSI (kiri) --}}
+    {{-- KOLOM KIRI: Logo Instansi --}}
     <div class="kop-logo">
         @if($logoInstansi ?? null)
             <img src="{{ $logoInstansi }}" alt="Logo Instansi">
         @endif
     </div>
 
-    {{-- Teks tengah --}}
+    {{-- KOLOM TENGAH: Teks (otomatis mengambil ruang sisa) --}}
     <div class="kop-teks">
         <div class="kop-baris1">{{ $pengaturan->kop_baris1 ?? 'PEMERINTAH PROVINSI SULAWESI TENGGARA' }}</div>
         <div class="kop-baris2">{{ $pengaturan->kop_baris2 ?? 'DINAS PENDIDIKAN DAN KEBUDAYAAN' }}</div>
-
-        {{-- ===== NAMA SEKOLAH KOP (prioritas: kop_nama_sekolah > nama_sekolah > default) ===== --}}
         <div class="kop-nama">
             {{ strtoupper(
                 $pengaturan->kop_nama_sekolah
                     ?: ($pengaturan->nama_sekolah ?? 'SEKOLAH MENENGAH KEJURUAN (SMK) NEGERI 2 KOLAKA')
             ) }}
         </div>
-
         <div class="kop-alamat">{{ $pengaturan->alamat ?? 'Jln. Poros Kolaka - Pomalaa KM. 16 Kec. Baula Kab. Kolaka Provinsi SULTRA' }}</div>
         <div class="kop-alamat">
             E-mail <span class="kop-link">{{ $pengaturan->email ?? 'smknsatubaula@yahoo.co.id' }}</span>
@@ -30,7 +27,7 @@
         </div>
     </div>
 
-    {{-- Logo SEKOLAH (kanan) --}}
+    {{-- KOLOM KANAN: Logo Sekolah --}}
     <div class="kop-logo">
         @if($logo ?? null)
             <img src="{{ $logo }}" alt="Logo Sekolah">
@@ -38,5 +35,4 @@
     </div>
 </div>
 
-{{-- Double line bawah kop --}}
 <div class="kop-garis"></div>

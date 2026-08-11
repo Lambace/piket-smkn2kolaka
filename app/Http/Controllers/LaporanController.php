@@ -187,14 +187,38 @@ class LaporanController extends Controller
                 ['label' => 'Kunjungan Tamu', 'nilai' => $tamu->count().' kunjungan'],
             ];
 
-            $pengaturan = Pengaturan::first();
-            $logo = null;
-            if ($pengaturan?->logo) {
-                $path = storage_path('app/public/'.$pengaturan->logo);
+          $pengaturan = Pengaturan::first();
+
+// Logo sekolah (base64)
+$logo = null;
+if ($pengaturan?->logo) {
+    $path = storage_path('app/public/'.$pengaturan->logo);
+    if (file_exists($path)) {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
+            $logo = 'data:image/'.$ext.';base64,'.base64_encode(file_get_contents($path));
+        }
+    }
+}
+
+// Logo instansi (base64)
+$logoInstansi = null;
+if ($pengaturan?->logo_instansi) {
+    $path = storage_path('app/public/'.$pengaturan->logo_instansi);
+    if (file_exists($path)) {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
+            $logoInstansi = 'data:image/'.$ext.';base64,'.base64_encode(file_get_contents($path));
+        }
+    }
+}
+            $logoInstansi = null;
+            if ($pengaturan?->logo_instansi) {
+                $path = storage_path('app/public/'.$pengaturan->logo_instansi);
                 if (file_exists($path)) {
                     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
                     if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
-                        $logo = 'data:image/'.$ext.';base64,'.base64_encode(file_get_contents($path));
+                        $logoInstansi = 'data:image/'.$ext.';base64,'.base64_encode(file_get_contents($path));
                     }
                 }
             }
@@ -207,6 +231,7 @@ class LaporanController extends Controller
 
             $data = [
                 'pengaturan' => $pengaturan,
+                'logoInstansi' => $logoInstansi,
                 'logo' => $logo,
                 'labelPeriode' => $labelPeriode,
                 'absensiPetugas' => $absensiPetugas,

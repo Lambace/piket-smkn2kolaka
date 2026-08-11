@@ -34,6 +34,9 @@ export default function Edit({ pengaturan }) {
     // ===== Kop Dokumen =====
     const [kopBaris1, setKopBaris1] = useState(pengaturan.kop_baris1 || "");
     const [kopBaris2, setKopBaris2] = useState(pengaturan.kop_baris2 || "");
+    const [kopNamaSekolah, setKopNamaSekolah] = useState(
+        pengaturan.kop_nama_sekolah || "",
+    );
     const [alamat, setAlamat] = useState(pengaturan.alamat || "");
     const [telepon, setTelepon] = useState(pengaturan.telepon || "");
     const [email, setEmail] = useState(pengaturan.email || "");
@@ -59,6 +62,7 @@ export default function Edit({ pengaturan }) {
         // Kop Dokumen
         formData.append("kop_baris1", kopBaris1);
         formData.append("kop_baris2", kopBaris2);
+        formData.append("kop_nama_sekolah", kopNamaSekolah);
         formData.append("alamat", alamat);
         formData.append("telepon", telepon);
         formData.append("email", email);
@@ -345,6 +349,39 @@ export default function Edit({ pengaturan }) {
                                     placeholder="DINAS PENDIDIKAN DAN KEBUDAYAAN"
                                     className={inputClass}
                                 />
+                            </div>
+
+                            {/* ===== NAMA SEKOLAH (KOP) - TEBAL ===== */}
+                            <div className="md:col-span-2">
+                                <label className={labelClass}>
+                                    🏫 Nama Sekolah (Kop){" "}
+                                    <span className="text-xs text-gray-400">
+                                        (ditampilkan tebal di kop PDF)
+                                    </span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={kopNamaSekolah}
+                                    onChange={(e) =>
+                                        setKopNamaSekolah(e.target.value)
+                                    }
+                                    placeholder={
+                                        namaSekolah
+                                            ? namaSekolah.toUpperCase()
+                                            : "SEKOLAH MENENGAH KEJURUAN (SMK) NEGERI 2 KOLAKA"
+                                    }
+                                    className={`${inputClass} border-2 border-indigo-200 bg-indigo-50/30 p-2.5 font-bold uppercase tracking-wide`}
+                                />
+                                <p className="mt-1 text-xs text-gray-500">
+                                    💡 Kosongkan untuk memakai nama sekolah
+                                    utama. Preview di atas menampilkan format
+                                    asli di kop PDF.
+                                </p>
+                                {errors.kop_nama_sekolah && (
+                                    <p className="mt-1 text-xs text-red-600">
+                                        {errors.kop_nama_sekolah}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="md:col-span-2">

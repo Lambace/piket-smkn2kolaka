@@ -12,15 +12,18 @@
     .meta-top .kiri { display: table-cell; width: 40%; font-size: 7.5pt; color: #64748b; }
     .meta-top .tengah { display: table-cell; width: 60%; text-align: center; font-size: 7.5pt; color: #334155; text-transform: uppercase; letter-spacing: 1px; }
 
-    /* ===== Kop ===== */
-    .kop { display: table; width: 100%; border-bottom: 3px double #334155; padding-bottom: 10px; margin-bottom: 12px; }
-    .kop-logo { display: table-cell; width: 78px; vertical-align: middle; }
-    .kop-logo img { width: 60px; height: 60px; }
-    .kop-teks { display: table-cell; vertical-align: middle; }
-    .kop-pemerintah { font-size: 8.5pt; color: #475569; letter-spacing: 1px; }
-    .kop-nama { font-size: 15pt; font-weight: bold; color: #0f172a; letter-spacing: 0.5px; margin: 2px 0; }
-    .kop-alamat { font-size: 7.5pt; color: #64748b; }
-
+  
+/* ===== Kop 3 kolom (kiri-tengah-kanan) ===== */
+.kop { display: table; width: 100%; table-layout: fixed; }
+.kop-logo { display: table-cell; width: 90px; vertical-align: middle; text-align: center; }
+.kop-logo img { width: 75px; height: 75px; object-fit: contain; }
+.kop-teks { display: table-cell; vertical-align: middle; text-align: center; padding: 0 8px; }
+.kop-baris1 { font-size: 10pt; font-weight: bold; color: #000; }
+.kop-baris2 { font-size: 10pt; font-weight: bold; color: #000; }
+.kop-nama { font-size: 12pt; font-weight: bold; color: #000; margin: 3px 0; text-transform: uppercase; }
+.kop-alamat { font-size: 8pt; color: #111; margin: 1px 0; }
+.kop-link { color: #1a0dab; }
+.kop-garis { margin: 8px 0 14px 0; border-top: 2.5px solid #000; border-bottom: 2.5px solid #000; height: 4px; }
     /* ===== Judul ===== */
     .judul { text-align: center; margin: 12px 0 10px; }
     .judul h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: 1px; color: #0f172a; }
