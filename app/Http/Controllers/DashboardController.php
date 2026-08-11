@@ -75,7 +75,7 @@ class DashboardController extends Controller
             ->groupBy('siswa.kelas')
             ->orderByDesc('jumlah')
             ->get()
-            ->map(fn ($d) => ['label' => $d->label, 'jumlah' => $d->jumlah])
+            ->map(fn ($d) => ['label' => $d->label, 'jumlah' => (int) $d->jumlah])
             ->values();
 
         // ===== GRAFIK PELANGGARAN PER HARI =====
@@ -99,18 +99,19 @@ class DashboardController extends Controller
             ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
             ->whereBetween('keterlambatan.tanggal', [$dariTanggal, $sampaiTanggal])
             ->groupBy('siswa.jurusan')->orderByDesc('jumlah')->get()
-            ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => $d->jumlah]);
+            ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
 
         // ===== DONUT 2: Status Pelanggaran =====
         $donutStatusPelanggaran = Pelanggaran::select('status as label', DB::raw('COUNT(*) as jumlah'))
             ->whereBetween('tanggal', [$dariTanggal, $sampaiTanggal])
             ->groupBy('status')->orderByDesc('jumlah')->get()
-            ->map(fn ($d) => ['label' => ucfirst($d->label), 'jumlah' => $d->jumlah]);
+            ->map(fn ($d) => ['label' => ucfirst($d->label ?? 'Tanpa Status'), 'jumlah' => (int) $d->jumlah]);
 
         // ===== Jenis pelanggaran =====
         $jenisPelanggaran = Pelanggaran::select('jenis_pelanggaran', DB::raw('COUNT(*) as jumlah'))
             ->whereBetween('tanggal', [$dariTanggal, $sampaiTanggal])
-            ->groupBy('jenis_pelanggaran')->orderByDesc('jumlah')->limit(5)->get();
+            ->groupBy('jenis_pelanggaran')->orderByDesc('jumlah')->limit(5)->get()
+            ->map(fn ($d) => ['label' => $d->jenis_pelanggaran, 'jumlah' => (int) $d->jumlah]);
 
         // ===== Top siswa =====
         $topPelanggaran = Pelanggaran::select('siswa_id',
@@ -119,9 +120,11 @@ class DashboardController extends Controller
             ->whereBetween('tanggal', [$dariTanggal, $sampaiTanggal])
             ->groupBy('siswa_id')->orderByDesc('total_poin')->limit(5)->get()
             ->map(fn ($p) => [
-                'nisn' => $p->siswa?->nisn ?? '-', 'nama' => $p->siswa?->nama ?? '-',
-                'kelas' => $p->siswa?->kelas ?? '-', 'total_poin' => $p->total_poin,
-                'jumlah_kasus' => $p->jumlah_kasus,
+                'nisn' => $p->siswa?->nisn ?? '-',
+                'nama' => $p->siswa?->nama ?? '-',
+                'kelas' => $p->siswa?->kelas ?? '-',
+                'total_poin' => (int) ($p->total_poin ?? 0),
+                'jumlah_kasus' => (int) ($p->jumlah_kasus ?? 0),
             ]);
 
         $topTerlambat = Keterlambatan::select('siswa_id',
@@ -130,9 +133,11 @@ class DashboardController extends Controller
             ->whereBetween('tanggal', [$dariTanggal, $sampaiTanggal])
             ->groupBy('siswa_id')->orderByDesc('jumlah')->limit(5)->get()
             ->map(fn ($k) => [
-                'nisn' => $k->siswa?->nisn ?? '-', 'nama' => $k->siswa?->nama ?? '-',
-                'kelas' => $k->siswa?->kelas ?? '-', 'jumlah' => $k->jumlah,
-                'rata_menit' => round($k->rata_menit, 1),
+                'nisn' => $k->siswa?->nisn ?? '-',
+                'nama' => $k->siswa?->nama ?? '-',
+                'kelas' => $k->siswa?->kelas ?? '-',
+                'jumlah' => (int) ($k->jumlah ?? 0),
+                'rata_menit' => round((float) ($k->rata_menit ?? 0), 1),
             ]);
 
         // ===== Aktivitas Terbaru =====
@@ -142,28 +147,28 @@ class DashboardController extends Controller
             fn ($k) => $aktivitas->push([
                 'waktu' => $k->created_at?->toIsoString(),
                 'tipe' => 'Terlambat', 'warna' => 'red',
-                'teks' => ($k->siswa?->nama ?? '-').' ('.($k->siswa?->kelas ?? '-').') terlambat '.$k->menit_terlambat.' menit',
+                'teks' => ($k->siswa?->nama ?? '-').' ('.($k->siswa?->kelas ?? '-').') terlambat '.($k->menit_terlambat ?? 0).' menit',
             ])
         );
         IzinKeluar::with('siswa:id,nama,kelas')->latest()->take(5)->get()->each(
             fn ($i) => $aktivitas->push([
                 'waktu' => $i->created_at?->toIsoString(),
                 'tipe' => 'Izin Keluar', 'warna' => 'yellow',
-                'teks' => ($i->siswa?->nama ?? '-').' ('.($i->siswa?->kelas ?? '-').') izin keluar: '.$i->jenis,
+                'teks' => ($i->siswa?->nama ?? '-').' ('.($i->siswa?->kelas ?? '-').') izin keluar: '.($i->jenis ?? '-'),
             ])
         );
         Pelanggaran::with('siswa:id,nama,kelas')->latest()->take(5)->get()->each(
             fn ($p) => $aktivitas->push([
                 'waktu' => $p->created_at?->toIsoString(),
                 'tipe' => 'Pelanggaran', 'warna' => 'orange',
-                'teks' => ($p->siswa?->nama ?? '-').' ('.($p->siswa?->kelas ?? '-').') '.$p->jenis_pelanggaran.' ('.$p->poin.' poin)',
+                'teks' => ($p->siswa?->nama ?? '-').' ('.($p->siswa?->kelas ?? '-').') '.($p->jenis_pelanggaran ?? '-').' ('.($p->poin ?? 0).' poin)',
             ])
         );
         BukuTamu::latest()->take(5)->get()->each(
             fn ($t) => $aktivitas->push([
                 'waktu' => $t->created_at?->toIsoString(),
                 'tipe' => 'Tamu', 'warna' => 'blue',
-                'teks' => $t->nama.' ('.($t->instansi ?: 'Umum').') — '.$t->keperluan,
+                'teks' => $t->nama.' ('.($t->instansi ?: 'Umum').') — '.($t->keperluan ?? '-'),
             ])
         );
 
@@ -191,8 +196,10 @@ class DashboardController extends Controller
                 'nama'    => $a->nama,
                 'jabatan' => $a->jabatan,
                 'jam'     => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null,
-                'status'  => $a->status, // tepat_waktu atau terlambat
-            ]);
+                'status'  => $a->status,
+            ])
+            ->values()
+            ->toBase();   // ← FIX: ubah ke Support Collection (aman di-merge)
 
         // 2. Petugas yang BELUM absen → jadi ALPHA (jika jam sekarang >= 08:00)
         $alphaList = collect();
@@ -208,10 +215,13 @@ class DashboardController extends Controller
                     'jabatan' => 'Petugas Piket',
                     'jam'     => null,
                     'status'  => 'alpha',
-                ]);
+                ])
+                ->values()
+                ->toBase();   // ← FIX: ubah ke Support Collection (aman di-merge)
         }
 
         // 3. Gabungkan: hadir dulu (urut jam), lalu alpha
+        //    Sekarang AMAN karena keduanya Support Collection (bukan Eloquent)
         $absensiPetugas = $absensiTercatat->merge($alphaList)->values();
 
         return [
