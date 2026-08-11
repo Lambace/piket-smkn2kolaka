@@ -5,7 +5,7 @@
 <title>Daftar Hadir Piket</title>
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #000; padding: 10mm 12mm; }
+    body { font-family: 'DejaVu Sans', sans-serif; font-size: 10pt; color: #000; padding: 10mm 12mm; }
 
     table.kop-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
     table.kop-table td { border: none; padding: 0; vertical-align: middle; }
@@ -98,11 +98,11 @@
             <td>{{ $r['nip'] }}</td>
             <td class="tengah">{{ $r['gol'] }}</td>
             <td>{{ $r['status'] }}</td>
-            <td class="tengah cek">{{ $r['h'] > 0 ? '√' : '' }}</td>
-            <td class="tengah cek">{{ $r['a'] > 0 ? '√' : '' }}</td>
-            <td class="tengah cek">{{ $r['i'] ? '√' : '' }}</td>
-            <td class="tengah cek">{{ $r['s'] ? '√' : '' }}</td>
-            <td class="tengah cek">{{ $r['dl'] ? '√' : '' }}</td>
+            <td class="tengah cek">{{ $r['h'] > 0 ? '✓' : '' }}</td>
+            <td class="tengah cek">{{ $r['a'] > 0 ? '✓' : '' }}</td>
+            <td class="tengah cek">{{ $r['i'] ? '✓' : '' }}</td>
+            <td class="tengah cek">{{ $r['s'] ? '✓' : '' }}</td>
+            <td class="tengah cek">{{ $r['dl'] ? '✓' : '' }}</td>
             <td>{{ $r['ket'] }}</td>
         </tr>
         @endforeach
