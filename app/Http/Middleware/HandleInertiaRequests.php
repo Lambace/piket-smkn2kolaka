@@ -49,9 +49,10 @@ private function pengaturan(): ?array
             'nama_instansi'     => $p->nama_instansi ?? null,
             'warna_tema'        => $p->warna_tema ?? '#4f46e5',
             'logo'              => $p->logo,
-            'logo_url'          => $p->logo ? asset('storage/' . $p->logo) : null,
+            'logo_url'          => $p->logo ? Storage::disk('public')->url($p->logo) : null,
+
             'logo_instansi'     => $p->logo_instansi,
-            'logo_instansi_url' => $p->logo_instansi ? asset('storage/' . $p->logo_instansi) : null,
+            'logo_instansi_url' => $p->logo_instansi ? Storage::disk('public')->url($p->logo_instansi) : null,
             'kop_baris1'        => $p->kop_baris1 ?? null,
             'kop_baris2'        => $p->kop_baris2 ?? null,
             'kop_nama_sekolah'  => $p->kop_nama_sekolah ?? null,
