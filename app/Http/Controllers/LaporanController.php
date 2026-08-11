@@ -247,6 +247,101 @@ class LaporanController extends Controller
             ], 500);
         }
     }
+    // ===== DAFTAR HADIR PIKET (format resmi kedinasan) =====
+    public function daftarHadir(Request $request)
+    {
+        if ($request->routeIs('tampil.*')) {
+            $key = config('services.display.key');
+            if ($key && $request->query('k') !== $key) abort(403, 'Akses ditolak.');
+        }
+
+        $periode  = $request->input('periode', 'harian');
+        $tanggal  = $request->input('tanggal', now()->toDateString());
+        $semester = $request->input('semester', 'ganjil');
+        $tanggalRef = Carbon::parse($tanggal);
+
+        switch ($periode) {
+            case 'mingguan':
+                $dari = $tanggalRef->copy()->startOfWeek();
+                $sampai = $tanggalRef->copy()->endOfWeek();
+                break;
+            case 'bulanan':
+                $dari = $tanggalRef->copy()->startOfMonth();
+                $sampai = $tanggalRef->copy()->endOfMonth();
+                break;
+            case 'semester':
+                $bulan = $tanggalRef->month;
+                if ($semester === 'genap' || ($bulan >= 1 && $bulan <= 6)) {
+                    $dari = Carbon::create($tanggalRef->year, 1, 1);
+                    $sampai = Carbon::create($tanggalRef->year, 6, 30);
+                } else {
+                    $dari = Carbon::create($tanggalRef->year, 7, 1);
+                    $sampai = Carbon::create($tanggalRef->year, 12, 31);
+                }
+                break;
+            default:
+                $dari = $tanggalRef->copy()->startOfDay();
+                $sampai = $tanggalRef->copy()->endOfDay();
+        }
+
+        $dariStr   = $dari->toDateString();
+        $sampaiStr = min($sampai->toDateString(), now()->toDateString());
+
+        // Jumlah hari dalam periode (s.d. hari ini) → untuk hitung Alpha
+        $totalHari = 0;
+        $cursor = $dari->copy();
+        while ($cursor->toDateString() <= $sampaiStr) {
+            $totalHari++;
+            $cursor->addDay();
+        }
+
+        // Baris data: satu baris per petugas
+        $rows = User::where('role', 'petugas')->orderBy('name')->get()
+            ->map(function ($u) use ($dariStr, $sampaiStr, $totalHari) {
+                $h = AbsensiPetugas::where('nama', $u->name)
+                    ->whereBetween('tanggal', [$dariStr, $sampaiStr])->count();
+                return [
+                    'nama'   => $u->name,
+                    'jk'     => $u->jenis_kelamin ?? '',
+                    'nip'    => $u->nip ?? '',
+                    'gol'    => $u->golongan ?? '',
+                    'status' => $u->status_kepegawaian ?? '',
+                    'h'      => $h,
+                    'a'      => max(0, $totalHari - $h),
+                    'i'      => '',
+                    's'      => '',
+                    'dl'     => '',
+                    'ket'    => '',
+                ];
+            });
+
+        // Kop + logo (via Storage)
+        $pengaturan = Pengaturan::first();
+        $logo = null;
+        if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
+            $mime = Storage::disk('public')->mimeType($pengaturan->logo) ?: 'image/png';
+            $logo = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo));
+        }
+        $logoInstansi = null;
+        if ($pengaturan?->logo_instansi && Storage::disk('public')->exists($pengaturan->logo_instansi)) {
+            $mime = Storage::disk('public')->mimeType($pengaturan->logo_instansi) ?: 'image/png';
+            $logoInstansi = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
+        }
+
+        $hariTanggal = $periode === 'harian'
+            ? $tanggalRef->isoFormat('dddd, D MMMM Y')
+            : $dari->isoFormat('D MMMM Y').' s/d '.Carbon::parse($sampaiStr)->isoFormat('D MMMM Y');
+
+        $pdf = Pdf::loadView('laporan.daftar-hadir', [
+            'pengaturan' => $pengaturan,
+            'logo' => $logo,
+            'logoInstansi' => $logoInstansi,
+            'rows' => $rows,
+            'hariTanggal' => $hariTanggal,
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('Daftar-Hadir-Piket-'.$dariStr.'.pdf');
+    }
     private function hitungRentang(string $periode, string $tanggal, string $semester): array
     {
         $date = Carbon::parse($tanggal);
