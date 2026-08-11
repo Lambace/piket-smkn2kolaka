@@ -13,21 +13,7 @@ import { useState } from "react";
        },
        {
            group: "Golongan V - XVII (PPPK)",
-           items: [
-               "V",
-               "VI",
-               "VII",
-               "VIII",
-               "IX",
-               "X",
-               "XI",
-               "XII",
-               "XIII",
-               "XIV",
-               "XV",
-               "XVI",
-               "XVII",
-           ],
+           items: ["V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII",],
        },
    ];
 const defaultForm = {
