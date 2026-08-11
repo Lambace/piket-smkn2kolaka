@@ -329,7 +329,7 @@ export default function UserPetugasIndex(props) {
                                 >
                                     <option value="">-- Pilih Status --</option>
                                     <option value="ASN">PNS</option>
-                                    <option value="PPPK">PPPK</option>
+                                    <option value="PPPK">PPPK Guru</option>
                                     <option value="PPPK">PPPK/PW Guru</option>
                                     <option value="PPPK">PPPK/PW Staf TU</option>
                                     <option value="PPPK">PPPK/Staf TU</option>
