@@ -29,15 +29,20 @@ export default function Index({
 
     const exportFile = (type) => {
         setLoading(type);
-        const url =
-            type === "excel" ? route("laporan.excel") : route("laporan.pdf");
+
+        const urls = {
+            pdf: route("laporan.pdf"),
+            "daftar-hadir": route("laporan.daftar-hadir"),
+        };
+
         const query = new URLSearchParams({
             jenis,
             periode,
             tanggal,
             semester,
         }).toString();
-        window.location.href = `${url}?${query}`;
+
+        window.location.href = `${urls[type]}?${query}`;
         setTimeout(() => setLoading(null), 2000);
     };
 
@@ -137,6 +142,7 @@ export default function Index({
                         )}
                     </div>
 
+                    {/* ===== TOMBOL AKSI ===== */}
                     <div className="mt-5 flex flex-wrap gap-2">
                         <button
                             onClick={apply}
@@ -144,7 +150,7 @@ export default function Index({
                         >
                             🔍 Tampilkan Data
                         </button>
-                        
+
                         <button
                             onClick={() => exportFile("pdf")}
                             disabled={loading === "pdf"}
@@ -153,6 +159,18 @@ export default function Index({
                             {loading === "pdf"
                                 ? "⏳ Menyiapkan..."
                                 : "📄 Export PDF"}
+                        </button>
+
+                        {/* ===== BARU: Daftar Hadir Piket ===== */}
+                        <button
+                            onClick={() => exportFile("daftar-hadir")}
+                            disabled={loading === "daftar-hadir"}
+                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                            title="Download daftar hadir piket format resmi kedinasan (H/A/I/S/DL)"
+                        >
+                            {loading === "daftar-hadir"
+                                ? "⏳ Menyiapkan..."
+                                : "📋 Daftar Hadir Piket"}
                         </button>
                     </div>
                 </div>

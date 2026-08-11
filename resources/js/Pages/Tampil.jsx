@@ -49,6 +49,16 @@ export default function Tampil(props) {
         window.location.href = `${route("tampil.laporan")}?${params.toString()}`;
     };
 
+    // ===== BARU: Download Daftar Hadir Piket (harian) =====
+    const downloadDaftarHadir = () => {
+        const params = new URLSearchParams({
+            periode: "harian",
+            tanggal: today,
+        });
+        if (props.displayKey) params.set("k", props.displayKey);
+        window.location.href = `${route("tampil.daftar-hadir")}?${params.toString()}`;
+    };
+
     return (
         <div className="min-h-screen bg-slate-900 p-6">
             <Head title="Papan Informasi Piket" />
@@ -125,8 +135,12 @@ export default function Tampil(props) {
             </div>
 
             <div className="space-y-6">
-                {/* ⭐ BARU: KARTU ABSENSI PETUGAS — POSISI PALING ATAS */}
-                <KartuAbsensiPetugas data={props.absensiPetugas ?? []} />
+                {/* ⭐ KARTU ABSENSI PETUGAS — dengan prop displayKey + downloadDaftarHadir */}
+                <KartuAbsensiPetugas
+                    data={props.absensiPetugas ?? []}
+                    displayKey={props.displayKey}
+                    onDownloadDaftarHadir={downloadDaftarHadir}
+                />
 
                 <KartuStatistik stats={props.stats} />
 

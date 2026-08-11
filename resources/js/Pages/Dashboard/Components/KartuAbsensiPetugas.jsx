@@ -1,6 +1,27 @@
-export default function KartuAbsensiPetugas({ data, onDownloadDaftarHadir }) {
+import { usePage } from "@inertiajs/react";
+
+export default function KartuAbsensiPetugas({ data }) {
+    // displayKey hanya ada di halaman TV → penentu route publik/auth
+    const displayKey = usePage().props.displayKey ?? null;
+
     const hadirList = data?.filter((p) => p.status !== "alpha") ?? [];
     const alphaList = data?.filter((p) => p.status === "alpha") ?? [];
+
+    // ===== Download Daftar Hadir (otomatis pilih route) =====
+    const downloadDaftarHadir = () => {
+        const today = new Date().toISOString().split("T")[0];
+        const params = new URLSearchParams({
+            periode: "harian",
+            tanggal: today,
+        });
+        if (displayKey) params.set("k", displayKey);
+
+        const url = displayKey
+            ? route("tampil.daftar-hadir") // dari TV (publik + key)
+            : route("laporan.daftar-hadir"); // dari Dashboard (login)
+
+        window.location.href = `${url}?${params.toString()}`;
+    };
 
     const getBadge = (status, jam) => {
         switch (status) {
@@ -25,20 +46,18 @@ export default function KartuAbsensiPetugas({ data, onDownloadDaftarHadir }) {
 
     return (
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-lg">
-            {/* ===== HEADER + TOMBOL DAFTAR HADIR ===== */}
+            {/* ===== HEADER + TOMBOL (SELALU MUNCUL) ===== */}
             <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3">
                 <h3 className="text-lg font-bold text-white">
                     🧑‍🏫 Petugas Piket Hari Ini
                 </h3>
-                {onDownloadDaftarHadir && (
-                    <button
-                        onClick={onDownloadDaftarHadir}
-                        className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-blue-700"
-                        title="Download daftar hadir format resmi kedinasan (H/A/I/S/DL)"
-                    >
-                        📋 Daftar Hadir
-                    </button>
-                )}
+                <button
+                    onClick={downloadDaftarHadir}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-blue-700"
+                    title="Download daftar hadir format resmi kedinasan (H/A/I/S/DL)"
+                >
+                    📋 Daftar Hadir
+                </button>
             </div>
 
             {/* ===== BELUM ADA DATA SAMA SEKALI ===== */}
