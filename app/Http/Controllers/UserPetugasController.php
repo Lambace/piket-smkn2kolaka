@@ -12,14 +12,14 @@ use Inertia\Inertia;
 class UserPetugasController extends Controller
 {
     public function index()
-    {
-        return Inertia::render('UserPetugas/Index', [
+{
+    return Inertia::render('UserPetugas/Index', [
         'users' => User::select([
-        'id', 'name', 'email', 'role',
-        'jenis_kelamin', 'nip', 'golongan', 'status_kepegawaian',
-    ])->orderBy('name')->get(),
-]);
-    }
+            'id', 'name', 'email', 'role',
+            'jenis_kelamin', 'nip', 'golongan', 'status_kepegawaian',
+        ])->orderBy('name')->get(),
+    ]);
+}
 
     public function store(Request $request)
 {
@@ -48,19 +48,21 @@ User::create([
         ->with('success', 'Petugas berhasil ditambahkan.');
 }
     public function update(Request $request, User $user)
-    {
-        $validated = $request->validate([
+{
+    $validated = $request->validate([
         'name'               => 'required|string|max:255',
         'email'              => 'required|email|unique:users,email,'.$user->id,
+        'role'               => 'nullable|in:petugas,koordinator',
         'jenis_kelamin'      => 'nullable|in:L,P',
         'nip'                => 'nullable|string|max:20',
-        'golongan'           => 'nullable|string|max:5',
-        'status_kepegawaian' => 'nullable|in:ASN,PPPK',
+        'golongan'           => 'nullable|string|max:10',
+        'status_kepegawaian' => 'nullable|string|max:50',
     ]);
 
     $user->update([
         'name'               => $validated['name'],
         'email'              => $validated['email'],
+        'role'               => $validated['role'] ?? $user->role,
         'jenis_kelamin'      => $validated['jenis_kelamin'] ?? null,
         'nip'                => $validated['nip'] ?? null,
         'golongan'           => $validated['golongan'] ?? null,
@@ -70,7 +72,6 @@ User::create([
     return redirect()->route('user-petugas.index')
         ->with('success', 'Data petugas berhasil diperbarui.');
 }
-
     public function resetPassword(Request $request, User $user)
     {
         $data = $request->validate([

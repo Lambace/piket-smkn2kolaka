@@ -40,6 +40,8 @@ export default function UserPetugasIndex(props) {
 
     const submit = (e) => {
         e.preventDefault();
+
+        // ===== Payload LENGKAP (dipakai POST & PATCH) =====
         const payload = {
             name: form.name,
             email: form.email,
