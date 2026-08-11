@@ -296,7 +296,7 @@ class LaporanController extends Controller
         }
 
         // Baris data: satu baris per petugas
-        $rows = User::where('role', 'petugas')->orderBy('name')->get()
+       $rows = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get()
             ->map(function ($u) use ($dariStr, $sampaiStr, $totalHari) {
                 $h = AbsensiPetugas::where('nama', $u->name)
                     ->whereBetween('tanggal', [$dariStr, $sampaiStr])->count();
