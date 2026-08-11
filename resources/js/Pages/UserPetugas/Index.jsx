@@ -328,7 +328,7 @@ export default function UserPetugasIndex(props) {
                                     className="w-full rounded-lg border-gray-300"
                                 >
                                     <option value="">-- Pilih Status --</option>
-                                    <option value="ASN">ASN</option>
+                                    <option value="ASN">PNS</option>
                                     <option value="PPPK">PPPK</option>
                                 </select>
                             </div>
