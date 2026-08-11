@@ -35,31 +35,37 @@ Route::get('/tampil', [DashboardController::class, 'tampil'])->name('tampil');
 // Download laporan PDF dari Mode Tampil (dilindungi kunci rahasia)
 Route::get('/tampil/laporan', [LaporanController::class, 'pdf'])->name('tampil.laporan');
 
-// ===== LOGO SEKOLAH PUBLIK (gambar langsung, bisa diunduh Fonnte) =====
+// ===== LOGO SEKOLAH PUBLIK (URL pendek untuk Fonnte + embed di mana saja) =====
 Route::get('/logo.png', function () {
     $p = Pengaturan::first();
-
     if (!$p || !$p->logo || !Storage::disk('public')->exists($p->logo)) {
-        abort(404, 'Logo tidak ditemukan');
+        abort(404, 'Logo sekolah tidak ditemukan');
     }
-
     return response(Storage::disk('public')->get($p->logo), 200, [
         'Content-Type'  => Storage::disk('public')->mimeType($p->logo) ?: 'image/png',
         'Cache-Control' => 'public, max-age=86400',
     ]);
-})->name('logo.public');
+})->name('logo.sekolah');
 
-// Papan Informasi Digital (publik, siap cetak PDF) — dinamis mengikuti Pengaturan
+// ===== LOGO INSTANSI PUBLIK (URL pendek untuk Fonnte) =====
+Route::get('/logo-instansi.png', function () {
+    $p = Pengaturan::first();
+    if (!$p || !$p->logo_instansi || !Storage::disk('public')->exists($p->logo_instansi)) {
+        abort(404, 'Logo instansi tidak ditemukan');
+    }
+    return response(Storage::disk('public')->get($p->logo_instansi), 200, [
+        'Content-Type'  => Storage::disk('public')->mimeType($p->logo_instansi) ?: 'image/png',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->name('logo.instansi');
+
+// ===== Papan Informasi Digital (publik, siap cetak PDF) =====
 Route::get('/papan-informasi', function () {
     $pengaturan = Pengaturan::first();
 
     $logoUrl = null;
-    if ($pengaturan && $pengaturan->logo) {
-        try {
-            $logoUrl = Storage::disk('public')->url($pengaturan->logo);
-        } catch (\Throwable $e) {
-            $logoUrl = asset('storage/' . $pengaturan->logo);
-        }
+    if ($pengaturan && $pengaturan->logo && Storage::disk('public')->exists($pengaturan->logo)) {
+        $logoUrl = route('logo.sekolah');
     }
 
     return view('papan-informasi', [
@@ -68,8 +74,19 @@ Route::get('/papan-informasi', function () {
     ]);
 })->name('papan.informasi');
 
-// ===== SEMUA USER LOGIN (Koordinator + Petugas) =====
+// ===== Serve file public disk (pengganti storage:link di Laravel Cloud) =====
+// WAJIB DI ROUTE PUBLIK — dipakai oleh sidebar, form, preview, dll
+Route::get('/storage/{path}', function (string $path) {
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    return response(Storage::disk('public')->get($path), 200, [
+        'Content-Type'  => Storage::disk('public')->mimeType($path) ?: 'application/octet-stream',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('path', '.*');
 
+// ===== SEMUA USER LOGIN (Koordinator + Petugas) =====
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
