@@ -13,17 +13,18 @@
     .meta-top .tengah { display: table-cell; width: 60%; text-align: center; font-size: 7.5pt; color: #334155; text-transform: uppercase; letter-spacing: 1px; }
 
   
-/* ===== Kop 3 kolom (kiri-tengah-kanan) ===== */
-.kop { display: table; width: 100%; table-layout: fixed; }
-.kop-logo { display: table-cell; width: 90px; vertical-align: middle; text-align: center; }
-.kop-logo img { width: 75px; height: 75px; object-fit: contain; }
-.kop-teks { display: table-cell; vertical-align: middle; text-align: center; padding: 0 8px; }
-.kop-baris1 { font-size: 10pt; font-weight: bold; color: #000; }
-.kop-baris2 { font-size: 10pt; font-weight: bold; color: #000; }
-.kop-nama { font-size: 12pt; font-weight: bold; color: #000; margin: 3px 0; text-transform: uppercase; }
-.kop-alamat { font-size: 8pt; color: #111; margin: 1px 0; }
-.kop-link { color: #1a0dab; }
-.kop-garis { margin: 8px 0 14px 0; border-top: 2.5px solid #000; border-bottom: 2.5px solid #000; height: 4px; }
+    /* ===== Kop (tabel asli — paling stabil di DomPDF) ===== */
+    table.kop-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+    table.kop-table td { border: none; padding: 0; vertical-align: middle; }
+    table.kop-table td.kop-logo { width: 90px; text-align: center; }
+    table.kop-table td.kop-logo img { width: 75px; height: 75px; }
+    table.kop-table td.kop-teks { text-align: center; padding: 0 8px; }
+    .kop-baris1 { font-size: 10pt; font-weight: bold; color: #000; }
+    .kop-baris2 { font-size: 10pt; font-weight: bold; color: #000; }
+    .kop-nama { font-size: 12pt; font-weight: bold; color: #000; margin: 3px 0; }
+    .kop-alamat { font-size: 8pt; color: #111; margin: 1px 0; }
+    .kop-link { color: #1a0dab; }
+    .kop-garis { margin: 8px 0 14px 0; border-top: 2.5px solid #000; border-bottom: 2.5px solid #000; height: 4px; }
     /* ===== Judul ===== */
     .judul { text-align: center; margin: 12px 0 10px; }
     .judul h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: 1px; color: #0f172a; }
