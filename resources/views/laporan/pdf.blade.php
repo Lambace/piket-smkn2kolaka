@@ -5,7 +5,7 @@
 <title>Laporan Piket</title>
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #1e293b; padding: 12mm 12mm 16mm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #1e293b; padding: 12mm 12mm 20mm; }
 
     /* ===== Baris meta atas ===== */
     .meta-top { display: table; width: 100%; margin-bottom: 10px; }
@@ -56,6 +56,17 @@
     .ttd { margin-top: 30px; text-align: right; font-size: 9pt; }
     .ttd .spasi { height: 55px; }
     .ttd .nama { font-weight: bold; text-decoration: underline; }
+
+    /* ===== Footer statis ===== */
+    .footer {
+        margin-top: 30px;
+        padding-top: 10px;
+        border-top: 1px solid #cbd5e1;
+        text-align: center;
+        font-size: 8pt;
+        color: #64748b;
+        font-style: italic;
+    }
 </style>
 </head>
 <body>
@@ -101,14 +112,12 @@
     <div class="nama">{{ $dicetakOleh }}</div>
 </div>
 
-{{-- Footer: nama aplikasi kiri + nomor halaman kanan (otomatis tiap halaman) --}}
-<script type="text/php">
-if (isset($pdf)) {
-    $font = $fontMetrics->get_font("Helvetica", "normal");
-    $pdf->page_text(34, $pdf->get_height() - 24, "Sistem Informasi Piket - {{ $pengaturan->nama_sekolah ?? 'SMKN 2 KOLAKA' }}", $font, 7, array(0.58, 0.64, 0.72));
-    $pdf->page_text($pdf->get_width() - 110, $pdf->get_height() - 24, "Halaman " . $pdf->get_page_number() . " dari " . $pdf->get_page_count(), $font, 7, array(0.58, 0.64, 0.72));
-}
-</script>
+{{-- Footer statis (pengganti script PHP yang menyebabkan 500) --}}
+<div class="footer">
+    Sistem Informasi Piket — {{ $pengaturan->nama_sekolah ?? 'SMKN 2 KOLAKA' }}
+    <br>
+    Dicetak pada {{ $waktuCetak }}
+</div>
 
 </body>
 </html>
