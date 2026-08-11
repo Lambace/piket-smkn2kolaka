@@ -35,6 +35,9 @@ Route::get('/tampil', [DashboardController::class, 'tampil'])->name('tampil');
 // Download laporan PDF dari Mode Tampil (dilindungi kunci rahasia)
 Route::get('/tampil/laporan', [LaporanController::class, 'pdf'])->name('tampil.laporan');
 
+// ===== BARU: Daftar Hadir Piket dari Mode Tampil (publik + dilindungi key) =====
+Route::get('/tampil/daftar-hadir', [LaporanController::class, 'daftarHadir'])->name('tampil.daftar-hadir');
+
 // ===== LOGO SEKOLAH PUBLIK (URL pendek untuk Fonnte + embed di mana saja) =====
 Route::get('/logo.png', function () {
     $p = Pengaturan::first();
@@ -102,10 +105,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('buku-tamu', BukuTamuController::class)->except(['create', 'show', 'edit']);
     Route::resource('pelanggaran', PelanggaranController::class)->except(['create', 'show', 'edit']);
 
-    // Laporan (Excel & PDF)
+    // Laporan (PDF + Daftar Hadir)
     Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
-    Route::get('laporan/excel', [LaporanController::class, 'excel'])->name('laporan.excel');
     Route::get('laporan/pdf', [LaporanController::class, 'pdf'])->name('laporan.pdf');
+    // ===== BARU: Daftar Hadir Piket (login, ikut filter periode) =====
+    Route::get('laporan/daftar-hadir', [LaporanController::class, 'daftarHadir'])->name('laporan.daftar-hadir');
 
     // ===== HANYA KOORDINATOR =====
     Route::middleware('role:koordinator')->group(function () {
