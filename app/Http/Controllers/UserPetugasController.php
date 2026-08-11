@@ -14,44 +14,62 @@ class UserPetugasController extends Controller
     public function index()
     {
         return Inertia::render('UserPetugas/Index', [
-            'users' => User::select('id', 'name', 'email', 'role', 'created_at')
-                ->orderByDesc('role')
-                ->orderBy('name')
-                ->get(),
-        ]);
+        'users' => User::select([
+        'id', 'name', 'email', 'role',
+        'jenis_kelamin', 'nip', 'golongan', 'status_kepegawaian',
+    ])->orderBy('name')->get(),
+]);
     }
 
     public function store(Request $request)
-    {
-        $data = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'password' => ['required', Password::min(6)],
-            'role'     => ['required', Rule::in(['koordinator', 'petugas'])],
-        ]);
+{
+   $validated = $request->validate([
+    'name'               => 'required|string|max:255',
+    'email'              => 'required|email|unique:users,email',
+    'password'           => 'required|string|min:6',
+    'jenis_kelamin'      => 'nullable|in:L,P',
+    'nip'                => 'nullable|string|max:20',
+    'golongan'           => 'nullable|string|max:5',
+    'status_kepegawaian' => 'nullable|in:ASN,PPPK',
+]);
 
-        User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
-            'password' => Hash::make($data['password']),
-            'role'     => $data['role'],
-        ]);
+User::create([
+    'name'               => $validated['name'],
+    'email'              => $validated['email'],
+    'password'           => bcrypt($validated['password']),
+    'role'               => 'petugas',
+    'jenis_kelamin'      => $validated['jenis_kelamin'] ?? null,
+    'nip'                => $validated['nip'] ?? null,
+    'golongan'           => $validated['golongan'] ?? null,
+    'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
+]);
 
-        return back()->with('success', 'Akun berhasil dibuat.');
-    }
-
+    return redirect()->route('user-petugas.index')
+        ->with('success', 'Petugas berhasil ditambahkan.');
+}
     public function update(Request $request, User $user)
     {
-        $data = $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
-            'role'  => ['required', Rule::in(['koordinator', 'petugas'])],
-        ]);
+        $validated = $request->validate([
+        'name'               => 'required|string|max:255',
+        'email'              => 'required|email|unique:users,email,'.$user->id,
+        'jenis_kelamin'      => 'nullable|in:L,P',
+        'nip'                => 'nullable|string|max:20',
+        'golongan'           => 'nullable|string|max:5',
+        'status_kepegawaian' => 'nullable|in:ASN,PPPK',
+    ]);
 
-        $user->update($data);
+    $user->update([
+        'name'               => $validated['name'],
+        'email'              => $validated['email'],
+        'jenis_kelamin'      => $validated['jenis_kelamin'] ?? null,
+        'nip'                => $validated['nip'] ?? null,
+        'golongan'           => $validated['golongan'] ?? null,
+        'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
+    ]);
 
-        return back()->with('success', 'Akun diperbarui.');
-    }
+    return redirect()->route('user-petugas.index')
+        ->with('success', 'Data petugas berhasil diperbarui.');
+}
 
     public function resetPassword(Request $request, User $user)
     {

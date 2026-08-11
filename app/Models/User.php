@@ -11,7 +11,16 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable([
+    'name',
+    'email',
+    'password',
+    'role',
+    'jenis_kelamin',
+    'nip',
+    'golongan',
+    'status_kepegawaian',
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -40,6 +49,16 @@ class User extends Authenticatable
     public function isPetugas(): bool
     {
         return $this->role === 'petugas';
+    }
+
+    // ===== Helper Data Pegawai =====
+    public function getJenisKelaminLabelAttribute(): string
+    {
+        return match ($this->jenis_kelamin) {
+            'L' => 'Laki-laki',
+            'P' => 'Perempuan',
+            default => '-',
+        };
     }
 
     public function jadwalPiket(): HasMany
