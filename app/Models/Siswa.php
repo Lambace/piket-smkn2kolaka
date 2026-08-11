@@ -22,6 +22,24 @@ class Siswa extends Model
         'aktif' => 'boolean',
     ];
 
+    // ===== Auto-konversi string kosong menjadi null =====
+    // Supaya unique index NIS/NISN aman saat import Excel dengan kolom kosong
+    protected static function booted()
+    {
+        static::saving(function (Siswa $siswa) {
+            $kolomTeks = [
+                'nisn', 'nis', 'nama', 'kelas', 'jurusan',
+                'jenis_kelamin', 'alamat', 'telepon',
+            ];
+
+            foreach ($kolomTeks as $kolom) {
+                if (trim((string) $siswa->{$kolom}) === '') {
+                    $siswa->{$kolom} = null;
+                }
+            }
+        });
+    }
+
     public function waliMurid(): HasMany
     {
         return $this->hasMany(WaliMurid::class, 'siswa_id');
