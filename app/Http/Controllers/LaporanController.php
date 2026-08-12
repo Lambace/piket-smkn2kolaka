@@ -137,6 +137,11 @@ class LaporanController extends Controller
                         'jam'        => $r?->jam_masuk ?? '-',
                         'status'     => $r?->status ?? 'alpha',
                         'keterangan' => $r?->keterangan ?? '',
+                        'tanggal'    => $r?->tanggal
+                                            ? $r->tanggal->isoFormat('D MMM Y')
+                                            : ($periode === 'harian'
+                                                ? $tanggalRef->isoFormat('D MMM Y')
+                                                : $dari->isoFormat('D MMM').' – '.$sampai->isoFormat('D MMM Y')),
                     ];
                 });
 
