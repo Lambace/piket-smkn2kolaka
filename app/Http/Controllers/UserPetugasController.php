@@ -12,66 +12,73 @@ use Inertia\Inertia;
 class UserPetugasController extends Controller
 {
     public function index()
-{
-    return Inertia::render('UserPetugas/Index', [
-        'users' => User::select([
-            'id', 'name', 'email', 'role',
-            'jenis_kelamin', 'nip', 'golongan', 'status_kepegawaian',
-        ])->orderBy('name')->get(),
-    ]);
-}
+    {
+        return Inertia::render('UserPetugas/Index', [
+            'users' => User::select([
+                'id', 'name', 'email', 'role',
+                'jenis_kelamin', 'nip', 'golongan', 'status_kepegawaian',
+                'hari_piket', // ← BARU
+            ])->orderBy('name')->get(),
+        ]);
+    }
 
     public function store(Request $request)
-{
-   $validated = $request->validate([
-    'name'               => 'required|string|max:255',
-    'email'              => 'required|email|unique:users,email',
-    'password'           => 'required|string|min:6',
-    'jenis_kelamin'      => 'nullable|in:L,P',
-    'nip'                => 'nullable|string|max:20',
-    'golongan'           => 'nullable|string|max:5',
-    'status_kepegawaian' => 'nullable|in:PNS,PPPK Guru,PPPK/PW Guru,PPPK/PW Staf TU,PPPK/Staf TU,Guru Honorer',
-]);
+    {
+        $validated = $request->validate([
+            'name'               => 'required|string|max:255',
+            'email'              => 'required|email|unique:users,email',
+            'password'           => 'required|string|min:6',
+            'jenis_kelamin'      => 'nullable|in:L,P',
+            'nip'                => 'nullable|string|max:20',
+            'golongan'           => 'nullable|string|max:5',
+            'status_kepegawaian' => 'nullable|in:PNS,PPPK Guru,PPPK/PW Guru,PPPK/PW Staf TU,PPPK/Staf TU,Guru Honorer',
+            'hari_piket'         => 'nullable|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu', // ← BARU
+        ]);
 
-User::create([
-    'name'               => $validated['name'],
-    'email'              => $validated['email'],
-    'password'           => bcrypt($validated['password']),
-    'role'               => 'petugas',
-    'jenis_kelamin'      => $validated['jenis_kelamin'] ?? null,
-    'nip'                => $validated['nip'] ?? null,
-    'golongan'           => $validated['golongan'] ?? null,
-    'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
-]);
+        User::create([
+            'name'               => $validated['name'],
+            'email'              => $validated['email'],
+            'password'           => bcrypt($validated['password']),
+            'role'               => 'petugas',
+            'jenis_kelamin'      => $validated['jenis_kelamin'] ?? null,
+            'nip'                => $validated['nip'] ?? null,
+            'golongan'           => $validated['golongan'] ?? null,
+            'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
+            'hari_piket'         => $validated['hari_piket'] ?? null, // ← BARU
+        ]);
 
-    return redirect()->route('user-petugas.index')
-        ->with('success', 'Petugas berhasil ditambahkan.');
-}
+        return redirect()->route('user-petugas.index')
+            ->with('success', 'Petugas berhasil ditambahkan.');
+    }
+
     public function update(Request $request, User $user)
-{
-    $validated = $request->validate([
-        'name'               => 'required|string|max:255',
-        'email'              => 'required|email|unique:users,email,'.$user->id,
-        'role'               => 'nullable|in:petugas,koordinator',
-        'jenis_kelamin'      => 'nullable|in:L,P',
-        'nip'                => 'nullable|string|max:20',
-        'golongan'           => 'nullable|string|max:10',
-        'status_kepegawaian' => 'nullable|string|max:50',
-    ]);
+    {
+        $validated = $request->validate([
+            'name'               => 'required|string|max:255',
+            'email'              => 'required|email|unique:users,email,'.$user->id,
+            'role'               => 'nullable|in:petugas,koordinator',
+            'jenis_kelamin'      => 'nullable|in:L,P',
+            'nip'                => 'nullable|string|max:20',
+            'golongan'           => 'nullable|string|max:10',
+            'status_kepegawaian' => 'nullable|string|max:50',
+            'hari_piket'         => 'nullable|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu', // ← BARU
+        ]);
 
-    $user->update([
-        'name'               => $validated['name'],
-        'email'              => $validated['email'],
-        'role'               => $validated['role'] ?? $user->role,
-        'jenis_kelamin'      => $validated['jenis_kelamin'] ?? null,
-        'nip'                => $validated['nip'] ?? null,
-        'golongan'           => $validated['golongan'] ?? null,
-        'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
-    ]);
+        $user->update([
+            'name'               => $validated['name'],
+            'email'              => $validated['email'],
+            'role'               => $validated['role'] ?? $user->role,
+            'jenis_kelamin'      => $validated['jenis_kelamin'] ?? null,
+            'nip'                => $validated['nip'] ?? null,
+            'golongan'           => $validated['golongan'] ?? null,
+            'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
+            'hari_piket'         => $validated['hari_piket'] ?? null, // ← BARU
+        ]);
 
-    return redirect()->route('user-petugas.index')
-        ->with('success', 'Data petugas berhasil diperbarui.');
-}
+        return redirect()->route('user-petugas.index')
+            ->with('success', 'Data petugas berhasil diperbarui.');
+    }
+
     public function resetPassword(Request $request, User $user)
     {
         $data = $request->validate([
@@ -85,7 +92,6 @@ User::create([
 
     public function destroy(User $user)
     {
-        // Cegah menghapus diri sendiri
         if ($user->id === auth()->id()) {
             return back()->with('error', 'Tidak bisa menghapus akun Anda sendiri.');
         }

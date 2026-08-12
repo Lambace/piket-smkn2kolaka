@@ -3,19 +3,42 @@ import { Head, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 
 // ===== Data Dropdown =====
-   const GOLONGAN_OPTIONS = [
-       { group: "Golongan I", items: ["I/a", "I/b", "I/c", "I/d"] },
-       { group: "Golongan II", items: ["II/a", "II/b", "II/c", "II/d"] },
-       { group: "Golongan III", items: ["III/a", "III/b", "III/c", "III/d"] },
-       {
-           group: "Golongan IV",
-           items: ["IV/a", "IV/b", "IV/c", "IV/d", "IV/e"],
-       },
-       {
-           group: "Golongan V - XVII (PPPK)",
-           items: ["V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII",],
-       },
-   ];
+const GOLONGAN_OPTIONS = [
+    { group: "Golongan I", items: ["I/a", "I/b", "I/c", "I/d"] },
+    { group: "Golongan II", items: ["II/a", "II/b", "II/c", "II/d"] },
+    { group: "Golongan III", items: ["III/a", "III/b", "III/c", "III/d"] },
+    { group: "Golongan IV", items: ["IV/a", "IV/b", "IV/c", "IV/d", "IV/e"] },
+    {
+        group: "Golongan V - XVII (PPPK)",
+        items: [
+            "V",
+            "VI",
+            "VII",
+            "VIII",
+            "IX",
+            "X",
+            "XI",
+            "XII",
+            "XIII",
+            "XIV",
+            "XV",
+            "XVI",
+            "XVII",
+        ],
+    },
+];
+
+// ===== BARU: Pilihan Hari Piket =====
+const HARI_PIKET_OPTIONS = [
+    "Senin",
+    "Selasa",
+    "Rabu",
+    "Kamis",
+    "Jumat",
+    "Sabtu",
+    "Minggu",
+];
+
 const defaultForm = {
     name: "",
     email: "",
@@ -25,6 +48,7 @@ const defaultForm = {
     nip: "",
     golongan: "",
     status_kepegawaian: "",
+    hari_piket: "", // ← BARU
 };
 
 export default function UserPetugasIndex(props) {
@@ -41,7 +65,6 @@ export default function UserPetugasIndex(props) {
     const submit = (e) => {
         e.preventDefault();
 
-        // ===== Payload LENGKAP (dipakai POST & PATCH) =====
         const payload = {
             name: form.name,
             email: form.email,
@@ -50,6 +73,7 @@ export default function UserPetugasIndex(props) {
             nip: form.nip,
             golongan: form.golongan,
             status_kepegawaian: form.status_kepegawaian,
+            hari_piket: form.hari_piket || null, // ← BARU
         };
 
         if (editId) {
@@ -85,6 +109,7 @@ export default function UserPetugasIndex(props) {
             nip: u.nip || "",
             golongan: u.golongan || "",
             status_kepegawaian: u.status_kepegawaian || "",
+            hari_piket: u.hari_piket || "", // ← BARU
         });
         setShowForm(true);
     };
@@ -104,9 +129,29 @@ export default function UserPetugasIndex(props) {
             router.delete(route("user-petugas.destroy", id));
     };
 
-    // Helper: label jenis kelamin
     const jkLabel = (jk) =>
         jk === "L" ? "Laki-laki" : jk === "P" ? "Perempuan" : "-";
+
+    // ===== BARU: badge warna untuk hari piket =====
+    const hariPiketBadge = (hari) => {
+        if (!hari) return <span className="text-xs text-gray-400">-</span>;
+        const colors = {
+            Senin: "bg-blue-100 text-blue-700",
+            Selasa: "bg-indigo-100 text-indigo-700",
+            Rabu: "bg-purple-100 text-purple-700",
+            Kamis: "bg-pink-100 text-pink-700",
+            Jumat: "bg-amber-100 text-amber-700",
+            Sabtu: "bg-orange-100 text-orange-700",
+            Minggu: "bg-red-100 text-red-700",
+        };
+        return (
+            <span
+                className={`rounded-full px-2 py-0.5 text-xs font-bold ${colors[hari]}`}
+            >
+                📅 {hari}
+            </span>
+        );
+    };
 
     return (
         <AuthenticatedLayout
@@ -143,6 +188,15 @@ export default function UserPetugasIndex(props) {
                             Pelanggaran, Laporan)
                         </li>
                     </ul>
+                </div>
+
+                <div className="rounded-lg bg-purple-50 p-4 text-sm text-purple-800">
+                    <p className="font-semibold">📅 Hari Piket:</p>
+                    <p className="mt-1">
+                        Setiap petugas piket <b>1x seminggu</b>. Atur hari piket
+                        agar rekapan otomatis menghitung alpha untuk yang tidak
+                        absen setelah pukul 08:30.
+                    </p>
                 </div>
 
                 <button
@@ -354,6 +408,44 @@ export default function UserPetugasIndex(props) {
                                     </optgroup>
                                 </select>
                             </div>
+
+                            {/* ===== BARU: HARI PIKET ===== */}
+                            <div className="md:col-span-2">
+                                <div className="rounded-lg border-2 border-purple-200 bg-purple-50/50 p-4">
+                                    <label className="mb-1 flex items-center gap-2 text-xs font-bold text-purple-900">
+                                        📅 HARI PIKET
+                                        <span className="text-red-500">*</span>
+                                        <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
+                                            WAJIB
+                                        </span>
+                                    </label>
+                                    <p className="mb-2 text-[11px] text-purple-700">
+                                        Setiap petugas piket <b>1x seminggu</b>.
+                                        Pilih hari agar rekapan otomatis
+                                        menghitung alpha untuk yang tidak absen
+                                        setelah pukul 08:30.
+                                    </p>
+                                    <select
+                                        value={form.hari_piket}
+                                        onChange={(e) =>
+                                            updateField(
+                                                "hari_piket",
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="w-full rounded-lg border-purple-300 bg-white font-semibold text-purple-900 focus:border-purple-500 focus:ring-purple-500"
+                                    >
+                                        <option value="">
+                                            -- Pilih Hari Piket --
+                                        </option>
+                                        {HARI_PIKET_OPTIONS.map((h) => (
+                                            <option key={h} value={h}>
+                                                {h}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="mt-6 flex gap-2">
@@ -390,6 +482,7 @@ export default function UserPetugasIndex(props) {
                                     <th className="py-2">NIP</th>
                                     <th className="py-2">Gol</th>
                                     <th className="py-2">Status</th>
+                                    <th className="py-2">📅 Piket</th>
                                     <th className="py-2 text-right">Aksi</th>
                                 </tr>
                             </thead>
@@ -433,6 +526,9 @@ export default function UserPetugasIndex(props) {
                                                     -
                                                 </span>
                                             )}
+                                        </td>
+                                        <td className="py-2">
+                                            {hariPiketBadge(u.hari_piket)}
                                         </td>
                                         <td className="py-2 text-right">
                                             <button
