@@ -103,6 +103,11 @@ export default function Edit({ pengaturan }) {
         "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
     const labelClass = "mb-1 block text-sm font-medium text-gray-700";
 
+    // ===== BARU: Reset Data =====
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetProcessing, setResetProcessing] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
+
     return (
         <AuthenticatedLayout
             header={
@@ -591,6 +596,30 @@ export default function Edit({ pengaturan }) {
                         </p>
                     </div>
 
+                    {/* ===== BARU: ZONA BERBAHAYA — RESET DATA ===== */}
+                    <div className="rounded-lg border-2 border-red-300 bg-red-50 p-5">
+                        <h3 className="mb-1 text-base font-semibold text-red-800">
+                            ⚠️ Zona Berbahaya — Reset Data
+                        </h3>
+                        <p className="mb-3 text-xs text-red-700">
+                            Menghapus <b>SELURUH</b> data operasional: Absensi
+                            Petugas, Keterlambatan, Izin Keluar, Buku Tamu, dan
+                            Pelanggaran. Data siswa, akun, wali, dan pengaturan{" "}
+                            <b>TIDAK</b> dihapus. Tindakan ini tidak dapat
+                            dibatalkan!
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setConfirmText("");
+                                setResetOpen(true);
+                            }}
+                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                        >
+                            🗑️ Reset Data Operasional
+                        </button>
+                    </div>
+
                     {/* Tombol Simpan */}
                     <button
                         type="submit"
@@ -601,6 +630,69 @@ export default function Edit({ pengaturan }) {
                         {processing ? "Menyimpan..." : "💾 Simpan Pengaturan"}
                     </button>
                 </form>
+
+                {/* ===== MODAL KONFIRMASI RESET DATA ===== */}
+                {resetOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+                            <h3 className="mb-2 text-lg font-bold text-red-700">
+                                ⚠️ Konfirmasi Reset Data
+                            </h3>
+                            <p className="mb-3 text-sm text-gray-600">
+                                Tindakan ini akan menghapus <b>SELURUH</b> data
+                                berikut:
+                            </p>
+                            <ul className="mb-4 list-inside list-disc space-y-1 text-sm text-gray-700">
+                                <li>📋 Absensi Petugas</li>
+                                <li>⏰ Data Keterlambatan</li>
+                                <li>🚪 Data Izin Keluar</li>
+                                <li>📒 Buku Tamu</li>
+                                <li>🚫 Data Pelanggaran</li>
+                            </ul>
+                            <p className="mb-2 text-xs text-gray-500">
+                                Ketik{" "}
+                                <b className="font-mono text-red-600">RESET</b>{" "}
+                                untuk melanjutkan:
+                            </p>
+                            <input
+                                value={confirmText}
+                                onChange={(e) => setConfirmText(e.target.value)}
+                                placeholder="RESET"
+                                className="mb-4 w-full rounded-md border-gray-300 font-mono focus:border-red-500 focus:ring-red-500"
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setResetOpen(false)}
+                                    className="flex-1 rounded-md bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={
+                                        confirmText !== "RESET" ||
+                                        resetProcessing
+                                    }
+                                    onClick={() => {
+                                        setResetProcessing(true);
+                                        router.post(route("reset-data"), null, {
+                                            onFinish: () => {
+                                                setResetProcessing(false);
+                                                setResetOpen(false);
+                                            },
+                                        });
+                                    }}
+                                    className="flex-1 rounded-md bg-red-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    {resetProcessing
+                                        ? "Menghapus..."
+                                        : "🗑️ Hapus Semua"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

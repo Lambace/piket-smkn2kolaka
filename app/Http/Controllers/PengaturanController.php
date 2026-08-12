@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Pengaturan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -33,7 +34,6 @@ class PengaturanController extends Controller
             'email'                 => 'nullable|string|max:100',
             'website'               => 'nullable|string|max:100',
             'server'                => 'nullable|string|max:100',
-            // ← BARU: Data Tanda Tangan
             'kepala_sekolah'        => 'nullable|string|max:100',
             'nip_kepala_sekolah'    => 'nullable|string|max:30',
             'koordinator_piket'     => 'nullable|string|max:100',
@@ -42,12 +42,10 @@ class PengaturanController extends Controller
 
         $pengaturan = \App\Models\Pengaturan::first() ?? new \App\Models\Pengaturan();
 
-        // Simpan semua field teks
         $teksFields = [
             'nama_sekolah', 'nama_instansi', 'warna_tema',
             'kop_baris1', 'kop_baris2', 'kop_nama_sekolah',
             'alamat', 'telepon', 'email', 'website', 'server',
-            // ← BARU: Data Tanda Tangan
             'kepala_sekolah', 'nip_kepala_sekolah',
             'koordinator_piket', 'nip_koordinator_piket',
         ];
@@ -55,7 +53,6 @@ class PengaturanController extends Controller
             $pengaturan->{$field} = $validated[$field] ?? null;
         }
 
-        // Upload logo sekolah
         if ($request->hasFile('logo')) {
             if ($pengaturan->logo && \Storage::disk('public')->exists($pengaturan->logo)) {
                 \Storage::disk('public')->delete($pengaturan->logo);
@@ -63,7 +60,6 @@ class PengaturanController extends Controller
             $pengaturan->logo = $request->file('logo')->store('logo-sekolah', 'public');
         }
 
-        // Upload logo instansi
         if ($request->hasFile('logo_instansi')) {
             if ($pengaturan->logo_instansi && \Storage::disk('public')->exists($pengaturan->logo_instansi)) {
                 \Storage::disk('public')->delete($pengaturan->logo_instansi);
@@ -74,6 +70,33 @@ class PengaturanController extends Controller
         $pengaturan->save();
 
         return back()->with('success', 'Pengaturan berhasil disimpan.');
+    }
+
+    // ===== BARU: RESET DATA OPERASIONAL (khusus koordinator) =====
+    public function resetData()
+    {
+        // Proteksi ganda: pastikan koordinator
+        if (auth()->user()->role !== 'koordinator') {
+            abort(403, 'Hanya koordinator yang dapat mereset data.');
+        }
+
+        $dihapus = [];
+
+        DB::transaction(function () use (&$dihapus) {
+            $dihapus['absensi']     = \App\Models\AbsensiPetugas::query()->delete();
+            $dihapus['terlambat']   = \App\Models\Keterlambatan::query()->delete();
+            $dihapus['izin']        = \App\Models\IzinKeluar::query()->delete();
+            $dihapus['tamu']        = \App\Models\BukuTamu::query()->delete();
+            $dihapus['pelanggaran'] = \App\Models\Pelanggaran::query()->delete();
+        });
+
+        Log::info('RESET DATA oleh '.auth()->user()->name, $dihapus);
+
+        return back()->with('success',
+            'Data berhasil direset: '.$dihapus['absensi'].' absensi, '.
+            $dihapus['terlambat'].' keterlambatan, '.$dihapus['izin'].' izin keluar, '.
+            $dihapus['tamu'].' buku tamu, '.$dihapus['pelanggaran'].' pelanggaran dihapus.'
+        );
     }
 
     private function getOrCreatePengaturan(): Pengaturan
