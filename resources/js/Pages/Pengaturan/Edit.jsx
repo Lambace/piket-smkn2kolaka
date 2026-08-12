@@ -16,7 +16,6 @@ const presetColors = [
 export default function Edit({ pengaturan }) {
     const { flash, errors } = usePage().props;
 
-    // ===== Identitas =====
     const [namaSekolah, setNamaSekolah] = useState(
         pengaturan.nama_sekolah || "",
     );
@@ -26,12 +25,8 @@ export default function Edit({ pengaturan }) {
     const [warnaTema, setWarnaTema] = useState(
         pengaturan.warna_tema || "#4f46e5",
     );
-
-    // ===== File =====
     const [logo, setLogo] = useState(null);
     const [logoInstansi, setLogoInstansi] = useState(null);
-
-    // ===== Kop Dokumen =====
     const [kopBaris1, setKopBaris1] = useState(pengaturan.kop_baris1 || "");
     const [kopBaris2, setKopBaris2] = useState(pengaturan.kop_baris2 || "");
     const [kopNamaSekolah, setKopNamaSekolah] = useState(
@@ -42,8 +37,6 @@ export default function Edit({ pengaturan }) {
     const [email, setEmail] = useState(pengaturan.email || "");
     const [website, setWebsite] = useState(pengaturan.website || "");
     const [server, setServer] = useState(pengaturan.server || "");
-
-    // ===== BARU: Data Tanda Tangan =====
     const [kepalaSekolah, setKepalaSekolah] = useState(
         pengaturan.kepala_sekolah || "",
     );
@@ -56,24 +49,23 @@ export default function Edit({ pengaturan }) {
     const [nipKoordinatorPiket, setNipKoordinatorPiket] = useState(
         pengaturan.nip_koordinator_piket || "",
     );
-
     const [processing, setProcessing] = useState(false);
+
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetProcessing, setResetProcessing] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
 
     const submit = (e) => {
         e.preventDefault();
-
         const formData = new FormData();
 
-        // Identitas
         formData.append("nama_sekolah", namaSekolah);
         formData.append("nama_instansi", namaInstansi);
         formData.append("warna_tema", warnaTema);
 
-        // File
         if (logo) formData.append("logo", logo);
         if (logoInstansi) formData.append("logo_instansi", logoInstansi);
 
-        // Kop Dokumen
         formData.append("kop_baris1", kopBaris1);
         formData.append("kop_baris2", kopBaris2);
         formData.append("kop_nama_sekolah", kopNamaSekolah);
@@ -82,8 +74,6 @@ export default function Edit({ pengaturan }) {
         formData.append("email", email);
         formData.append("website", website);
         formData.append("server", server);
-
-        // BARU: Data Tanda Tangan
         formData.append("kepala_sekolah", kepalaSekolah);
         formData.append("nip_kepala_sekolah", nipKepalaSekolah);
         formData.append("koordinator_piket", koordinatorPiket);
@@ -102,11 +92,6 @@ export default function Edit({ pengaturan }) {
     const inputClass =
         "block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
     const labelClass = "mb-1 block text-sm font-medium text-gray-700";
-
-    // ===== BARU: Reset Data =====
-    const [resetOpen, setResetOpen] = useState(false);
-    const [resetProcessing, setResetProcessing] = useState(false);
-    const [confirmText, setConfirmText] = useState("");
 
     return (
         <AuthenticatedLayout
@@ -160,7 +145,6 @@ export default function Edit({ pengaturan }) {
                                     </p>
                                 )}
                             </div>
-
                             <div>
                                 <label className={labelClass}>
                                     Nama Instansi{" "}
@@ -196,11 +180,7 @@ export default function Edit({ pengaturan }) {
                                     key={c.value}
                                     title={c.name}
                                     onClick={() => setWarnaTema(c.value)}
-                                    className={`h-9 w-9 rounded-full border-2 transition ${
-                                        warnaTema === c.value
-                                            ? "scale-110 border-gray-800"
-                                            : "border-transparent hover:scale-105"
-                                    }`}
+                                    className={`h-9 w-9 rounded-full border-2 transition ${warnaTema === c.value ? "scale-110 border-gray-800" : "border-transparent hover:scale-105"}`}
                                     style={{ backgroundColor: c.value }}
                                 ></button>
                             ))}
@@ -234,7 +214,12 @@ export default function Edit({ pengaturan }) {
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {/* Logo Sekolah */}
-                                                            <div className="mb-3 flex items-start gap-3">
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                <label className="mb-2 block text-sm font-medium text-gray-700">
+                                    🏫 Logo Sekolah{" "}
+                                    <span className="text-red-500">*</span>
+                                </label>
+                                <div className="mb-3 flex items-start gap-3">
                                     {pengaturan.logo ? (
                                         <img
                                             src="/logo.png"
@@ -355,7 +340,6 @@ export default function Edit({ pengaturan }) {
                                     className={inputClass}
                                 />
                             </div>
-
                             <div className="md:col-span-2">
                                 <label className={labelClass}>
                                     Baris 2 (Dinas)
@@ -370,8 +354,6 @@ export default function Edit({ pengaturan }) {
                                     className={inputClass}
                                 />
                             </div>
-
-                            {/* ===== NAMA SEKOLAH (KOP) - TEBAL ===== */}
                             <div className="md:col-span-2">
                                 <label className={labelClass}>
                                     🏫 Nama Sekolah (Kop){" "}
@@ -394,8 +376,7 @@ export default function Edit({ pengaturan }) {
                                 />
                                 <p className="mt-1 text-xs text-gray-500">
                                     💡 Kosongkan untuk memakai nama sekolah
-                                    utama. Preview di atas menampilkan format
-                                    asli di kop PDF.
+                                    utama.
                                 </p>
                                 {errors.kop_nama_sekolah && (
                                     <p className="mt-1 text-xs text-red-600">
@@ -403,18 +384,16 @@ export default function Edit({ pengaturan }) {
                                     </p>
                                 )}
                             </div>
-
                             <div className="md:col-span-2">
                                 <label className={labelClass}>Alamat</label>
                                 <input
                                     type="text"
                                     value={alamat}
                                     onChange={(e) => setAlamat(e.target.value)}
-                                    placeholder="Jln. Poros Kolaka - Pomalaa KM. 16 Kec. Baula Kab. Kolaka"
+                                    placeholder="Jln. Poros Kolaka - Pomolaa KM. 16 Kec. Baula Kab. Kolaka"
                                     className={inputClass}
                                 />
                             </div>
-
                             <div>
                                 <label className={labelClass}>Telepon</label>
                                 <input
@@ -425,7 +404,6 @@ export default function Edit({ pengaturan }) {
                                     className={inputClass}
                                 />
                             </div>
-
                             <div>
                                 <label className={labelClass}>Email</label>
                                 <input
@@ -436,7 +414,6 @@ export default function Edit({ pengaturan }) {
                                     className={inputClass}
                                 />
                             </div>
-
                             <div>
                                 <label className={labelClass}>Website</label>
                                 <input
@@ -447,7 +424,6 @@ export default function Edit({ pengaturan }) {
                                     className={inputClass}
                                 />
                             </div>
-
                             <div>
                                 <label className={labelClass}>Server</label>
                                 <input
@@ -461,19 +437,17 @@ export default function Edit({ pengaturan }) {
                         </div>
                     </div>
 
-                    {/* ===== BARU: DATA TANDA TANGAN ===== */}
+                    {/* ===== DATA TANDA TANGAN ===== */}
                     <div>
                         <h3 className="mb-3 text-base font-semibold text-gray-800">
                             🖋️ Data Tanda Tangan (PDF Laporan)
                         </h3>
                         <p className="mb-3 text-xs text-gray-500">
-                            Data ini akan ditampilkan di blok tanda tangan PDF
-                            (Kepala Sekolah & Koordinator Piket). Kosongkan
-                            untuk memakai titik-titik.
+                            Data ini akan ditampilkan di blok tanda tangan PDF.
+                            Kosongkan untuk memakai titik-titik.
                         </p>
 
                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            {/* Kepala Sekolah */}
                             <div className="md:col-span-2">
                                 <div className="rounded-lg border border-blue-200 bg-blue-50/30 p-4">
                                     <h4 className="mb-2 text-sm font-semibold text-blue-900">
@@ -526,8 +500,6 @@ export default function Edit({ pengaturan }) {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Koordinator Piket */}
                             <div className="md:col-span-2">
                                 <div className="rounded-lg border border-purple-200 bg-purple-50/30 p-4">
                                     <h4 className="mb-2 text-sm font-semibold text-purple-900">
@@ -583,15 +555,13 @@ export default function Edit({ pengaturan }) {
                                 </div>
                             </div>
                         </div>
-
                         <p className="mt-3 text-xs text-gray-500">
                             💡 Jika dikosongkan, PDF akan menampilkan
-                            titik-titik (siap ditulis tangan). Jika diisi, nama
-                            & NIP akan terisi otomatis dengan garis bawah.
+                            titik-titik (siap ditulis tangan).
                         </p>
                     </div>
 
-                    {/* ===== BARU: ZONA BERBAHAYA — RESET DATA ===== */}
+                    {/* ===== ZONA BERBAHAYA — RESET DATA ===== */}
                     <div className="rounded-lg border-2 border-red-300 bg-red-50 p-5">
                         <h3 className="mb-1 text-base font-semibold text-red-800">
                             ⚠️ Zona Berbahaya — Reset Data
@@ -615,7 +585,6 @@ export default function Edit({ pengaturan }) {
                         </button>
                     </div>
 
-                    {/* Tombol Simpan */}
                     <button
                         type="submit"
                         disabled={processing}
