@@ -67,7 +67,7 @@ class LaporanController extends Controller
         return Excel::download(new LaporanExport($data, $labelPeriode, $jenis), $namaFile);
     }
 
-       // ===== METHOD PDF LENGKAP =====
+    // ===== METHOD PDF LENGKAP =====
     public function pdf(Request $request)
     {
         try {
@@ -122,7 +122,7 @@ class LaporanController extends Controller
                 ->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
             $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)->count();
-            $alphaHariIni = max(0, User::where('role', 'petugas')->count() - $hadirHariIni);
+            $alphaHariIni = max(0, User::whereIn('role', ['petugas', 'koordinator'])->count() - $hadirHariIni);
 
             $keterlambatan = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
             $izinKeluar    = IzinKeluar::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
@@ -247,6 +247,7 @@ class LaporanController extends Controller
             ], 500);
         }
     }
+
     // ===== DAFTAR HADIR PIKET (format resmi kedinasan) =====
     public function daftarHadir(Request $request)
     {
@@ -295,8 +296,8 @@ class LaporanController extends Controller
             $cursor->addDay();
         }
 
-        // Baris data: satu baris per petugas
-       $rows = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get()
+        // Baris data: satu baris per petugas + koordinator
+        $rows = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get()
             ->map(function ($u) use ($dariStr, $sampaiStr, $totalHari) {
                 $h = AbsensiPetugas::where('nama', $u->name)
                     ->whereBetween('tanggal', [$dariStr, $sampaiStr])->count();
@@ -332,16 +333,21 @@ class LaporanController extends Controller
             ? $tanggalRef->isoFormat('dddd, D MMMM Y')
             : $dari->isoFormat('D MMMM Y').' s/d '.Carbon::parse($sampaiStr)->isoFormat('D MMMM Y');
 
+        // ← BARU: Ambil koordinator untuk blok tanda tangan
+        $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
+
         $pdf = Pdf::loadView('laporan.daftar-hadir', [
-            'pengaturan' => $pengaturan,
-            'logo' => $logo,
+            'pengaturan'   => $pengaturan,
+            'logo'         => $logo,
             'logoInstansi' => $logoInstansi,
-            'rows' => $rows,
-            'hariTanggal' => $hariTanggal,
+            'rows'         => $rows,
+            'hariTanggal'  => $hariTanggal,
+            'koordinator'  => $koordinator,   // ← BARU: dilewatkan ke view
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('Daftar-Hadir-Piket-'.$dariStr.'.pdf');
     }
+
     private function hitungRentang(string $periode, string $tanggal, string $semester): array
     {
         $date = Carbon::parse($tanggal);

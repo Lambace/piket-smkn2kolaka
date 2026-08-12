@@ -32,6 +32,13 @@
     table.hadir th { text-align: center; font-weight: bold; }
     .tengah { text-align: center; }
     .cek { font-size: 12pt; font-weight: bold; }
+
+    /* ===== Blok tanda tangan ===== */
+    table.ttd { width: 100%; margin-top: 24px; border-collapse: collapse; }
+    table.ttd td { width: 50%; text-align: center; vertical-align: top; font-size: 10pt; border: none; padding: 0; }
+    .ttd-space { height: 60px; }
+    .ttd-nama { font-weight: bold; text-decoration: underline; }
+    .ttd-nip { font-size: 9.5pt; margin-top: 3px; }
 </style>
 </head>
 <body>
@@ -45,7 +52,7 @@
             <div class="kop-baris1">{{ $pengaturan->kop_baris1 ?? 'PEMERINTAH PROVINSI SULAWESI TENGGARA' }}</div>
             <div class="kop-baris2">{{ $pengaturan->kop_baris2 ?? 'DINAS PENDIDIKAN DAN KEBUDAYAAN' }}</div>
             <div class="kop-nama">{{ strtoupper($pengaturan->kop_nama_sekolah ?: ($pengaturan->nama_sekolah ?? 'SEKOLAH MENENGAH KEJURUAN (SMK) NEGERI 2 KOLAKA')) }}</div>
-            <div class="kop-alamat">{{ $pengaturan->alamat ?? 'Jln. Poros Kolaka - Pomalaa KM. 16 Kec. Baula Kab. Kolaka Provinsi SULTRA' }}</div>
+            <div class="kop-alamat">{{ $pengaturan->alamat ?? 'Jln. Poros Kolaka - Pomolaa KM. 16 Kec. Baula Kab. Kolaka Provinsi SULTRA' }}</div>
             <div class="kop-alamat">
                 E-mail <span class="kop-link">{{ $pengaturan->email ?? 'smknsatubaula@yahoo.co.id' }}</span>
                 &nbsp;&nbsp;HP. {{ $pengaturan->telepon ?? '082346999111' }}
@@ -114,6 +121,35 @@
         </tr>
         @endfor
     </tbody>
+</table>
+
+<!-- ===== BLOK TANDA TANGAN ===== -->
+<table class="ttd">
+    <tr>
+        {{-- KIRI: KEPALA SEKOLAH --}}
+        <td>
+            Kepala Sekolah
+            <div class="ttd-space"></div>
+            <span class="ttd-nama">
+                {{ $pengaturan->kepala_sekolah ?? '……………………………………' }}
+            </span>
+            <div class="ttd-nip">
+                NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}
+            </div>
+        </td>
+
+        {{-- KANAN: KOORDINATOR PIKET --}}
+        <td>
+            Koordinator Piket
+            <div class="ttd-space"></div>
+            <span class="ttd-nama">
+                {{ $koordinator?->name ?? '……………………………………' }}
+            </span>
+            <div class="ttd-nip">
+                NIP. {{ $koordinator?->nip ?? '………………………………' }}
+            </div>
+        </td>
+    </tr>
 </table>
 
 </body>
