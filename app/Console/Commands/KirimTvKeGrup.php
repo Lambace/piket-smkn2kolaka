@@ -2,9 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AbsensiPetugas;
 use App\Models\Pengaturan;
-use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -12,7 +10,7 @@ class KirimTvKeGrup extends Command
 {
     protected $signature = 'tv:kirim-grup {--grup= : ID grup WA (default: env WA_GROUP_ID)}';
 
-    protected $description = 'Kirim laporan tim piket ke grup WhatsApp';
+    protected $description = 'Kirim banner Laporan Tim Piket ke grup WhatsApp';
 
     public function handle(): int
     {
@@ -41,8 +39,8 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // ===== Logo sekolah via route publik (bisa diunduh Fonnte) =====
-        $logoUrl = ($pengaturan?->logo) ? route('logo.public') : null;
+        // ===== Logo sekolah via route publik =====
+        $logoUrl = ($pengaturan?->logo) ? route('logo.sekolah') : null;
         $this->info('Logo URL: ' . ($logoUrl ?? '(logo belum di-upload)'));
 
         $key    = env('DISPLAY_KEY', 'piket2026');
@@ -58,44 +56,25 @@ class KirimTvKeGrup extends Command
         $now     = now()->locale('id');
         $hari    = strtoupper($now->isoFormat('dddd'));
 
-        // ===== Statistik kehadiran petugas =====
-        $jumlahHadir   = AbsensiPetugas::where('tanggal', now()->toDateString())->count();
-        $jumlahPetugas = User::where('role', 'petugas')->count();
-        $jumlahAlpha   = max(0, $jumlahPetugas - $jumlahHadir);
-
-        // ===== CAPTION (tanpa separator atas, tanpa emoji 📺) =====
+        // ===== CAPTION (Live View + Download Laporan) =====
         $caption = implode("\n", [
-            '      *LAPORAN TIM PIKET*',
-            '           *' . $hari . '*',
-            '━━━━━━━━━━━━━━━━━━━━━━━',
-            '     _' . $sekolah . '_',
+            '*LAPORAN TIM PIKET ' . $hari . '*',
+            '_' . $sekolah . '_',
+            $now->isoFormat('dddd, D MMMM Y'),
             '',
-            '   _' . $now->isoFormat('dddd, D MMMM Y') . '_',
-            '   _Pukul ' . $now->isoFormat('HH.mm') . ' WITA_',
-            '',
-            '━━━━━━━━━━━━━━━━━━━━━━━',
-            '   👥 Petugas Hadir : *' . $jumlahHadir . ' orang*',
-            '   ❌ Alpha             : *' . $jumlahAlpha . ' orang*',
-            '━━━━━━━━━━━━━━━━━━━━━━━',
-            '',
-            '*🔴 LIHAT HALAMAN LIVE*',
+            '🔴 *Live View* — lihat dashboard piket hari ini:',
             $urlTv,
             '',
-            '*📄 DOWNLOAD LAPORAN PDF*',
+            '📄 *Download Laporan* — unduh PDF laporan harian:',
             $urlPdf,
-            '',
-            '━━━━━━━━━━━━━━━━━━━━━━━',
-            '      _© Sistem Informasi Piket_',
-            '━━━━━━━━━━━━━━━━━━━━━━━',
         ]);
 
-        // ===== API Fonnte (logo sekolah sebagai gambar + caption) =====
+        // ===== API Fonnte =====
         $payload = [
             'target'  => $grup,
             'message' => $caption,
         ];
 
-        // Jika logo ada, kirim sebagai gambar
         if ($logoUrl) {
             $payload['url'] = $logoUrl;
         }
@@ -117,7 +96,7 @@ class KirimTvKeGrup extends Command
         $ok = $res->successful() && ($body['status'] ?? false);
 
         if ($ok) {
-            $this->info("✅ Laporan Tim Piket terkirim ke {$grup}");
+            $this->info("✅ Banner Tim Piket terkirim ke {$grup}");
             return Command::SUCCESS;
         }
 
