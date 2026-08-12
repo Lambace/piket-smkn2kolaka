@@ -298,32 +298,54 @@ class LaporanController extends Controller
         $sampaiStr = min($sampai->toDateString(), now()->toDateString());
 
         // ===== Baris data: JUMLAH per status (H/A/I/S/DL) =====
-        // Aturan: setiap petugas bertugas 1x seminggu.
-        // Hari piket ditebak dari riwayat (hari paling sering),
-        // lalu Alpha = jumlah hari piket dalam periode − jumlah input.
+        // Prioritas:
+        // 1. Field "hari_piket" manual di akun (jika diisi)
+        // 2. Tebakan dari riwayat (hari paling sering)
+        // Alpha = ekspektasi hari piket - jumlah input
+        // Aturan: hari ini dihitung alpha hanya jika sudah lewat 08:30
+        $mapHari = [
+            'Minggu' => 0, 'Senin' => 1, 'Selasa' => 2, 'Rabu' => 3,
+            'Kamis' => 4, 'Jumat' => 5, 'Sabtu' => 6,
+        ];
+
         $rows = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get()
-            ->map(function ($u) use ($dariStr, $sampaiStr, $dari) {
+            ->map(function ($u) use ($dariStr, $sampaiStr, $dari, $mapHari) {
                 $norm = fn ($v) => $v instanceof \DateTimeInterface
                     ? $v->format('Y-m-d')
                     : substr((string) $v, 0, 10);
 
-                // Semua riwayat petugas (untuk menebak hari piket)
+                // Semua riwayat petugas (untuk fallback tebakan)
                 $semua = AbsensiPetugas::where('nama', $u->name)->get();
 
-                // Hari piket = hari paling sering di riwayat
-                // (Carbon: 0=Minggu, 1=Senin, ..., 6=Sabtu)
-                $hariPiket = $semua
-                    ->groupBy(fn ($r) => Carbon::parse($norm($r->tanggal))->dayOfWeek)
-                    ->sortByDesc(fn ($grup) => $grup->count())
-                    ->keys()
-                    ->first();
+                // ===== PRIORITAS 1: Field hari_piket manual =====
+                $hariPiket = $u->hari_piket !== null
+                    ? ($mapHari[$u->hari_piket] ?? null)
+                    : null;
 
-                // Ekspektasi = berapa kali hari piket itu muncul dalam periode
+                // ===== PRIORITAS 2: Tebakan dari riwayat =====
+                if ($hariPiket === null) {
+                    $hariPiket = $semua
+                        ->groupBy(fn ($r) => Carbon::parse($norm($r->tanggal))->dayOfWeek)
+                        ->sortByDesc(fn ($grup) => $grup->count())
+                        ->keys()
+                        ->first();
+                }
+
+                // ===== Ekspektasi = jumlah hari piket dalam periode =====
+                // Aturan: hari ini hanya dihitung jika sudah lewat 08:30
                 $ekspektasi = 0;
                 if ($hariPiket !== null) {
                     $cursor = $dari->copy();
                     while ($cursor->toDateString() <= $sampaiStr) {
-                        if ($cursor->dayOfWeek === $hariPiket) $ekspektasi++;
+                        if ($cursor->dayOfWeek === $hariPiket) {
+                            // Hari ini hanya dihitung alpha kalau sudah lewat 08:30
+                            if ($cursor->toDateString() === now()->toDateString()
+                                && now()->format('H:i') < '08:30') {
+                                // belum lewat batas → belum dihitung
+                            } else {
+                                $ekspektasi++;
+                            }
+                        }
                         $cursor->addDay();
                     }
                 }
