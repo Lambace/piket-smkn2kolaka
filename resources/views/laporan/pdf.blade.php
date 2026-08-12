@@ -135,7 +135,7 @@
                 <span class="sub">{{ $r['jabatan'] }}@if($r['keterangan']) — “{{ $r['keterangan'] }}” @endif</span>
             </td>
             <td class="tengah">{{ $r['tanggal'] }}</td>
-            <td class="tengah"><strong>{{ $r['jam'] !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
+                        <td class="tengah" style="font-size: 7pt; white-space: nowrap;"><strong>{{ $r['jam'] !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
             <td class="tengah">
                 <span class="badge {{ $badgeStatus[$r['status']]['cls'] ?? 'b-alpha' }}">
                     {{ $badgeStatus[$r['status']]['label'] ?? strtoupper($r['status']) }}
