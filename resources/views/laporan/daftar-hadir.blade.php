@@ -33,7 +33,6 @@
     .tengah { text-align: center; }
     .cek { font-size: 12pt; font-weight: bold; }
 
-    /* ===== Blok tanda tangan ===== */
     table.ttd { width: 100%; margin-top: 24px; border-collapse: collapse; }
     table.ttd td { width: 50%; text-align: center; vertical-align: top; font-size: 10pt; border: none; padding: 0; }
     .ttd-tanggal { height: 16px; margin-bottom: 2px; }
@@ -124,33 +123,21 @@
     </tbody>
 </table>
 
-<!-- ===== BLOK TANDA TANGAN ===== -->
 <table class="ttd">
     <tr>
-        {{-- KIRI: KEPALA SEKOLAH --}}
         <td>
             <div class="ttd-tanggal">&nbsp;</div>
             Kepala Sekolah
             <div class="ttd-space"></div>
-            <span class="ttd-nama">
-                {{ $pengaturan->kepala_sekolah ?? '……………………………………' }}
-            </span>
-            <div class="ttd-nip">
-                NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}
-            </div>
+            <span class="ttd-nama">{{ $pengaturan->kepala_sekolah ?? '……………………………………' }}</span>
+            <div class="ttd-nip">NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}</div>
         </td>
-
-        {{-- KANAN: KOORDINATOR PIKET + tempat, tanggal --}}
         <td>
             <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
             Koordinator Piket
             <div class="ttd-space"></div>
-            <span class="ttd-nama">
-                {{ $koordinator?->name ?? '……………………………………' }}
-            </span>
-            <div class="ttd-nip">
-                NIP. {{ $koordinator?->nip ?? '………………………………' }}
-            </div>
+            <span class="ttd-nama">{{ $koordinator?->name ?? '……………………………………' }}</span>
+            <div class="ttd-nip">NIP. {{ $koordinator?->nip ?? '………………………………' }}</div>
         </td>
     </tr>
 </table>

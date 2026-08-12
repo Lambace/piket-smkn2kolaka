@@ -67,7 +67,7 @@ class LaporanController extends Controller
         return Excel::download(new LaporanExport($data, $labelPeriode, $jenis), $namaFile);
     }
 
-    // ===== METHOD PDF LENGKAP (LAPORAN PIKET HARIAN) =====
+    // ===== LAPORAN PIKET HARIAN (PDF) =====
     public function pdf(Request $request)
     {
         try {
@@ -121,7 +121,27 @@ class LaporanController extends Controller
             $absensiPetugas = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
                 ->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
-            $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)->count();
+            // ===== REKAP SEMUA PETUGAS — satu baris per orang sesuai statusnya =====
+            $rekapPetugas = User::whereIn('role', ['petugas', 'koordinator'])
+                ->orderBy('name')
+                ->get()
+                ->map(function ($u) use ($dariStr, $sampaiStr) {
+                    $r = AbsensiPetugas::where('nama', $u->name)
+                        ->whereBetween('tanggal', [$dariStr, $sampaiStr])
+                        ->orderBy('jam_masuk')
+                        ->first();
+
+                    return [
+                        'nama'       => $u->name,
+                        'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                        'jam'        => $r?->jam_masuk ?? '-',
+                        'status'     => $r?->status ?? 'alpha',
+                        'keterangan' => $r?->keterangan ?? '',
+                    ];
+                });
+
+            $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)
+                ->whereIn('status', ['tepat_waktu', 'terlambat'])->count();
             $alphaHariIni = max(0, User::whereIn('role', ['petugas', 'koordinator'])->count() - $hadirHariIni);
 
             $keterlambatan = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
@@ -139,36 +159,9 @@ class LaporanController extends Controller
                 ->whereBetween('keterlambatan.tanggal', [$dariStr, $sampaiStr])
                 ->groupBy('siswa.jurusan')->orderByDesc('jumlah')->get();
 
-            $trend = Pelanggaran::select(DB::raw('DATE(tanggal) as tanggal'), DB::raw('COUNT(*) as jumlah'))
-                ->whereBetween('tanggal', [$dariStr, $sampaiStr])
-                ->groupBy('tanggal')->orderBy('tanggal')->get();
-
-            $statusPelanggaran = Pelanggaran::select('status as label', DB::raw('COUNT(*) as jumlah'))
-                ->whereBetween('tanggal', [$dariStr, $sampaiStr])
-                ->groupBy('status')->orderByDesc('jumlah')->get();
-
             $jenisPelanggaran = Pelanggaran::select('jenis_pelanggaran as label', DB::raw('COUNT(*) as jumlah'))
                 ->whereBetween('tanggal', [$dariStr, $sampaiStr])
                 ->groupBy('jenis_pelanggaran')->orderByDesc('jumlah')->limit(10)->get();
-
-            $aktivitas = collect();
-            $keterlambatan->sortByDesc('created_at')->take(5)->each(fn ($k) => $aktivitas->push([
-                'waktu' => $k->created_at?->toIsoString(), 'tipe' => 'Terlambat',
-                'teks' => ($k->siswa?->nama ?? '-').' ('.($k->siswa?->kelas ?? '-').') terlambat '.$k->menit_terlambat.' menit',
-            ]));
-            $izinKeluar->sortByDesc('created_at')->take(5)->each(fn ($i) => $aktivitas->push([
-                'waktu' => $i->created_at?->toIsoString(), 'tipe' => 'Izin Keluar',
-                'teks' => ($i->siswa?->nama ?? '-').' ('.($i->siswa?->kelas ?? '-').') izin keluar: '.$i->jenis,
-            ]));
-            $pelanggaran->sortByDesc('created_at')->take(5)->each(fn ($p) => $aktivitas->push([
-                'waktu' => $p->created_at?->toIsoString(), 'tipe' => 'Pelanggaran',
-                'teks' => ($p->siswa?->nama ?? '-').' ('.($p->siswa?->kelas ?? '-').') '.$p->jenis_pelanggaran.' ('.$p->poin.' poin)',
-            ]));
-            $tamu->sortByDesc('created_at')->take(5)->each(fn ($t) => $aktivitas->push([
-                'waktu' => $t->created_at?->toIsoString(), 'tipe' => 'Tamu',
-                'teks' => $t->nama.' ('.($t->instansi ?: 'Umum').') — '.$t->keperluan,
-            ]));
-            $aktivitas = $aktivitas->sortByDesc('waktu')->take(15)->values();
 
             $topPoin = Pelanggaran::select('siswa_id', DB::raw('SUM(poin) as total_poin'), DB::raw('COUNT(*) as jumlah_kasus'))
                 ->with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])
@@ -203,7 +196,7 @@ class LaporanController extends Controller
                 $logoInstansi = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
             }
 
-            // ===== BARU: DATA TANDA TANGAN =====
+            // ===== DATA TANDA TANGAN =====
             $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
             $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.now()->isoFormat('D MMMM Y');
 
@@ -218,7 +211,7 @@ class LaporanController extends Controller
                 'logo'              => $logo,
                 'logoInstansi'      => $logoInstansi,
                 'labelPeriode'      => $labelPeriode,
-                'absensiPetugas'    => $absensiPetugas,
+                'rekapPetugas'      => $rekapPetugas,
                 'ringkasan'         => $ringkasan,
                 'keterlambatan'     => $keterlambatan,
                 'izinKeluar'        => $izinKeluar,
@@ -226,17 +219,14 @@ class LaporanController extends Controller
                 'tamu'              => $tamu,
                 'perKelas'          => $perKelas,
                 'perJurusan'        => $perJurusan,
-                'trend'             => $trend,
-                'statusPelanggaran' => $statusPelanggaran,
                 'jenisPelanggaran'  => $jenisPelanggaran,
-                'aktivitas'         => $aktivitas,
                 'topPoin'           => $topPoin,
                 'topTerlambat'      => $topTerlambat,
                 'totalData'         => $totalData,
                 'dicetakOleh'       => auth()->user()?->name ?? 'Sistem Otomatis',
                 'waktuCetak'        => now()->format('d-m-Y H:i'),
-                'koordinator'       => $koordinator,        // ← BARU
-                'tempatTanggal'     => $tempatTanggal,      // ← BARU
+                'koordinator'       => $koordinator,
+                'tempatTanggal'     => $tempatTanggal,
             ];
 
             $pdf = Pdf::loadView('laporan.pdf', $data)->setPaper('a4', 'portrait');
@@ -292,7 +282,6 @@ class LaporanController extends Controller
         $dariStr   = $dari->toDateString();
         $sampaiStr = min($sampai->toDateString(), now()->toDateString());
 
-        // Jumlah hari dalam periode (s.d. hari ini) → untuk hitung Alpha
         $totalHari = 0;
         $cursor = $dari->copy();
         while ($cursor->toDateString() <= $sampaiStr) {
@@ -300,11 +289,11 @@ class LaporanController extends Controller
             $cursor->addDay();
         }
 
-        // Baris data: satu baris per petugas + koordinator
         $rows = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get()
             ->map(function ($u) use ($dariStr, $sampaiStr, $totalHari) {
                 $h = AbsensiPetugas::where('nama', $u->name)
-                    ->whereBetween('tanggal', [$dariStr, $sampaiStr])->count();
+                    ->whereBetween('tanggal', [$dariStr, $sampaiStr])
+                    ->whereIn('status', ['tepat_waktu', 'terlambat'])->count();
                 return [
                     'nama'   => $u->name,
                     'jk'     => $u->jenis_kelamin ?? '',
@@ -320,7 +309,6 @@ class LaporanController extends Controller
                 ];
             });
 
-        // Kop + logo (via Storage)
         $pengaturan = Pengaturan::first();
         $logo = null;
         if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
@@ -337,7 +325,6 @@ class LaporanController extends Controller
             ? $tanggalRef->isoFormat('dddd, D MMMM Y')
             : $dari->isoFormat('D MMMM Y').' s/d '.Carbon::parse($sampaiStr)->isoFormat('D MMMM Y');
 
-        // ===== DATA TANDA TANGAN =====
         $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
         $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.now()->isoFormat('D MMMM Y');
 
