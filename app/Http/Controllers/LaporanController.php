@@ -247,7 +247,7 @@ class LaporanController extends Controller
         }
     }
 
-    // ===== DAFTAR HADIR PIKET (format resmi kedinasan) =====
+    // ===== DAFTAR HADIR PIKET (format resmi kedinasan + rentang bebas) =====
     public function daftarHadir(Request $request)
     {
         if ($request->routeIs('tampil.*')) {
@@ -255,71 +255,97 @@ class LaporanController extends Controller
             if ($key && $request->query('k') !== $key) abort(403, 'Akses ditolak.');
         }
 
-        $periode  = $request->input('periode', 'harian');
-        $tanggal  = $request->input('tanggal', now()->toDateString());
-        $semester = $request->input('semester', 'ganjil');
-        $mode     = $request->input('mode', 'hadir'); // ← BARU: 'hadir' = checklist, 'rekap' = angka
+        $periode     = $request->input('periode', 'harian');
+        $tanggal     = $request->input('tanggal', now()->toDateString());
+        $semester    = $request->input('semester', 'ganjil');
+        $mode        = $request->input('mode', 'hadir'); // 'hadir' = checklist | 'rekap' = angka
+        $dariInput   = $request->input('dari');
+        $sampaiInput = $request->input('sampai');
 
         $tanggalRef = Carbon::parse($tanggal);
 
-        switch ($periode) {
-            case 'mingguan':
-                $dari = $tanggalRef->copy()->startOfWeek();
-                $sampai = $tanggalRef->copy()->endOfWeek();
-                break;
-            case 'bulanan':
-                $dari = $tanggalRef->copy()->startOfMonth();
-                $sampai = $tanggalRef->copy()->endOfMonth();
-                break;
-            case 'semester':
-                $bulan = $tanggalRef->month;
-                if ($semester === 'genap' || ($bulan >= 1 && $bulan <= 6)) {
-                    $dari = Carbon::create($tanggalRef->year, 1, 1);
-                    $sampai = Carbon::create($tanggalRef->year, 6, 30);
-                } else {
-                    $dari = Carbon::create($tanggalRef->year, 7, 1);
-                    $sampai = Carbon::create($tanggalRef->year, 12, 31);
-                }
-                break;
-            default:
-                $dari = $tanggalRef->copy()->startOfDay();
-                $sampai = $tanggalRef->copy()->endOfDay();
+        // ===== RENTANG BEBAS (dari datepicker) =====
+        if ($periode === 'rentang' && $dariInput && $sampaiInput) {
+            $dari   = Carbon::parse($dariInput)->startOfDay();
+            $sampai = Carbon::parse($sampaiInput)->endOfDay();
+        } else {
+            switch ($periode) {
+                case 'mingguan':
+                    $dari = $tanggalRef->copy()->startOfWeek();
+                    $sampai = $tanggalRef->copy()->endOfWeek();
+                    break;
+                case 'bulanan':
+                    $dari = $tanggalRef->copy()->startOfMonth();
+                    $sampai = $tanggalRef->copy()->endOfMonth();
+                    break;
+                case 'semester':
+                    $bulan = $tanggalRef->month;
+                    if ($semester === 'genap' || ($bulan >= 1 && $bulan <= 6)) {
+                        $dari = Carbon::create($tanggalRef->year, 1, 1);
+                        $sampai = Carbon::create($tanggalRef->year, 6, 30);
+                    } else {
+                        $dari = Carbon::create($tanggalRef->year, 7, 1);
+                        $sampai = Carbon::create($tanggalRef->year, 12, 31);
+                    }
+                    break;
+                default:
+                    $dari = $tanggalRef->copy()->startOfDay();
+                    $sampai = $tanggalRef->copy()->endOfDay();
+            }
         }
 
         $dariStr   = $dari->toDateString();
         $sampaiStr = min($sampai->toDateString(), now()->toDateString());
 
-        // Jumlah hari dalam periode (s.d. hari ini) → untuk hitung Alpha
-        $totalHari = 0;
-        $cursor = $dari->copy();
-        while ($cursor->toDateString() <= $sampaiStr) {
-            $totalHari++;
-            $cursor->addDay();
-        }
-
         // ===== Baris data: JUMLAH per status (H/A/I/S/DL) =====
+        // Aturan: setiap petugas bertugas 1x seminggu.
+        // Hari piket ditebak dari riwayat (hari paling sering),
+        // lalu Alpha = jumlah hari piket dalam periode − jumlah input.
         $rows = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get()
-            ->map(function ($u) use ($dariStr, $sampaiStr, $totalHari) {
-                $records = AbsensiPetugas::where('nama', $u->name)
-                    ->whereBetween('tanggal', [$dariStr, $sampaiStr])
-                    ->orderBy('jam_masuk')
-                    ->get();
+            ->map(function ($u) use ($dariStr, $sampaiStr, $dari) {
+                $norm = fn ($v) => $v instanceof \DateTimeInterface
+                    ? $v->format('Y-m-d')
+                    : substr((string) $v, 0, 10);
+
+                // Semua riwayat petugas (untuk menebak hari piket)
+                $semua = AbsensiPetugas::where('nama', $u->name)->get();
+
+                // Hari piket = hari paling sering di riwayat
+                // (Carbon: 0=Minggu, 1=Senin, ..., 6=Sabtu)
+                $hariPiket = $semua
+                    ->groupBy(fn ($r) => Carbon::parse($norm($r->tanggal))->dayOfWeek)
+                    ->sortByDesc(fn ($grup) => $grup->count())
+                    ->keys()
+                    ->first();
+
+                // Ekspektasi = berapa kali hari piket itu muncul dalam periode
+                $ekspektasi = 0;
+                if ($hariPiket !== null) {
+                    $cursor = $dari->copy();
+                    while ($cursor->toDateString() <= $sampaiStr) {
+                        if ($cursor->dayOfWeek === $hariPiket) $ekspektasi++;
+                        $cursor->addDay();
+                    }
+                }
+
+                // Record dalam periode saja
+                $records = $semua->filter(
+                    fn ($r) => $norm($r->tanggal) >= $dariStr && $norm($r->tanggal) <= $sampaiStr
+                );
 
                 // Satu status per tanggal (record pertama hari itu)
                 $statuses = $records
-                    ->groupBy(fn ($r) => $r->tanggal instanceof \DateTimeInterface
-                        ? $r->tanggal->format('Y-m-d')
-                        : substr((string) $r->tanggal, 0, 10))
+                    ->groupBy(fn ($r) => $norm($r->tanggal))
                     ->map(fn ($grup) => $grup->first()->status)
                     ->values();
 
-                // Jumlah per status
+                // ===== Jumlah dari yang TERINPUT saja =====
                 $h  = $statuses->filter(fn ($st) => in_array($st, ['tepat_waktu', 'terlambat']))->count();
                 $iz = $statuses->filter(fn ($st) => $st === 'izin')->count();
                 $sk = $statuses->filter(fn ($st) => $st === 'sakit')->count();
                 $dl = $statuses->filter(fn ($st) => $st === 'dl')->count();
-                // Alpha = hari tanpa record sama sekali
-                $a  = max(0, $totalHari - $statuses->count());
+                // Alpha = hari piket yang terlewat tanpa input
+                $a  = max(0, $ekspektasi - $statuses->count());
 
                 return [
                     'nama'   => $u->name,
@@ -365,8 +391,8 @@ class LaporanController extends Controller
             'hariTanggal'   => $hariTanggal,
             'koordinator'   => $koordinator,
             'tempatTanggal' => $tempatTanggal,
-            'mode'          => $mode,    // ← BARU: 'hadir' atau 'rekap'
-            'periode'       => $periode, // ← BARU: untuk judul "REKAPAN ... HARIAN/MINGGUAN/dll"
+            'mode'          => $mode,
+            'periode'       => $periode,
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('Daftar-Hadir-Piket-'.$periode.'-'.$dariStr.'.pdf');

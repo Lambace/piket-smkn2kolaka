@@ -2,55 +2,47 @@ import { usePage } from "@inertiajs/react";
 import { useState } from "react";
 
 export default function KartuAbsensiPetugas({ data }) {
-    // displayKey hanya ada di halaman TV → penentu route publik/auth
     const displayKey = usePage().props.displayKey ?? null;
     const [rekapOpen, setRekapOpen] = useState(false);
 
-    // hadirList = semua status KECUALI alpha (termasuk sakit/izin/dl/lainnya)
+    // ===== Default rentang: awal bulan s.d. hari ini =====
+    const pad = (n) => String(n).padStart(2, "0");
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const firstOfMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+
+    const [dari, setDari] = useState(firstOfMonth);
+    const [sampai, setSampai] = useState(todayStr);
+
     const hadirList = data?.filter((p) => p.status !== "alpha") ?? [];
     const alphaList = data?.filter((p) => p.status === "alpha") ?? [];
 
-    // ===== BARU: Label dropdown lebih jelas =====
-    const rekapOptions = [
-        { value: "harian", label: "📅 Rekapan Harian" },
-        { value: "mingguan", label: "📆 Rekapan Mingguan" },
-        { value: "bulanan", label: "🗓️ Rekapan Bulanan" },
-        { value: "semester", label: "🎓 Rekapan Semester" },
-    ];
-
-    // ===== Download Daftar Hadir (CHECKLIST — harian, tetap sama) =====
+    // ===== Download Daftar Hadir (checklist harian) =====
     const downloadDaftarHadir = () => {
-        const today = new Date().toISOString().split("T")[0];
         const params = new URLSearchParams({
             periode: "harian",
-            tanggal: today,
+            tanggal: todayStr,
         });
         if (displayKey) params.set("k", displayKey);
-
         const url = displayKey
             ? route("tampil.daftar-hadir")
             : route("laporan.daftar-hadir");
-
         window.location.href = `${url}?${params.toString()}`;
     };
 
-    // ===== Download REKAPAN (ANGKA) sesuai periode =====
-    const downloadRekap = (periode) => {
+    // ===== Download REKAPAN rentang bebas (datepicker) =====
+    const downloadRekap = () => {
         setRekapOpen(false);
-        const today = new Date().toISOString().split("T")[0];
         const params = new URLSearchParams({
-            periode,
-            tanggal: today,
-            semester: "ganjil",
-            mode: "rekap", // ← BARU: mode angka
+            periode: "rentang",
+            dari,
+            sampai,
+            mode: "rekap",
         });
         if (displayKey) params.set("k", displayKey);
-
-        // ← BARU: route daftar-hadir (bukan laporan.pdf)
         const url = displayKey
             ? route("tampil.daftar-hadir")
             : route("laporan.daftar-hadir");
-
         window.location.href = `${url}?${params.toString()}`;
     };
 
@@ -103,7 +95,6 @@ export default function KartuAbsensiPetugas({ data }) {
         }
     };
 
-    // ===== Tooltip keterangan (untuk sakit/izin/dl/lainnya) =====
     const getTooltip = (p) => {
         const statusButuhKet = ["sakit", "izin", "dl", "lainnya"];
         return statusButuhKet.includes(p.status) && p.keterangan
@@ -113,14 +104,13 @@ export default function KartuAbsensiPetugas({ data }) {
 
     return (
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-lg">
-            {/* ===== HEADER + TOMBOL (SELALU MUNCUL) ===== */}
+            {/* ===== HEADER + TOMBOL ===== */}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 pb-3">
                 <h3 className="text-lg font-bold text-white">
                     🧑‍🏫 Petugas Piket Hari Ini
                 </h3>
 
                 <div className="flex items-center gap-2">
-                    {/* Tombol Daftar Hadir (checklist harian) */}
                     <button
                         onClick={downloadDaftarHadir}
                         className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-blue-700"
@@ -129,38 +119,59 @@ export default function KartuAbsensiPetugas({ data }) {
                         📋 Daftar Hadir
                     </button>
 
-                    {/* Dropdown Rekap (angka per periode) */}
+                    {/* ===== Datepicker Rentang ===== */}
                     <div className="relative">
                         <button
                             onClick={() => setRekapOpen(!rekapOpen)}
                             className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-700"
-                            title="Download rekapan daftar hadir (angka) per periode"
+                            title="Download rekapan dengan rentang tanggal bebas"
                         >
                             📥 Rekap
                         </button>
 
                         {rekapOpen && (
                             <>
-                                {/* Klik di luar → tutup */}
                                 <div
                                     className="fixed inset-0 z-10"
                                     onClick={() => setRekapOpen(false)}
                                 />
-                                <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-lg bg-white shadow-xl ring-1 ring-black/10">
-                                    <div className="bg-slate-100 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                        Pilih Periode Rekap
-                                    </div>
-                                    {rekapOptions.map((o) => (
-                                        <button
-                                            key={o.value}
-                                            onClick={() =>
-                                                downloadRekap(o.value)
-                                            }
-                                            className="block w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 transition hover:bg-emerald-50 hover:text-emerald-700"
-                                        >
-                                            {o.label}
-                                        </button>
-                                    ))}
+                                <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg bg-white p-4 shadow-xl ring-1 ring-black/10">
+                                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                        Pilih Rentang Tanggal
+                                    </p>
+
+                                    <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                        Dari
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={dari}
+                                        max={sampai}
+                                        onChange={(e) =>
+                                            setDari(e.target.value)
+                                        }
+                                        className="mb-2 block w-full rounded-md border-gray-300 text-xs"
+                                    />
+
+                                    <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                        Sampai
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={sampai}
+                                        min={dari}
+                                        onChange={(e) =>
+                                            setSampai(e.target.value)
+                                        }
+                                        className="mb-3 block w-full rounded-md border-gray-300 text-xs"
+                                    />
+
+                                    <button
+                                        onClick={downloadRekap}
+                                        className="w-full rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
+                                    >
+                                        📥 Download Rekap
+                                    </button>
                                 </div>
                             </>
                         )}
@@ -168,7 +179,7 @@ export default function KartuAbsensiPetugas({ data }) {
                 </div>
             </div>
 
-            {/* ===== BELUM ADA DATA SAMA SEKALI ===== */}
+            {/* ===== ISI KARTU (tidak berubah) ===== */}
             {!data || data.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                     <span className="mb-2 text-4xl">📭</span>
@@ -182,7 +193,6 @@ export default function KartuAbsensiPetugas({ data }) {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {/* ===== PERINGATAN: 0 HADIR + ADA ALPHA ===== */}
                     {hadirList.length === 0 && alphaList.length > 0 && (
                         <div className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
                             <span className="text-xl">⚠️</span>
@@ -195,7 +205,6 @@ export default function KartuAbsensiPetugas({ data }) {
                     )}
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {/* ===== KOLOM KIRI: TERDAFTAR ===== */}
                         <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-green-400">
@@ -206,27 +215,22 @@ export default function KartuAbsensiPetugas({ data }) {
                                     {hadirList.length} orang
                                 </span>
                             </div>
-
                             {hadirList.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-6 text-center">
                                     <span className="mb-2 text-3xl">🕐</span>
                                     <p className="text-sm font-semibold text-slate-400">
                                         Belum ada petugas yang terdaftar
                                     </p>
-                                    <p className="mt-0.5 text-xs text-slate-500">
-                                        Menunggu absensi hari ini…
-                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
                                     {hadirList.map((p, i) => {
                                         const badge = getBadge(p.status, p.jam);
-                                        const tooltip = getTooltip(p);
                                         return (
                                             <div
                                                 key={i}
                                                 className="flex items-center justify-between rounded-lg bg-slate-700/60 px-3 py-2.5"
-                                                title={tooltip}
+                                                title={getTooltip(p)}
                                             >
                                                 <div className="min-w-0 flex-1">
                                                     <p className="truncate text-sm font-semibold text-white">
@@ -236,8 +240,8 @@ export default function KartuAbsensiPetugas({ data }) {
                                                         {p.jabatan}
                                                         {p.keterangan && (
                                                             <span className="ml-1 italic text-slate-500">
-                                                                — "
-                                                                {p.keterangan}"
+                                                                — “
+                                                                {p.keterangan}”
                                                             </span>
                                                         )}
                                                     </p>
@@ -254,7 +258,6 @@ export default function KartuAbsensiPetugas({ data }) {
                             )}
                         </div>
 
-                        {/* ===== KOLOM KANAN: ALPHA ===== */}
                         <div className="rounded-lg border border-red-900/50 bg-red-950/30 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-red-400">
@@ -265,15 +268,11 @@ export default function KartuAbsensiPetugas({ data }) {
                                     {alphaList.length} orang
                                 </span>
                             </div>
-
                             {alphaList.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-6 text-center">
                                     <span className="mb-2 text-3xl">🎉</span>
                                     <p className="text-sm font-semibold text-green-400">
                                         Semua petugas terdaftar!
-                                    </p>
-                                    <p className="mt-0.5 text-xs text-slate-500">
-                                        Tidak ada yang alpha hari ini
                                     </p>
                                 </div>
                             ) : (
