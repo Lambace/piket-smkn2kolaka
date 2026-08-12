@@ -91,7 +91,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     roles: ["koordinator"],
                 },
                 {
-                    name: "Wali Murid",
+                    name: "Wali/Ortu Siswa",
                     href: route("wali-murid.index"),
                     active: route().current("wali-murid.*"),
                     icon: icons.waliMurid,
