@@ -202,7 +202,7 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                                                     🕐 {jam} WITA
                                                 </span>
                                                 <span className="text-sm font-semibold">
-                                                    Masuk
+                                                    Absen Sekarang
                                                 </span>
                                             </button>
 
