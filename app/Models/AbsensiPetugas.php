@@ -8,7 +8,7 @@ class AbsensiPetugas extends Model
 {
     protected $table = 'absensi_petugas';
 
-    protected $fillable = ['tanggal', 'nama', 'jabatan', 'jam_masuk', 'status'];
+    protected $fillable = ['nama', 'jabatan', 'tanggal', 'jam_masuk', 'status', 'keterangan'];
 
     protected $casts = ['tanggal' => 'date'];
 }
