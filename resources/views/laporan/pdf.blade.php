@@ -60,12 +60,9 @@
     .ttd-space { height: 60px; }
     .ttd-nama { font-weight: bold; text-decoration: underline; }
     .ttd-nip { font-size: 9.5pt; margin-top: 3px; }
-
-    
 </style>
 </head>
 <body>
-
 
 {{-- ===== KOP ===== --}}
 <table class="kop-table">
@@ -326,23 +323,33 @@
     </tr>
 </table>
 
-
-{{-- ===== BLOK TANDA TANGAN ===== --}}
+{{-- ===== BLOK TANDA TANGAN (prioritas data Pengaturan) ===== --}}
 <table class="ttd">
     <tr>
+        {{-- KIRI: KEPALA SEKOLAH (dari Pengaturan) --}}
         <td>
             <div class="ttd-tanggal">&nbsp;</div>
             Kepala Sekolah
             <div class="ttd-space"></div>
-            <span class="ttd-nama">{{ $pengaturan->kepala_sekolah ?? '……………………………………' }}</span>
-            <div class="ttd-nip">NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}</div>
+            <span class="ttd-nama">
+                {{ $pengaturan->kepala_sekolah ?? '……………………………………' }}
+            </span>
+            <div class="ttd-nip">
+                NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}
+            </div>
         </td>
+
+        {{-- KANAN: KOORDINATOR PIKET (prioritas Pengaturan, fallback akun) --}}
         <td>
             <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
             Koordinator Piket
             <div class="ttd-space"></div>
-            <span class="ttd-nama">{{ $koordinator?->name ?? '……………………………………' }}</span>
-            <div class="ttd-nip">NIP. {{ $koordinator?->nip ?? '………………………………' }}</div>
+            <span class="ttd-nama">
+                {{ $pengaturan->koordinator_piket ?: ($koordinator?->name ?? '……………………………………') }}
+            </span>
+            <div class="ttd-nip">
+                NIP. {{ $pengaturan->nip_koordinator_piket ?: ($koordinator?->nip ?? '………………………………') }}
+            </div>
         </td>
     </tr>
 </table>

@@ -258,6 +258,8 @@ class LaporanController extends Controller
         $periode  = $request->input('periode', 'harian');
         $tanggal  = $request->input('tanggal', now()->toDateString());
         $semester = $request->input('semester', 'ganjil');
+        $mode     = $request->input('mode', 'hadir'); // ← BARU: 'hadir' = checklist, 'rekap' = angka
+
         $tanggalRef = Carbon::parse($tanggal);
 
         switch ($periode) {
@@ -363,9 +365,11 @@ class LaporanController extends Controller
             'hariTanggal'   => $hariTanggal,
             'koordinator'   => $koordinator,
             'tempatTanggal' => $tempatTanggal,
+            'mode'          => $mode,    // ← BARU: 'hadir' atau 'rekap'
+            'periode'       => $periode, // ← BARU: untuk judul "REKAPAN ... HARIAN/MINGGUAN/dll"
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->download('Daftar-Hadir-Piket-'.$dariStr.'.pdf');
+        return $pdf->download('Daftar-Hadir-Piket-'.$periode.'-'.$dariStr.'.pdf');
     }
 
     private function hitungRentang(string $periode, string $tanggal, string $semester): array

@@ -43,6 +43,10 @@
 </head>
 <body>
 
+@php
+    $rekap = ($mode ?? 'hadir') === 'rekap';
+@endphp
+
 <table class="kop-table">
     <tr>
         <td class="kop-logo">
@@ -66,7 +70,13 @@
 <div class="kop-garis"></div>
 
 <div class="judul-blok">
-    <div class="j1">DAFTAR HADIR PIKET</div>
+    <div class="j1">
+        @if($rekap)
+            REKAPAN DAFTAR HADIR PIKET {{ strtoupper($periode ?? 'harian') }}
+        @else
+            DAFTAR HADIR PIKET
+        @endif
+    </div>
     <div class="j2">PENDIDIK DAN TENAGA KEPENDIDIKAN {{ strtoupper($pengaturan->nama_sekolah ?? 'SMKN 2 KOLAKA') }}</div>
     <div class="j3">Kecamatan Baula, Kabupaten Kolaka, Provinsi Sulawesi Tenggara</div>
 </div>
@@ -85,7 +95,9 @@
             <th rowspan="2" style="width:110px">NIP</th>
             <th rowspan="2" style="width:36px">Gol</th>
             <th rowspan="2" style="width:110px">Status Kepegawaian</th>
-            <th colspan="5">Status Kehadiran</th>
+            <th colspan="5">
+                @if($rekap) Rekapan Kehadiran @else Status Kehadiran @endif
+            </th>
             <th rowspan="2" style="width:46px">Ket.</th>
         </tr>
         <tr>
@@ -105,11 +117,12 @@
             <td>{{ $r['nip'] }}</td>
             <td class="tengah">{{ $r['gol'] }}</td>
             <td>{{ $r['status'] }}</td>
-            <td class="tengah cek">{{ $r['h'] > 0 ? $r['h'] : '' }}</td>
-            <td class="tengah cek">{{ $r['a'] > 0 ? $r['a'] : '' }}</td>
-            <td class="tengah cek">{{ $r['i'] > 0 ? $r['i'] : '' }}</td>
-            <td class="tengah cek">{{ $r['s'] > 0 ? $r['s'] : '' }}</td>
-            <td class="tengah cek">{{ $r['dl'] > 0 ? $r['dl'] : '' }}</td>
+            {{-- MODE REKAP = ANGKA | MODE HADIR = CHECKLIST --}}
+            <td class="tengah cek">{{ $rekap ? ($r['h'] > 0 ? $r['h'] : '') : ($r['h'] > 0 ? '✓' : '') }}</td>
+            <td class="tengah cek">{{ $rekap ? ($r['a'] > 0 ? $r['a'] : '') : ($r['a'] > 0 ? '✓' : '') }}</td>
+            <td class="tengah cek">{{ $rekap ? ($r['i'] > 0 ? $r['i'] : '') : ($r['i'] > 0 ? '✓' : '') }}</td>
+            <td class="tengah cek">{{ $rekap ? ($r['s'] > 0 ? $r['s'] : '') : ($r['s'] > 0 ? '✓' : '') }}</td>
+            <td class="tengah cek">{{ $rekap ? ($r['dl'] > 0 ? $r['dl'] : '') : ($r['dl'] > 0 ? '✓' : '') }}</td>
             <td>{{ $r['ket'] }}</td>
         </tr>
         @endforeach
@@ -126,7 +139,6 @@
 <!-- ===== BLOK TANDA TANGAN (prioritas data Pengaturan) ===== -->
 <table class="ttd">
     <tr>
-        {{-- KIRI: KEPALA SEKOLAH (dari Pengaturan) --}}
         <td>
             <div class="ttd-tanggal">&nbsp;</div>
             Kepala Sekolah
@@ -138,8 +150,6 @@
                 NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}
             </div>
         </td>
-
-        {{-- KANAN: KOORDINATOR PIKET (prioritas Pengaturan, fallback akun) --}}
         <td>
             <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
             Koordinator Piket

@@ -10,14 +10,15 @@ export default function KartuAbsensiPetugas({ data }) {
     const hadirList = data?.filter((p) => p.status !== "alpha") ?? [];
     const alphaList = data?.filter((p) => p.status === "alpha") ?? [];
 
+    // ===== BARU: Label dropdown lebih jelas =====
     const rekapOptions = [
-        { value: "harian", label: "📅 Harian" },
-        { value: "mingguan", label: "📆 Mingguan" },
-        { value: "bulanan", label: "🗓️ Bulanan" },
-        { value: "semester", label: "🎓 Semester" },
+        { value: "harian", label: "📅 Rekapan Harian" },
+        { value: "mingguan", label: "📆 Rekapan Mingguan" },
+        { value: "bulanan", label: "🗓️ Rekapan Bulanan" },
+        { value: "semester", label: "🎓 Rekapan Semester" },
     ];
 
-    // ===== Download Daftar Hadir (otomatis pilih route) =====
+    // ===== Download Daftar Hadir (CHECKLIST — harian, tetap sama) =====
     const downloadDaftarHadir = () => {
         const today = new Date().toISOString().split("T")[0];
         const params = new URLSearchParams({
@@ -33,7 +34,7 @@ export default function KartuAbsensiPetugas({ data }) {
         window.location.href = `${url}?${params.toString()}`;
     };
 
-    // ===== BARU: Download Rekap Laporan (dropdown periode) =====
+    // ===== Download REKAPAN (ANGKA) sesuai periode =====
     const downloadRekap = (periode) => {
         setRekapOpen(false);
         const today = new Date().toISOString().split("T")[0];
@@ -41,12 +42,14 @@ export default function KartuAbsensiPetugas({ data }) {
             periode,
             tanggal: today,
             semester: "ganjil",
+            mode: "rekap", // ← BARU: mode angka
         });
         if (displayKey) params.set("k", displayKey);
 
+        // ← BARU: route daftar-hadir (bukan laporan.pdf)
         const url = displayKey
-            ? route("tampil.laporan") // dari TV (publik + key)
-            : route("laporan.pdf"); // dari Dashboard (login)
+            ? route("tampil.daftar-hadir")
+            : route("laporan.daftar-hadir");
 
         window.location.href = `${url}?${params.toString()}`;
     };
@@ -117,21 +120,21 @@ export default function KartuAbsensiPetugas({ data }) {
                 </h3>
 
                 <div className="flex items-center gap-2">
-                    {/* Tombol Daftar Hadir */}
+                    {/* Tombol Daftar Hadir (checklist harian) */}
                     <button
                         onClick={downloadDaftarHadir}
                         className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-blue-700"
-                        title="Download daftar hadir format resmi kedinasan (H/A/I/S/DL)"
+                        title="Download daftar hadir harian (checklist ✓)"
                     >
                         📋 Daftar Hadir
                     </button>
 
-                    {/* ===== BARU: Dropdown Rekap ===== */}
+                    {/* Dropdown Rekap (angka per periode) */}
                     <div className="relative">
                         <button
                             onClick={() => setRekapOpen(!rekapOpen)}
                             className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-700"
-                            title="Download rekap laporan lengkap (PDF berwarna)"
+                            title="Download rekapan daftar hadir (angka) per periode"
                         >
                             📥 Rekap
                         </button>
@@ -233,8 +236,8 @@ export default function KartuAbsensiPetugas({ data }) {
                                                         {p.jabatan}
                                                         {p.keterangan && (
                                                             <span className="ml-1 italic text-slate-500">
-                                                                — “
-                                                                {p.keterangan}”
+                                                                — "
+                                                                {p.keterangan}"
                                                             </span>
                                                         )}
                                                     </p>
