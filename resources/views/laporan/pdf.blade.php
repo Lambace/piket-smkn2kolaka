@@ -93,7 +93,7 @@
 </table>
 <div class="kop-garis"></div>
 
-<div class="judul">Laporan Piket Tim Piket {{ strtoupper(now()->isoFormat('dddd')) }}</div>
+<div class="judul">Laporan Piket </div>
 
 {{-- ===== INFO BAR ===== --}}
 <table class="infobar">
