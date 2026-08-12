@@ -54,8 +54,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // URL logo dari server (aman untuk lokal & Laravel Cloud/S3)
     const logoSrc =
-        pengaturan.logo_url ??
-        (pengaturan.logo ? `/storage/${pengaturan.logo}` : null);
+        pengaturan.logo_url ?? (pengaturan.logo ? "/logo.png" : null);
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
 

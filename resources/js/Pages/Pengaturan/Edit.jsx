@@ -234,15 +234,10 @@ export default function Edit({ pengaturan }) {
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {/* Logo Sekolah */}
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                <label className="mb-2 block text-sm font-medium text-gray-700">
-                                    🏫 Logo Sekolah{" "}
-                                    <span className="text-red-500">*</span>
-                                </label>
-                                <div className="mb-3 flex items-start gap-3">
+                                                            <div className="mb-3 flex items-start gap-3">
                                     {pengaturan.logo ? (
                                         <img
-                                            src={`/storage/${pengaturan.logo}`}
+                                            src="/logo.png"
                                             alt="Logo sekolah"
                                             className="h-16 w-16 rounded-lg border border-gray-200 bg-white object-contain p-1"
                                         />
@@ -291,7 +286,7 @@ export default function Edit({ pengaturan }) {
                                 <div className="mb-3 flex items-start gap-3">
                                     {pengaturan.logo_instansi ? (
                                         <img
-                                            src={`/storage/${pengaturan.logo_instansi}`}
+                                            src="/logo-instansi.png"
                                             alt="Logo instansi"
                                             className="h-16 w-16 rounded-lg border border-gray-200 bg-white object-contain p-1"
                                         />
