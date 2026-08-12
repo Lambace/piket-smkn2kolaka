@@ -31,7 +31,7 @@
     table.hadir th, table.hadir td { border: 1px solid #000; padding: 5px 6px; vertical-align: top; }
     table.hadir th { text-align: center; font-weight: bold; }
     .tengah { text-align: center; }
-    .cek { font-size: 12pt; font-weight: bold; }
+    .cek { font-size: 11pt; font-weight: bold; }
 
     table.ttd { width: 100%; margin-top: 24px; border-collapse: collapse; }
     table.ttd td { width: 50%; text-align: center; vertical-align: top; font-size: 10pt; border: none; padding: 0; }
@@ -105,11 +105,11 @@
             <td>{{ $r['nip'] }}</td>
             <td class="tengah">{{ $r['gol'] }}</td>
             <td>{{ $r['status'] }}</td>
-            <td class="tengah cek">{{ $r['h'] > 0 ? '✓' : '' }}</td>
-            <td class="tengah cek">{{ $r['a'] > 0 ? '✓' : '' }}</td>
-            <td class="tengah cek">{{ $r['i'] ? '✓' : '' }}</td>
-            <td class="tengah cek">{{ $r['s'] ? '✓' : '' }}</td>
-            <td class="tengah cek">{{ $r['dl'] ? '✓' : '' }}</td>
+            <td class="tengah cek">{{ $r['h'] > 0 ? $r['h'] : '' }}</td>
+            <td class="tengah cek">{{ $r['a'] > 0 ? $r['a'] : '' }}</td>
+            <td class="tengah cek">{{ $r['i'] > 0 ? $r['i'] : '' }}</td>
+            <td class="tengah cek">{{ $r['s'] > 0 ? $r['s'] : '' }}</td>
+            <td class="tengah cek">{{ $r['dl'] > 0 ? $r['dl'] : '' }}</td>
             <td>{{ $r['ket'] }}</td>
         </tr>
         @endforeach
@@ -123,21 +123,33 @@
     </tbody>
 </table>
 
+<!-- ===== BLOK TANDA TANGAN (prioritas data Pengaturan) ===== -->
 <table class="ttd">
     <tr>
+        {{-- KIRI: KEPALA SEKOLAH (dari Pengaturan) --}}
         <td>
             <div class="ttd-tanggal">&nbsp;</div>
             Kepala Sekolah
             <div class="ttd-space"></div>
-            <span class="ttd-nama">{{ $pengaturan->kepala_sekolah ?? '……………………………………' }}</span>
-            <div class="ttd-nip">NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}</div>
+            <span class="ttd-nama">
+                {{ $pengaturan->kepala_sekolah ?? '……………………………………' }}
+            </span>
+            <div class="ttd-nip">
+                NIP. {{ $pengaturan->nip_kepala_sekolah ?? '………………………………' }}
+            </div>
         </td>
+
+        {{-- KANAN: KOORDINATOR PIKET (prioritas Pengaturan, fallback akun) --}}
         <td>
             <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
             Koordinator Piket
             <div class="ttd-space"></div>
-            <span class="ttd-nama">{{ $koordinator?->name ?? '……………………………………' }}</span>
-            <div class="ttd-nip">NIP. {{ $koordinator?->nip ?? '………………………………' }}</div>
+            <span class="ttd-nama">
+                {{ $pengaturan->koordinator_piket ?: ($koordinator?->name ?? '……………………………………') }}
+            </span>
+            <div class="ttd-nip">
+                NIP. {{ $pengaturan->nip_koordinator_piket ?: ($koordinator?->nip ?? '………………………………') }}
+            </div>
         </td>
     </tr>
 </table>
