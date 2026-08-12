@@ -122,10 +122,11 @@ class LaporanController extends Controller
                 ->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
             // ===== REKAP SEMUA PETUGAS — satu baris per orang sesuai statusnya =====
+                        // ===== REKAP SEMUA PETUGAS — satu baris per orang sesuai statusnya =====
             $rekapPetugas = User::whereIn('role', ['petugas', 'koordinator'])
                 ->orderBy('name')
                 ->get()
-                ->map(function ($u) use ($dariStr, $sampaiStr) {
+                ->map(function ($u) use ($dariStr, $sampaiStr, $periode, $tanggalRef, $dari, $sampai) {
                     $r = AbsensiPetugas::where('nama', $u->name)
                         ->whereBetween('tanggal', [$dariStr, $sampaiStr])
                         ->orderBy('jam_masuk')
@@ -144,7 +145,6 @@ class LaporanController extends Controller
                                                 : $dari->isoFormat('D MMM').' – '.$sampai->isoFormat('D MMM Y')),
                     ];
                 });
-
             $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)
                 ->whereIn('status', ['tepat_waktu', 'terlambat'])->count();
             $alphaHariIni = max(0, User::whereIn('role', ['petugas', 'koordinator'])->count() - $hadirHariIni);
