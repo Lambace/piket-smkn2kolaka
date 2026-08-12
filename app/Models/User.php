@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'nip',
     'golongan',
     'status_kepegawaian',
+    'hari_piket',   // ← BARU: supaya field tersimpan ke database
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
