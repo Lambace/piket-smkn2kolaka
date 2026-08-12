@@ -262,7 +262,7 @@ export default function KartuAbsensiPetugas({ data }) {
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-red-400">
                                     <span>❌</span>
-                                    <span>Tidak Hadir (Alpha)</span>
+                                    <span>Alpha</span>
                                 </h4>
                                 <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-bold text-red-400">
                                     {alphaList.length} orang
