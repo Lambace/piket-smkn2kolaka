@@ -16,9 +16,20 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(emptyForm);
     const [search, setSearch] = useState(params.search ?? "");
+    const [kelasFilter, setKelasFilter] = useState(""); // ← BARU
 
     const list = Array.isArray(waliMurid?.data) ? waliMurid.data : [];
     const siswaList = Array.isArray(daftarSiswa) ? daftarSiswa : [];
+
+    // ===== BARU: daftar kelas unik (urut alami: VII → X → XI → XII) =====
+    const daftarKelas = [
+        ...new Set(siswaList.map((s) => s.kelas).filter(Boolean)),
+    ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    // ===== BARU: siswa difilter sesuai kelas pilihan =====
+    const siswaTerfilter = kelasFilter
+        ? siswaList.filter((s) => s.kelas === kelasFilter)
+        : siswaList;
 
     const inputClass =
         "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500";
@@ -26,6 +37,12 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setForm({ ...form, [name]: type === "checkbox" ? checked : value });
+    };
+
+    // ===== BARU: ganti kelas → reset siswa terpilih =====
+    const gantiKelas = (k) => {
+        setKelasFilter(k);
+        setForm({ ...form, siswa_id: "" });
     };
 
     const submit = (e) => {
@@ -36,6 +53,7 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
                     setEditingId(null);
                     setShowForm(false);
                     setForm(emptyForm);
+                    setKelasFilter("");
                 },
             });
         } else {
@@ -43,6 +61,7 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
                 onSuccess: () => {
                     setShowForm(false);
                     setForm(emptyForm);
+                    setKelasFilter("");
                 },
             });
         }
@@ -50,6 +69,9 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
 
     const startEdit = (w) => {
         setEditingId(w.id);
+        // ===== BARU: auto-set filter kelas agar siswa muncul di dropdown =====
+        const s = siswaList.find((x) => x.id === w.siswa_id);
+        setKelasFilter(s?.kelas ?? "");
         setForm({
             siswa_id: w.siswa_id,
             nama: w.nama,
@@ -105,6 +127,7 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
                             setShowForm(!showForm);
                             setEditingId(null);
                             setForm(emptyForm);
+                            setKelasFilter("");
                         }}
                         className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
                     >
@@ -122,6 +145,28 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
                             {editingId ? "Edit Wali" : "Tambah Wali"}
                         </h3>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            {/* ===== BARU: FILTER KELAS ===== */}
+                            <div>
+                                <label className="text-sm text-gray-600">
+                                    🏫 Filter Kelas{" "}
+                                    <span className="text-xs text-gray-400">
+                                        (mempercepat pencarian siswa)
+                                    </span>
+                                </label>
+                                <select
+                                    value={kelasFilter}
+                                    onChange={(e) => gantiKelas(e.target.value)}
+                                    className={inputClass}
+                                >
+                                    <option value="">-- Semua Kelas --</option>
+                                    {daftarKelas.map((k) => (
+                                        <option key={k} value={k}>
+                                            {k}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="text-sm text-gray-600">
                                     Siswa *
@@ -134,7 +179,7 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
                                     required
                                 >
                                     <option value="">-- Pilih Siswa --</option>
-                                    {siswaList.map((s) => (
+                                    {siswaTerfilter.map((s) => (
                                         <option key={s.id} value={s.id}>
                                             {s.nama} — {s.kelas}
                                         </option>
@@ -145,7 +190,14 @@ export default function Index({ waliMurid, daftarSiswa, params = {} }) {
                                         {errors.siswa_id}
                                     </p>
                                 )}
+                                {/* ===== BARU: info jumlah siswa terfilter ===== */}
+                                <p className="mt-1 text-xs text-gray-500">
+                                    {kelasFilter
+                                        ? `${siswaTerfilter.length} siswa di kelas ${kelasFilter}`
+                                        : `${siswaList.length} siswa seluruh kelas`}
+                                </p>
                             </div>
+
                             <div>
                                 <label className="text-sm text-gray-600">
                                     Nama Wali *
