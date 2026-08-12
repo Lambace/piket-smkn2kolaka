@@ -17,6 +17,7 @@ const statusInfo = {
     izin: { label: "Izin", cls: "bg-yellow-100 text-yellow-700", icon: "📩" },
     dl: { label: "Dinas Luar", cls: "bg-blue-100 text-blue-700", icon: "🚗" },
     lainnya: { label: "Lainnya", cls: "bg-gray-100 text-gray-700", icon: "📝" },
+    alpha: { label: "Alpha", cls: "bg-red-100 text-red-700", icon: "❌" }, // ← BARU
 };
 
 const opsiLainnya = [
@@ -26,13 +27,38 @@ const opsiLainnya = [
     { value: "lainnya", label: "📝 Lainnya" },
 ];
 
-export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
+// ===== BARU: Opsi status untuk modal EDIT =====
+const opsiEdit = [
+    { value: "tepat_waktu", label: "✅ Tepat Waktu" },
+    { value: "terlambat", label: "⏰ Terlambat" },
+    { value: "sakit", label: "🤒 Sakit" },
+    { value: "izin", label: "📩 Izin" },
+    { value: "dl", label: "🚗 Dinas Luar" },
+    { value: "lainnya", label: "📝 Lainnya" },
+    { value: "alpha", label: "❌ Alpha (hapus sebagai hadir)" },
+];
+
+export default function AbsensiIndex({
+    absenHariIni,
+    summary,
+    riwayat,
+    semuaPetugas = [],
+    isKoordinator = false,
+}) {
     const { flash, auth } = usePage().props;
     const [now, setNow] = useState(new Date());
     const [dropOpen, setDropOpen] = useState(false);
     const [modalStatus, setModalStatus] = useState(null);
     const [keterangan, setKeterangan] = useState("");
     const [err, setErr] = useState("");
+
+    // ===== BARU: Modal Edit =====
+    const [editModal, setEditModal] = useState(null); // { id, nama, status, jam_masuk, keterangan }
+    const [editForm, setEditForm] = useState({
+        status: "",
+        jam_masuk: "",
+        keterangan: "",
+    });
 
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 1000);
@@ -71,7 +97,42 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
         });
     };
 
+    // ===== BARU: Buka modal edit =====
+    const bukaEdit = (p) => {
+        setEditModal(p);
+        setEditForm({
+            status: p.status === "alpha" ? "tepat_waktu" : p.status,
+            jam_masuk: p.jam_masuk ? p.jam_masuk.slice(0, 5) : "",
+            keterangan: p.keterangan || "",
+        });
+    };
+
+    // ===== BARU: Simpan edit =====
+    const simpanEdit = (e) => {
+        e.preventDefault();
+        router.put(
+            route("absensi-petugas.update", editModal.absen_id),
+            editForm,
+            {
+                onSuccess: () => setEditModal(null),
+            },
+        );
+    };
+
+    // ===== BARU: Hapus absensi =====
+    const hapusAbsen = (p) => {
+        if (!confirm(`Hapus absensi ${p.nama}?`)) return;
+        router.delete(route("absensi-petugas.destroy", p.absen_id));
+    };
+
+    // ===== BARU: Cek hak edit/hapus =====
+    const bolehEdit = (p) => isKoordinator || p.nama === auth?.user?.name;
+
     const infoModal = opsiLainnya.find((o) => o.value === modalStatus);
+
+    // ===== BARU: Statistik hari ini =====
+    const sudahAbsen = semuaPetugas.filter((p) => p.sudah_absen).length;
+    const belumAbsen = semuaPetugas.length - sudahAbsen;
 
     return (
         <AuthenticatedLayout
@@ -83,7 +144,6 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
         >
             <Head title="Absensi Piket" />
 
-            {/* ===== LATAR GRADASI + KARTU MELAYANG RESPONSIF ===== */}
             <div className="rounded-3xl bg-gradient-to-br from-slate-200 via-slate-100 to-teal-100 p-4 sm:p-6 lg:p-8">
                 <div className="mx-auto max-w-5xl">
                     {flash?.success && (
@@ -97,9 +157,8 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                         </div>
                     )}
 
-                    {/* ═══════════ SATU KARTU MELAYANG ═══════════ */}
+                    {/* ═══════════ KARTU UTAMA ═══════════ */}
                     <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-2xl ring-1 ring-slate-900/10">
-                        {/* ── 1. HEADER TIM (horizontal di desktop) ── */}
                         <div className="bg-slate-900 px-6 py-5 text-white">
                             <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
                                 <div className="text-center md:text-left">
@@ -137,11 +196,9 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                             </div>
                         </div>
 
-                        {/* ── BODY: 2 KOLOM DI DESKTOP ── */}
                         <div className="grid gap-4 bg-slate-50 p-4 lg:grid-cols-5 lg:p-6">
-                            {/* ===== KOLOM KIRI (2/5): Kehadiran + Aksi ===== */}
+                            {/* ===== KOLOM KIRI ===== */}
                             <div className="space-y-4 lg:col-span-2">
-                                {/* ── 2. RINGKASAN KEHADIRAN ── */}
                                 <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
                                     <h4 className="text-center font-bold text-gray-800">
                                         Kehadiran
@@ -185,18 +242,15 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                                     </p>
                                 </div>
 
-                                {/* ── 3. AKSI ABSEN / STATUS HARI INI ── */}
                                 {!absenHariIni ? (
                                     <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 text-white shadow-lg">
                                         <p className="mb-4 text-center font-bold">
                                             {tanggal}
                                         </p>
-
                                         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
                                             <button
                                                 onClick={absenMasuk}
                                                 className="flex w-full flex-col items-center rounded-2xl bg-green-600 px-6 py-3 shadow-lg transition hover:scale-105 hover:bg-green-700 sm:w-auto sm:rounded-full sm:px-8"
-                                                title="Klik untuk absen masuk — langsung tersimpan"
                                             >
                                                 <span className="font-mono text-lg font-extrabold">
                                                     🕐 {jam} WITA
@@ -205,7 +259,6 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                                                     Absen Sekarang
                                                 </span>
                                             </button>
-
                                             <div className="relative w-full sm:w-auto">
                                                 <button
                                                     onClick={() =>
@@ -238,7 +291,6 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                                                 )}
                                             </div>
                                         </div>
-
                                         <p className="mt-4 text-center text-[11px] text-emerald-100">
                                             Klik <b>Masuk</b> = langsung
                                             tersimpan • <b>Lainnya</b> = wajib
@@ -276,14 +328,14 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                                         </div>
                                         {absenHariIni.keterangan && (
                                             <p className="mt-2 rounded-lg bg-gray-50 p-2 text-xs italic text-gray-600">
-                                                “{absenHariIni.keterangan}”
+                                                "{absenHariIni.keterangan}"
                                             </p>
                                         )}
                                     </div>
                                 )}
                             </div>
 
-                            {/* ===== KOLOM KANAN (3/5): RIWAYAT (scroll di desktop) ===== */}
+                            {/* ===== KOLOM KANAN: RIWAYAT ===== */}
                             <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 lg:col-span-3">
                                 <h4 className="mb-3 font-bold text-gray-800">
                                     📜 Riwayat Absensi Terakhir
@@ -314,7 +366,7 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                                                     </p>
                                                     {r.keterangan && (
                                                         <p className="text-xs italic text-gray-500">
-                                                            “{r.keterangan}”
+                                                            "{r.keterangan}"
                                                         </p>
                                                     )}
                                                 </div>
@@ -334,6 +386,123 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                                         ))
                                     )}
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* ===== BARU: DAFTAR SEMUA PETUGAS HARI INI ===== */}
+                        <div className="border-t border-slate-100 bg-white p-4 lg:p-6">
+                            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <h4 className="text-lg font-bold text-gray-800">
+                                        📋 Daftar Petugas Hari Ini
+                                    </h4>
+                                    <p className="text-xs text-gray-500">
+                                        {sudahAbsen} sudah absen • {belumAbsen}{" "}
+                                        belum absen (alpha)
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs">
+                                    <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700">
+                                        ✅ {sudahAbsen}
+                                    </span>
+                                    <span className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">
+                                        ❌ {belumAbsen}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-2 md:grid-cols-2">
+                                {semuaPetugas.length === 0 ? (
+                                    <p className="col-span-2 py-8 text-center text-sm text-gray-400">
+                                        Tidak ada data petugas.
+                                    </p>
+                                ) : (
+                                    semuaPetugas.map((p) => {
+                                        const info =
+                                            statusInfo[p.status] ||
+                                            statusInfo.alpha;
+                                        const punyaAkses = bolehEdit(p);
+                                        const isOwn =
+                                            p.nama === auth?.user?.name;
+
+                                        return (
+                                            <div
+                                                key={p.id}
+                                                className={`flex items-center justify-between rounded-xl border p-3 transition ${
+                                                    p.sudah_absen
+                                                        ? "border-gray-200 bg-white"
+                                                        : "border-red-200 bg-red-50/50"
+                                                }`}
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="truncate text-sm font-semibold text-gray-800">
+                                                            {p.nama}
+                                                            {isOwn && (
+                                                                <span className="ml-1 text-[10px] text-indigo-600">
+                                                                    (Anda)
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                    <p className="truncate text-xs text-gray-500">
+                                                        {p.jabatan}
+                                                    </p>
+                                                    {p.keterangan && (
+                                                        <p className="mt-0.5 truncate text-[11px] italic text-gray-500">
+                                                            "{p.keterangan}"
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <div className="flex shrink-0 items-center gap-2">
+                                                    <div className="text-right">
+                                                        <span
+                                                            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${info.cls}`}
+                                                        >
+                                                            {info.icon}{" "}
+                                                            {info.label}
+                                                        </span>
+                                                        {p.jam_masuk && (
+                                                            <p className="mt-0.5 font-mono text-[11px] text-gray-600">
+                                                                {p.jam_masuk.slice(
+                                                                    0,
+                                                                    5,
+                                                                )}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {p.sudah_absen &&
+                                                        punyaAkses && (
+                                                            <div className="flex gap-1">
+                                                                <button
+                                                                    onClick={() =>
+                                                                        bukaEdit(
+                                                                            p,
+                                                                        )
+                                                                    }
+                                                                    className="rounded-lg bg-yellow-100 p-1.5 text-yellow-700 transition hover:bg-yellow-200"
+                                                                    title="Edit absensi"
+                                                                >
+                                                                    ✏️
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        hapusAbsen(
+                                                                            p,
+                                                                        )
+                                                                    }
+                                                                    className="rounded-lg bg-red-100 p-1.5 text-red-700 transition hover:bg-red-200"
+                                                                    title="Hapus absensi"
+                                                                >
+                                                                    🗑️
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     </div>
@@ -376,6 +545,102 @@ export default function AbsensiIndex({ absenHariIni, summary, riwayat }) {
                             </button>
                             <button className="flex-1 rounded-lg bg-teal-600 px-3 py-2 text-sm font-bold text-white hover:bg-teal-700">
                                 💾 Simpan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {/* ===== BARU: MODAL EDIT ABSENSI ===== */}
+            {editModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <form
+                        onSubmit={simpanEdit}
+                        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+                    >
+                        <h3 className="mb-1 font-bold text-gray-800">
+                            ✏️ Edit Absensi
+                        </h3>
+                        <p className="mb-4 text-sm text-gray-600">
+                            {editModal.nama}
+                        </p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                    Status
+                                </label>
+                                <select
+                                    value={editForm.status}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            status: e.target.value,
+                                        })
+                                    }
+                                    className="w-full rounded-lg border-gray-300 text-sm"
+                                    required
+                                >
+                                    {opsiEdit.map((o) => (
+                                        <option key={o.value} value={o.value}>
+                                            {o.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                    Jam Masuk{" "}
+                                    <span className="text-gray-400">
+                                        (opsional, format HH:MM)
+                                    </span>
+                                </label>
+                                <input
+                                    type="time"
+                                    value={editForm.jam_masuk}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            jam_masuk: e.target.value,
+                                        })
+                                    }
+                                    className="w-full rounded-lg border-gray-300 text-sm font-mono"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                    Keterangan{" "}
+                                    <span className="text-gray-400">
+                                        (opsional)
+                                    </span>
+                                </label>
+                                <textarea
+                                    value={editForm.keterangan}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            keterangan: e.target.value,
+                                        })
+                                    }
+                                    rows={3}
+                                    placeholder="Contoh: Sakit demam, ada surat dokter"
+                                    className="w-full rounded-lg border-gray-300 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setEditModal(null)}
+                                className="flex-1 rounded-lg bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-700"
+                            >
+                                Batal
+                            </button>
+                            <button className="flex-1 rounded-lg bg-teal-600 px-3 py-2 text-sm font-bold text-white hover:bg-teal-700">
+                                💾 Simpan Perubahan
                             </button>
                         </div>
                     </form>

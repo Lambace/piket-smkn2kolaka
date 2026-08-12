@@ -158,7 +158,7 @@ export default function Index({
                         >
                             {loading === "pdf"
                                 ? "⏳ Menyiapkan..."
-                                : "📄 Export PDF"}
+                                : "📄 Download Laporan"}
                         </button>
 
                         {/* ===== BARU: Daftar Hadir Piket ===== */}
@@ -170,7 +170,7 @@ export default function Index({
                         >
                             {loading === "daftar-hadir"
                                 ? "⏳ Menyiapkan..."
-                                : "📋 Daftar Hadir Piket"}
+                                : "📋 Download Daftar Hadir Piket"}
                         </button>
                     </div>
                 </div>
