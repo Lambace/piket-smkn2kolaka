@@ -36,6 +36,7 @@
     /* ===== Blok tanda tangan ===== */
     table.ttd { width: 100%; margin-top: 24px; border-collapse: collapse; }
     table.ttd td { width: 50%; text-align: center; vertical-align: top; font-size: 10pt; border: none; padding: 0; }
+    .ttd-tanggal { height: 16px; margin-bottom: 2px; }
     .ttd-space { height: 60px; }
     .ttd-nama { font-weight: bold; text-decoration: underline; }
     .ttd-nip { font-size: 9.5pt; margin-top: 3px; }
@@ -52,7 +53,7 @@
             <div class="kop-baris1">{{ $pengaturan->kop_baris1 ?? 'PEMERINTAH PROVINSI SULAWESI TENGGARA' }}</div>
             <div class="kop-baris2">{{ $pengaturan->kop_baris2 ?? 'DINAS PENDIDIKAN DAN KEBUDAYAAN' }}</div>
             <div class="kop-nama">{{ strtoupper($pengaturan->kop_nama_sekolah ?: ($pengaturan->nama_sekolah ?? 'SEKOLAH MENENGAH KEJURUAN (SMK) NEGERI 2 KOLAKA')) }}</div>
-            <div class="kop-alamat">{{ $pengaturan->alamat ?? 'Jln. Poros Kolaka - Pomolaa KM. 16 Kec. Baula Kab. Kolaka Provinsi SULTRA' }}</div>
+            <div class="kop-alamat">{{ $pengaturan->alamat ?? 'Jln. Poros Kolaka - Pomalaa KM. 16 Kec. Baula Kab. Kolaka Provinsi SULTRA' }}</div>
             <div class="kop-alamat">
                 E-mail <span class="kop-link">{{ $pengaturan->email ?? 'smknsatubaula@yahoo.co.id' }}</span>
                 &nbsp;&nbsp;HP. {{ $pengaturan->telepon ?? '082346999111' }}
@@ -128,6 +129,7 @@
     <tr>
         {{-- KIRI: KEPALA SEKOLAH --}}
         <td>
+            <div class="ttd-tanggal">&nbsp;</div>
             Kepala Sekolah
             <div class="ttd-space"></div>
             <span class="ttd-nama">
@@ -138,8 +140,9 @@
             </div>
         </td>
 
-        {{-- KANAN: KOORDINATOR PIKET --}}
+        {{-- KANAN: KOORDINATOR PIKET + tempat, tanggal --}}
         <td>
+            <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
             Koordinator Piket
             <div class="ttd-space"></div>
             <span class="ttd-nama">

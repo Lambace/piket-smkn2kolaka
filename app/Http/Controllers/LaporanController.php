@@ -67,7 +67,7 @@ class LaporanController extends Controller
         return Excel::download(new LaporanExport($data, $labelPeriode, $jenis), $namaFile);
     }
 
-    // ===== METHOD PDF LENGKAP =====
+    // ===== METHOD PDF LENGKAP (LAPORAN PIKET HARIAN) =====
     public function pdf(Request $request)
     {
         try {
@@ -191,19 +191,21 @@ class LaporanController extends Controller
             // ===== KOP + LOGO (via Storage — WAJIB di Laravel Cloud) =====
             $pengaturan = Pengaturan::first();
 
-            // Logo SEKOLAH (base64 via Storage)
             $logo = null;
             if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
                 $mime = Storage::disk('public')->mimeType($pengaturan->logo) ?: 'image/png';
                 $logo = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo));
             }
 
-            // Logo INSTANSI (base64 via Storage)
             $logoInstansi = null;
             if ($pengaturan?->logo_instansi && Storage::disk('public')->exists($pengaturan->logo_instansi)) {
                 $mime = Storage::disk('public')->mimeType($pengaturan->logo_instansi) ?: 'image/png';
                 $logoInstansi = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
             }
+
+            // ===== BARU: DATA TANDA TANGAN =====
+            $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
+            $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.now()->isoFormat('D MMMM Y');
 
             $totalData = $absensiPetugas->count()
                        + $keterlambatan->count()
@@ -233,6 +235,8 @@ class LaporanController extends Controller
                 'totalData'         => $totalData,
                 'dicetakOleh'       => auth()->user()?->name ?? 'Sistem Otomatis',
                 'waktuCetak'        => now()->format('d-m-Y H:i'),
+                'koordinator'       => $koordinator,        // ← BARU
+                'tempatTanggal'     => $tempatTanggal,      // ← BARU
             ];
 
             $pdf = Pdf::loadView('laporan.pdf', $data)->setPaper('a4', 'portrait');
@@ -333,16 +337,18 @@ class LaporanController extends Controller
             ? $tanggalRef->isoFormat('dddd, D MMMM Y')
             : $dari->isoFormat('D MMMM Y').' s/d '.Carbon::parse($sampaiStr)->isoFormat('D MMMM Y');
 
-        // ← BARU: Ambil koordinator untuk blok tanda tangan
+        // ===== DATA TANDA TANGAN =====
         $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
+        $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.now()->isoFormat('D MMMM Y');
 
         $pdf = Pdf::loadView('laporan.daftar-hadir', [
-            'pengaturan'   => $pengaturan,
-            'logo'         => $logo,
-            'logoInstansi' => $logoInstansi,
-            'rows'         => $rows,
-            'hariTanggal'  => $hariTanggal,
-            'koordinator'  => $koordinator,   // ← BARU: dilewatkan ke view
+            'pengaturan'    => $pengaturan,
+            'logo'          => $logo,
+            'logoInstansi'  => $logoInstansi,
+            'rows'          => $rows,
+            'hariTanggal'   => $hariTanggal,
+            'koordinator'   => $koordinator,
+            'tempatTanggal' => $tempatTanggal,
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('Daftar-Hadir-Piket-'.$dariStr.'.pdf');
