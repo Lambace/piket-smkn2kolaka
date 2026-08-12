@@ -209,7 +209,7 @@ export default function KartuAbsensiPetugas({ data }) {
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-green-400">
                                     <span>✅</span>
-                                    <span>Terdaftar</span>
+                                    <span>Hadir</span>
                                 </h4>
                                 <span className="rounded-full bg-green-500/20 px-2.5 py-0.5 text-xs font-bold text-green-400">
                                     {hadirList.length} orang
