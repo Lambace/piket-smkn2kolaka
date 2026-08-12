@@ -61,18 +61,11 @@
     .ttd-nama { font-weight: bold; text-decoration: underline; }
     .ttd-nip { font-size: 9.5pt; margin-top: 3px; }
 
-    .footer-cetak { margin-top: 10px; font-size: 7.5pt; color: #a0aec0; text-align: right; }
+    
 </style>
 </head>
 <body>
 
-{{-- ===== META ATAS ===== --}}
-<table class="meta">
-    <tr>
-        <td>{{ now()->format('d/m/y, H:i') }}</td>
-        <td class="right">Laporan Piket Tim Piket {{ strtoupper(now()->isoFormat('dddd')) }}</td>
-    </tr>
-</table>
 
 {{-- ===== KOP ===== --}}
 <table class="kop-table">
@@ -333,9 +326,6 @@
     </tr>
 </table>
 
-<div class="footer-cetak">
-    Dicetak oleh: {{ $dicetakOleh }} — {{ $waktuCetak }}
-</div>
 
 {{-- ===== BLOK TANDA TANGAN ===== --}}
 <table class="ttd">
