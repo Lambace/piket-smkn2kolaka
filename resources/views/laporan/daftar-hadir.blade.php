@@ -79,7 +79,7 @@
 <div class="judul-blok">
     <div class="j1">
         @if($rekap)
-            REKAPAN DAFTAR HADIR PIKET {{ $labelPeriode }}
+            REKAPAN DAFTAR HADIR PIKET
         @else
             DAFTAR HADIR PIKET
         @endif
