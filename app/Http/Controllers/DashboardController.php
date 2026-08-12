@@ -187,7 +187,7 @@ class DashboardController extends Controller
         // ===== ABSENSI PETUGAS + ALPHA OTOMATIS =====
         $tanggalHariIni = Carbon::today()->toDateString();
         $jamSekarang    = now()->format('H:i');
-        $batasAlpha     = '08:00'; // setelah jam ini, petugas belum absen = ALPHA
+        $batasAlpha     = '08:30'; // setelah jam ini, petugas belum absen = ALPHA
 
         // 1. Petugas yang SUDAH absen hari ini
         $absensiTercatat = AbsensiPetugas::where('tanggal', $tanggalHariIni)
