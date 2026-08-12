@@ -43,6 +43,20 @@ export default function Edit({ pengaturan }) {
     const [website, setWebsite] = useState(pengaturan.website || "");
     const [server, setServer] = useState(pengaturan.server || "");
 
+    // ===== BARU: Data Tanda Tangan =====
+    const [kepalaSekolah, setKepalaSekolah] = useState(
+        pengaturan.kepala_sekolah || "",
+    );
+    const [nipKepalaSekolah, setNipKepalaSekolah] = useState(
+        pengaturan.nip_kepala_sekolah || "",
+    );
+    const [koordinatorPiket, setKoordinatorPiket] = useState(
+        pengaturan.koordinator_piket || "",
+    );
+    const [nipKoordinatorPiket, setNipKoordinatorPiket] = useState(
+        pengaturan.nip_koordinator_piket || "",
+    );
+
     const [processing, setProcessing] = useState(false);
 
     const submit = (e) => {
@@ -68,6 +82,12 @@ export default function Edit({ pengaturan }) {
         formData.append("email", email);
         formData.append("website", website);
         formData.append("server", server);
+
+        // BARU: Data Tanda Tangan
+        formData.append("kepala_sekolah", kepalaSekolah);
+        formData.append("nip_kepala_sekolah", nipKepalaSekolah);
+        formData.append("koordinator_piket", koordinatorPiket);
+        formData.append("nip_koordinator_piket", nipKoordinatorPiket);
 
         setProcessing(true);
         router.post(route("pengaturan.update"), formData, {
@@ -439,6 +459,136 @@ export default function Edit({ pengaturan }) {
                                 />
                             </div>
                         </div>
+                    </div>
+
+                    {/* ===== BARU: DATA TANDA TANGAN ===== */}
+                    <div>
+                        <h3 className="mb-3 text-base font-semibold text-gray-800">
+                            🖋️ Data Tanda Tangan (PDF Laporan)
+                        </h3>
+                        <p className="mb-3 text-xs text-gray-500">
+                            Data ini akan ditampilkan di blok tanda tangan PDF
+                            (Kepala Sekolah & Koordinator Piket). Kosongkan
+                            untuk memakai titik-titik.
+                        </p>
+
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {/* Kepala Sekolah */}
+                            <div className="md:col-span-2">
+                                <div className="rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+                                    <h4 className="mb-2 text-sm font-semibold text-blue-900">
+                                        👤 Kepala Sekolah (Kiri)
+                                    </h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className={labelClass}>
+                                                Nama Lengkap
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={kepalaSekolah}
+                                                onChange={(e) =>
+                                                    setKepalaSekolah(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Drs. Ahmad Yani, M.Pd"
+                                                className={inputClass}
+                                            />
+                                            {errors.kepala_sekolah && (
+                                                <p className="mt-1 text-xs text-red-600">
+                                                    {errors.kepala_sekolah}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>
+                                                NIP
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={nipKepalaSekolah}
+                                                onChange={(e) =>
+                                                    setNipKepalaSekolah(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="196501011990031001"
+                                                maxLength={30}
+                                                className={`${inputClass} font-mono`}
+                                            />
+                                            {errors.nip_kepala_sekolah && (
+                                                <p className="mt-1 text-xs text-red-600">
+                                                    {errors.nip_kepala_sekolah}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Koordinator Piket */}
+                            <div className="md:col-span-2">
+                                <div className="rounded-lg border border-purple-200 bg-purple-50/30 p-4">
+                                    <h4 className="mb-2 text-sm font-semibold text-purple-900">
+                                        👥 Koordinator Piket (Kanan)
+                                    </h4>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className={labelClass}>
+                                                Nama Lengkap
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={koordinatorPiket}
+                                                onChange={(e) =>
+                                                    setKoordinatorPiket(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Agussalim Tajuddin, S.Pd"
+                                                className={inputClass}
+                                            />
+                                            {errors.koordinator_piket && (
+                                                <p className="mt-1 text-xs text-red-600">
+                                                    {errors.koordinator_piket}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>
+                                                NIP
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={nipKoordinatorPiket}
+                                                onChange={(e) =>
+                                                    setNipKoordinatorPiket(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="197501012000031001"
+                                                maxLength={30}
+                                                className={`${inputClass} font-mono`}
+                                            />
+                                            {errors.nip_koordinator_piket && (
+                                                <p className="mt-1 text-xs text-red-600">
+                                                    {
+                                                        errors.nip_koordinator_piket
+                                                    }
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p className="mt-3 text-xs text-gray-500">
+                            💡 Jika dikosongkan, PDF akan menampilkan
+                            titik-titik (siap ditulis tangan). Jika diisi, nama
+                            & NIP akan terisi otomatis dengan garis bawah.
+                        </p>
                     </div>
 
                     {/* Tombol Simpan */}
