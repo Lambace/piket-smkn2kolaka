@@ -385,7 +385,7 @@ export default function Login({ status, canResetPassword }) {
 
                     <p className="mt-6 text-center text-xs text-gray-400 lg:hidden">
                         © {new Date().getFullYear()} {pengaturan.nama_sekolah}
-                        Designed by Aghoes
+                        _Designed by Aghoes
                     </p>
                 </div>
             </div>
