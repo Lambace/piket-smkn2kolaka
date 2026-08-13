@@ -96,7 +96,7 @@ class KirimLaporanPdfKeGrup extends Command
 
         // ===== Cleanup =====
         Storage::disk('public')->delete($storagePath);
-        $this->info('🧹 File PDF sementara dihapus dari server');
+         $this->info('📌 File PDF disimpan sementara (dibersihkan otomatis tiap malam).');
 
         if ($notifikasi->status === 'terkirim') {
             $this->info("✅ PDF Laporan + Live View berhasil terkirim ke {$grup}");

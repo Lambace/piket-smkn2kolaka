@@ -28,3 +28,9 @@ Schedule::command('laporan:kirim-pdf')
     ->onSuccess(function () {
         \Illuminate\Support\Facades\Log::info('Laporan PDF berhasil terkirim ke grup WA');
     });
+
+// ===== PEMBERSIHAN FILE PDF LAMA =====
+// Setiap hari pukul 03:00 WITA - hapus PDF berusia lebih dari 2 hari
+Schedule::command('laporan:bersih-pdf')
+    ->timezone('Asia/Makassar')
+    ->dailyAt('03:00');
