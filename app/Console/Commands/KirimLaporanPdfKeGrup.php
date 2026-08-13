@@ -73,14 +73,14 @@ class KirimLaporanPdfKeGrup extends Command
             '❌ Alpha         : *'.$jumlahAlpha.' orang*',
             '━━━━━━━━━━━━━━━━━━━━',
             '',
-            '🔴 *Live View dashboard piket hari ini*:',
+            '🔴 *Lihat Dashboard piket hari ini*:',
             $urlTv,
             '',
             '📥 *Download PDF Laporan*:',
             $pdfUrl,
             '',
             '━━━━━━━━━━━━━━━━━━━━',
-            '_© Sistem Informasi Piket_',
+            '_© Sistem Informasi Piket_Si Piket',
         ]);
 
         $this->info('3️⃣  Kirim pesan ke WA...');
