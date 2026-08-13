@@ -57,7 +57,7 @@ class KirimLaporanPdfKeGrup extends Command
         // =====================================================
         // LANGKAH 3: Buat link publik untuk file itu
         // =====================================================
-        $pdfUrl = url('storage/'.$storagePath);
+        $pdfUrl = route('laporan.download', $filename);
         $this->info('3️⃣  Link publik: '.$pdfUrl);
 
         // ===== Data caption =====
