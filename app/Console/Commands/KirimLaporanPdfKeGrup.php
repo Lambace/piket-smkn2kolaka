@@ -21,7 +21,7 @@ class KirimLaporanPdfKeGrup extends Command
     protected $signature = 'laporan:kirim-pdf {--grup= : ID grup/nomor WA (default: env WA_GROUP_ID)}';
     protected $description = 'Generate PDF laporan harian, kirim file PDF beneran + banner Live View ke grup WA';
 
-    public function handle(): int
+        public function handle(): int
     {
         $grup = $this->option('grup') ?? env('WA_GROUP_ID');
 
@@ -30,9 +30,7 @@ class KirimLaporanPdfKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // =====================================================
-        // LANGKAH 1: DomPDF generate PDF di server Laravel
-        // =====================================================
+        // ===== 1. Generate PDF dengan DomPDF =====
         $this->info('1️⃣  Generate PDF dengan DomPDF...');
         try {
             $pdfData = $this->generatePdfData();
@@ -44,65 +42,28 @@ class KirimLaporanPdfKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // =====================================================
-        // LANGKAH 2: Simpan jadi file "Laporan Harian.pdf"
-        // =====================================================
+        // ===== 2. Simpan file (biar link download aktif) =====
         $tanggal = now()->format('Y-m-d');
         $filename = 'Laporan-Harian-'.$tanggal.'.pdf';
-        $storagePath = 'laporan/'.$filename;
+        Storage::disk('public')->put('laporan/'.$filename, $pdfContent);
+        $this->info('2️⃣  PDF tersimpan: laporan/'.$filename);
 
-        Storage::disk('public')->put($storagePath, $pdfContent);
-        $this->info('2️⃣  PDF tersimpan di server: '.$storagePath);
-
-        // =====================================================
-        // LANGKAH 3: Buat link publik untuk file itu
-        // =====================================================
+        // ===== 3. Link publik =====
         $pdfUrl = route('laporan.download', $filename);
-        $this->info('3️⃣  Link publik: '.$pdfUrl);
+        $key = env('DISPLAY_KEY', 'piket2026');
+        $urlTv = url('/tampil').'?k='.$key;
 
         // ===== Data caption =====
         $now = now()->locale('id');
         $sekolah = Pengaturan::first()?->nama_sekolah ?? 'SMKN 2 KOLAKA';
         $hari = strtoupper($now->isoFormat('dddd'));
-        $key = env('DISPLAY_KEY', 'piket2026');
-        $urlTv = url('/tampil').'?k='.$key;
 
         $jumlahHadir = AbsensiPetugas::where('tanggal', now()->toDateString())->count();
         $jumlahPetugas = User::whereIn('role', ['petugas', 'koordinator'])->count();
         $jumlahAlpha = max(0, $jumlahPetugas - $jumlahHadir);
 
-        $wa = new WhatsAppService();
-
-        // =====================================================
-        // LANGKAH 4-6: Fonnte download PDF → upload ke WA
-        //              Grup menerima FILE PDF BENERAN
-        // =====================================================
-        $this->info('4️⃣  Kirim file PDF via Fonnte (Fonnte akan download & upload ulang)...');
-
-        $captionPdf = implode("\n", [
-            '*📄 LAPORAN HARIAN TIM PIKET '.$hari.'*',
-            '_'.$sekolah.'_',
-            $now->isoFormat('dddd, D MMMM Y'),
-        ]);
-
-         $notifPdf = $wa->kirimPdf($grup, $pdfUrl, $filename, $captionPdf);
-        if ($notifPdf->status !== 'terkirim') {
-            $this->error('❌ Gagal kirim PDF: '.($notifPdf->pesan_error ?? 'unknown'));
-            return Command::FAILURE;
-        }
-        $this->info('6️⃣  ✅ Grup WA menerima FILE PDF beneran!');
-
-        // Jeda 3 detik biar tidak kena rate limit Fonnte
-        sleep(3);
-
-        // =====================================================
-        // LANGKAH 7: Banner + link Live View
-        // =====================================================
-        $this->info('7️⃣  Kirim banner + link Live View...');
-
-        $logoUrl = (Pengaturan::first()?->logo) ? route('logo.sekolah') : null;
-
-        $captionBanner = implode("\n", [
+        // ===== 4. SATU PESAN: banner + Live View + Download PDF =====
+        $caption = implode("\n", [
             '*LAPORAN TIM PIKET '.$hari.'*',
             '_'.$sekolah.'_',
             $now->isoFormat('dddd, D MMMM Y'),
@@ -115,28 +76,28 @@ class KirimLaporanPdfKeGrup extends Command
             '🔴 *Live View dashboard piket hari ini*:',
             $urlTv,
             '',
+            '📥 *Download PDF Laporan*:',
+            $pdfUrl,
+            '',
+            '━━━━━━━━━━━━━━━━━━━━',
             '_© Sistem Informasi Piket_',
         ]);
 
-        if ($logoUrl) {
-            $notifBanner = $wa->sendImage($grup, $logoUrl, $captionBanner);
-        } else {
-            $notifBanner = $wa->kirim($grup, $captionBanner);
-        }
+        $this->info('3️⃣  Kirim pesan ke WA...');
+        $wa = new WhatsAppService();
+        $notif = $wa->kirim($grup, $caption);
 
-        // ===== File TIDAK dihapus sekarang =====
-        // Fonnte butuh waktu download; pembersihan via laporan:bersih-pdf (tiap malam)
-        $this->info('📌 File PDF disimpan (dibersihkan otomatis tiap malam).');
+        // File disimpan 2 hari (dibersihkan otomatis oleh laporan:bersih-pdf)
+        $this->info('📌 File PDF disimpan 2 hari untuk link download.');
 
-        if ($notifBanner->status === 'terkirim') {
-            $this->info('✅ Banner + Live View terkirim!');
+        if ($notif->status === 'terkirim') {
+            $this->info('✅ Laporan terkirim ke '.$grup);
             return Command::SUCCESS;
         }
 
-        $this->error('⚠️ PDF terkirim, tapi banner gagal: '.($notifBanner->pesan_error ?? 'unknown'));
+        $this->error('❌ Gagal kirim: '.($notif->pesan_error ?? 'unknown'));
         return Command::FAILURE;
     }
-
     // ===== Data untuk view laporan.pdf =====
     private function generatePdfData(): array
     {
