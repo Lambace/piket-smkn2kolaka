@@ -7,6 +7,7 @@ import RingkasanPiket from "./Dashboard/Components/RingkasanPiket";
 import TabelPoinTertinggi from "./Dashboard/Components/TabelPoinTertinggi";
 import TabelTerlambatTertinggi from "./Dashboard/Components/TabelTerlambatTertinggi";
 import DistribusiPelanggaran from "./Dashboard/Components/DistribusiPelanggaran";
+import KelasMelanggarTertinggi from "./Dashboard/Components/KelasMelanggarTertinggi"; // ← BARU
 import DonutChart from "./Dashboard/Components/DonutChart";
 import AktivitasTerbaru from "./Dashboard/Components/AktivitasTerbaru";
 
@@ -40,7 +41,7 @@ export default function Dashboard(props) {
                     <a
                         href={route("papan.informasi")}
                         className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-700"
-                        title="Buka Papan Informasi Digital — cetak / simpan sebagai PDF"
+                        title="Buka Papan Informasi Digital"
                     >
                         ℹ️ Tentang Aplikasi
                     </a>
@@ -104,20 +105,31 @@ export default function Dashboard(props) {
                     />
                 </div>
 
-                {/* Baris 3: Donut status | Distribusi | Aktivitas */}
+                {/* BARIS BARU: Kelas Melanggar Tertinggi (ganti hari/jenis) */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-1">
+                        <KelasMelanggarTertinggi
+                            data={props.kelasMelanggarTertinggi}
+                        />
+                    </div>
                     <DonutChart
                         data={props.donutStatusPelanggaran}
                         judul="🧩 Status Pelanggaran"
                     />
-                    <DistribusiPelanggaran data={props.jenisPelanggaran} />
                     <AktivitasTerbaru data={props.aktivitas} />
                 </div>
 
-                {/* Baris 4: Tabel top siswa */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <TabelPoinTertinggi data={props.topPelanggaran} />
-                    <TabelTerlambatTertinggi data={props.topTerlambat} />
+                {/* Baris berikutnya: Distribusi + Tabel top siswa */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <DistribusiPelanggaran data={props.jenisPelanggaran} />
+                    <div className="lg:col-span-2">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            <TabelPoinTertinggi data={props.topPelanggaran} />
+                            <TabelTerlambatTertinggi
+                                data={props.topTerlambat}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

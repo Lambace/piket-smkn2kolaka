@@ -60,7 +60,7 @@ class DashboardController extends Controller
             'total_siswa' => Siswa::where('aktif', true)->count(),
             'terlambat' => Keterlambatan::whereBetween('tanggal', [$dariTanggal, $sampaiTanggal])->count(),
             'izin_keluar' => IzinKeluar::whereBetween('tanggal', [$dariTanggal, $sampaiTanggal])->count(),
-            'pelanggaran' => Pelanggaran::whereBetween('tanggal', [$dariTanggal, $sampaiTanggal])->count(),
+            'pelanggaran' => Pelanggaran::whereDate('tanggal', '>=', $dariTanggal) ->whereDate('tanggal', '<=', $sampaiTanggal)->count(),
             'tamu' => BukuTamu::whereBetween('tanggal_kunjungan', [$dariTanggal, $sampaiTanggal])->count(),
             'tamu_masih_di_sekolah' => BukuTamu::whereDate('tanggal_kunjungan', Carbon::today())
                 ->whereNull('jam_keluar')->count(),
@@ -139,6 +139,25 @@ class DashboardController extends Controller
                 'jumlah' => (int) ($k->jumlah ?? 0),
                 'rata_menit' => round((float) ($k->rata_menit ?? 0), 1),
             ]);
+
+                        // ===== KELAS MELANGGAR TERTINGGI (dalam rentang filter) =====
+            $kelasMelanggarTertinggi = Pelanggaran::select(
+                    'siswa.kelas as kelas',
+                    DB::raw('COUNT(*) as jumlah'),
+                    DB::raw('SUM(pelanggaran.poin) as total_poin')
+                )
+                ->join('siswa', 'siswa.id', '=', 'pelanggaran.siswa_id')
+                ->whereDate('pelanggaran.tanggal', '>=', $dariTanggal)
+                ->whereDate('pelanggaran.tanggal', '<=', $sampaiTanggal)
+                ->groupBy('siswa.kelas')
+                ->orderByDesc('jumlah')
+                ->limit(5)
+                ->get()
+                ->map(fn ($k) => [
+                    'kelas'      => $k->kelas ?? 'Tanpa Kelas',
+                    'jumlah'     => (int) $k->jumlah,
+                    'total_poin' => (int) ($k->total_poin ?? 0),
+                ]);
 
         // ===== Aktivitas Terbaru =====
         $aktivitas = collect();
@@ -232,6 +251,7 @@ class DashboardController extends Controller
             'donutJurusan' => $donutJurusan,
             'donutStatusPelanggaran' => $donutStatusPelanggaran,
             'jenisPelanggaran' => $jenisPelanggaran,
+            'kelasMelanggarTertinggi' => $kelasMelanggarTertinggi,  
             'topPelanggaran' => $topPelanggaran,
             'topTerlambat' => $topTerlambat,
             'aktivitas' => $aktivitas,
