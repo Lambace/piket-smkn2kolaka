@@ -2,7 +2,7 @@ import { Head, usePoll, usePage } from "@inertiajs/react";
 import { useEffect, useState } from "react";
 import KartuAbsensiPetugas from "./Dashboard/Components/KartuAbsensiPetugas";
 import KartuStatistik from "./Dashboard/Components/KartuStatistik";
-import DataHariIni from "./Dashboard/Components/DataHariIni"; // ← BARU
+import DataHariIni from "./Dashboard/Components/DataHariIni";
 import GrafikKeterlambatan from "./Dashboard/Components/GrafikKeterlambatan";
 import DonutChart from "./Dashboard/Components/DonutChart";
 import TabelTerlambatTertinggi from "./Dashboard/Components/TabelTerlambatTertinggi";
@@ -142,7 +142,7 @@ export default function Tampil(props) {
 
                 <KartuStatistik stats={props.stats} />
 
-                {/* ===== BARU: 4 Panel Data Hari Ini ===== */}
+                {/* 4 Panel Data Hari Ini */}
                 <DataHariIni
                     keterlambatanList={props.keterlambatanList ?? []}
                     izinKeluarList={props.izinKeluarList ?? []}
@@ -150,6 +150,7 @@ export default function Tampil(props) {
                     bukuTamuList={props.bukuTamuList ?? []}
                 />
 
+                {/* ===== GRAFIK 1: KETERLAMBATAN (sudah ada) ===== */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
                         <GrafikKeterlambatan
@@ -163,6 +164,37 @@ export default function Tampil(props) {
                     />
                 </div>
 
+                {/* ===== GRAFIK 2: IZIN KELUAR (BARU - warna biru) ===== */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                        <GrafikKeterlambatan
+                            data={props.chartIzinKelas ?? []}
+                            judul="📊 Izin Keluar per Kelas"
+                            warna="blue"
+                        />
+                    </div>
+                    <DonutChart
+                        data={props.donutIzinJurusan ?? []}
+                        judul="🎓 Izin Keluar per Jurusan"
+                    />
+                </div>
+
+                {/* ===== GRAFIK 3: PELANGGARAN (BARU - warna oranye) ===== */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                        <GrafikKeterlambatan
+                            data={props.chartPelanggaranKelas ?? []}
+                            judul="📊 Pelanggaran per Kelas"
+                            warna="orange"
+                        />
+                    </div>
+                    <DonutChart
+                        data={props.donutPelanggaranJurusan ?? []}
+                        judul="🎓 Pelanggaran per Jurusan"
+                    />
+                </div>
+
+                {/* Tabel Top & Aktivitas */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <TabelTerlambatTertinggi data={props.topTerlambat} />
                     <TabelPoinTertinggi data={props.topPelanggaran} />

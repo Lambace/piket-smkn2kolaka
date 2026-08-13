@@ -96,6 +96,49 @@ class DashboardController extends Controller
                 'status'     => $t->jam_keluar ? 'sudah_keluar' : 'di_sekolah',
             ]);
 
+                // ===== GRAFIK TAMBAHAN: IZIN KELUAR & PELANGGARAN (per kelas & jurusan) =====
+        $rangeStart = Carbon::today()->startOfDay();
+        $rangeEnd   = Carbon::today()->endOfDay();
+
+        // Bar: Izin Keluar per Kelas
+        $chartIzinKelas = IzinKeluar::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'izin_keluar.siswa_id')
+            ->whereBetween('izin_keluar.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.kelas')
+            ->orderByDesc('jumlah')
+            ->get()
+            ->map(fn ($d) => ['label' => $d->label ?? 'Tanpa Kelas', 'jumlah' => (int) $d->jumlah])
+            ->values();
+
+        // Donut: Izin Keluar per Jurusan
+        $donutIzinJurusan = IzinKeluar::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'izin_keluar.siswa_id')
+            ->whereBetween('izin_keluar.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.jurusan')
+            ->orderByDesc('jumlah')
+            ->get()
+            ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
+
+        // Bar: Pelanggaran per Kelas
+        $chartPelanggaranKelas = Pelanggaran::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'pelanggarans.siswa_id')
+            ->whereBetween('pelanggarans.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.kelas')
+            ->orderByDesc('jumlah')
+            ->get()
+            ->map(fn ($d) => ['label' => $d->label ?? 'Tanpa Kelas', 'jumlah' => (int) $d->jumlah])
+            ->values();
+
+        // Donut: Pelanggaran per Jurusan
+        $donutPelanggaranJurusan = Pelanggaran::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'pelanggarans.siswa_id')
+            ->whereBetween('pelanggarans.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.jurusan')
+            ->orderByDesc('jumlah')
+            ->get()
+            ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
+
+
         // ===== BARU: kirim pengaturan (logo & nama sekolah) ke TV =====
         $pengaturan = Pengaturan::first();
 
@@ -110,6 +153,13 @@ class DashboardController extends Controller
                 'logo_url'     => $pengaturan->logo ? asset('storage/'.$pengaturan->logo) : null,
                 'logo'         => $pengaturan->logo,
             ] : null,
+
+            // ===== BARU: 4 dataset grafik =====
+            'chartIzinKelas'          => $chartIzinKelas,
+            'donutIzinJurusan'        => $donutIzinJurusan,
+            'chartPelanggaranKelas'   => $chartPelanggaranKelas,
+            'donutPelanggaranJurusan' => $donutPelanggaranJurusan,
+
         ]);
     }
 
