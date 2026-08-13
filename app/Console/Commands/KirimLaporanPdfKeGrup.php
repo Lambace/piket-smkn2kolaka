@@ -85,8 +85,7 @@ class KirimLaporanPdfKeGrup extends Command
             $now->isoFormat('dddd, D MMMM Y'),
         ]);
 
-        $notifPdf = $wa->kirimPdf($grup, $pdfUrl, $filename, $captionPdf);
-
+         $notifPdf = $wa->kirimPdf($grup, $pdfUrl, $filename, $captionPdf);
         if ($notifPdf->status !== 'terkirim') {
             $this->error('❌ Gagal kirim PDF: '.($notifPdf->pesan_error ?? 'unknown'));
             return Command::FAILURE;

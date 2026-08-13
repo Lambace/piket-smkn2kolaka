@@ -22,7 +22,7 @@ class WhatsAppService
         ], 30);
     }
 
-    // ===== Kirim gambar + caption =====
+    // ===== Kirim gambar via URL (untuk banner/logo) =====
     public function sendImage(string $target, string $imageUrl, string $caption = '', $penerima = null): Notifikasi
     {
         $target = $this->normalisasiTarget($target);
@@ -30,26 +30,25 @@ class WhatsAppService
 
         return $this->kirimKeFonnte($notifikasi, [
             'target'  => $target,
-            'message' => $caption,   // FIX: Fonnte wajib 'message'
+            'message' => $caption,
             'url'     => $imageUrl,
         ], 60);
     }
 
-    // ===== Kirim file PDF =====
-    public function kirimPdf(string $target, string $pdfUrl, string $filename, string $caption = ''): Notifikasi
+    // ===== KIRIM PDF: upload binary LANGSUNG (icon PDF asli di WA) =====
+    public function kirimPdf(string $target, string $pdfContent, string $filename, string $caption = ''): Notifikasi
     {
         $target = $this->normalisasiTarget($target);
         $notifikasi = $this->buatNotifikasi($target, '[PDF] '.$filename, null);
 
         return $this->kirimKeFonnte($notifikasi, [
             'target'   => $target,
-            'message'  => $caption,   // FIX: Fonnte wajib 'message'
-            'url'      => $pdfUrl,
-            'filename' => $filename,
-        ], 120);
+            'message'  => $caption,
+            'filename' => $filename,   // tampil sebagai nama file di WA
+        ], 120, $pdfContent, $filename);
     }
 
-    // ===== HELPER: buat record notifikasi (aman untuk grup) =====
+    // ===== HELPER: buat record notifikasi =====
     private function buatNotifikasi(string $target, string $pesan, $penerima = null): Notifikasi
     {
         return Notifikasi::create([
@@ -62,8 +61,8 @@ class WhatsAppService
         ]);
     }
 
-    // ===== HELPER: panggil API Fonnte + update status =====
-    private function kirimKeFonnte(Notifikasi $notifikasi, array $payload, int $timeout): Notifikasi
+    // ===== HELPER: panggil Fonnte (dukung upload file binary) =====
+    private function kirimKeFonnte(Notifikasi $notifikasi, array $payload, int $timeout, ?string $fileContent = null, ?string $fileName = null): Notifikasi
     {
         $token = config('services.fonnte.token');
 
@@ -76,9 +75,17 @@ class WhatsAppService
         }
 
         try {
-            $response = Http::asForm()->withHeaders([
-                'Authorization' => $token,
-            ])->timeout($timeout)->post($this->apiUrl, $payload);
+            $request = Http::withHeaders(['Authorization' => $token])->timeout($timeout);
+
+            if ($fileContent !== null) {
+                // ===== UPLOAD LANGSUNG: parameter 'file' (CURLFile) =====
+                $response = $request
+                    ->attach('file', $fileContent, $fileName)
+                    ->post($this->apiUrl, $payload);
+            } else {
+                // ===== MODE FORM: untuk teks & gambar via url =====
+                $response = $request->asForm()->post($this->apiUrl, $payload);
+            }
 
             $body = $response->json() ?? [];
 
@@ -106,7 +113,6 @@ class WhatsAppService
         return $notifikasi;
     }
 
-    // ===== HELPER: normalisasi nomor (0812 -> 62812) =====
     private function normalisasiNomor(string $nomor): string
     {
         $nomor = preg_replace('/[^0-9]/', '', $nomor);
@@ -116,7 +122,6 @@ class WhatsAppService
         return $nomor;
     }
 
-    // ===== HELPER: dukung target grup (@g.us) =====
     private function normalisasiTarget(string $target): string
     {
         if (str_contains($target, '@g.us') || str_contains($target, '@c.us')) {
