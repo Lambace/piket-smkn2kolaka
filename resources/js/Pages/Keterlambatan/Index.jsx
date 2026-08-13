@@ -1,6 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -12,6 +12,36 @@ const emptyForm = {
     keterangan: "",
 };
 
+// ===== Fungsi format tanggal Indonesia =====
+const formatTanggal = (tgl) => {
+    if (!tgl) return "-";
+    const d = new Date(tgl);
+    const hari = [
+        "Minggu",
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu",
+    ];
+    const bulan = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "Mei",
+        "Jun",
+        "Jul",
+        "Agu",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Des",
+    ];
+    return `${hari[d.getDay()]}, ${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
+};
+
 export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
     const { flash, errors } = usePage().props;
     const [showForm, setShowForm] = useState(false);
@@ -19,6 +49,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
     const [formKelas, setFormKelas] = useState("");
     const [search, setSearch] = useState(params.search ?? "");
     const [filterTgl, setFilterTgl] = useState(params.tanggal ?? "");
+    const [searchTerm, setSearchTerm] = useState(params.search ?? "");
 
     const list = Array.isArray(keterlambatan?.data) ? keterlambatan.data : [];
     const siswaList = Array.isArray(daftarSiswa) ? daftarSiswa : [];
@@ -75,28 +106,29 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
         }
     };
 
-    const onSearch = (v) => {
-        setSearch(v);
-        router.get(
-            route("keterlambatan.index"),
-            {
-                search: v || undefined,
-                tanggal: filterTgl || undefined,
-            },
-            { preserveState: true, preserveScroll: true },
-        );
-    };
+    // ===== LIVE SEARCH dengan debounce 400ms =====
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchTerm !== (params.search ?? "")) {
+                router.get(
+                    route("keterlambatan.index"),
+                    {
+                        search: searchTerm || undefined,
+                        tanggal: filterTgl || undefined,
+                    },
+                    {
+                        preserveState: true,
+                        preserveScroll: true,
+                        replace: true,
+                    },
+                );
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchTerm, filterTgl]);
 
     const onFilterTgl = (v) => {
         setFilterTgl(v);
-        router.get(
-            route("keterlambatan.index"),
-            {
-                search: search || undefined,
-                tanggal: v || undefined,
-            },
-            { preserveState: true, preserveScroll: true },
-        );
     };
 
     return (
@@ -119,19 +151,52 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                 {/* Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
-                        <input
-                            type="text"
-                            placeholder="Cari nama / NISN..."
-                            value={search}
-                            onChange={(e) => onSearch(e.target.value)}
-                            className="w-60 rounded-md border-gray-300 shadow-sm"
-                        />
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="🔍 Cari nama / NISN / kelas..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-64 rounded-md border-gray-300 shadow-sm pl-9"
+                            />
+                            <svg
+                                className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        </div>
                         <input
                             type="date"
                             value={filterTgl}
                             onChange={(e) => onFilterTgl(e.target.value)}
                             className="rounded-md border-gray-300 shadow-sm"
+                            title="Filter berdasarkan tanggal"
                         />
+                        {(searchTerm || filterTgl) && (
+                            <button
+                                onClick={() => {
+                                    setSearchTerm("");
+                                    setFilterTgl("");
+                                    router.get(
+                                        route("keterlambatan.index"),
+                                        {},
+                                        { preserveState: false },
+                                    );
+                                }}
+                                className="rounded-md bg-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-300"
+                                title="Hapus semua filter"
+                            >
+                                ✕ Reset
+                            </button>
+                        )}
                     </div>
                     <button
                         onClick={() => setShowForm(!showForm)}
@@ -290,6 +355,25 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                     </form>
                 )}
 
+                {/* Info filter aktif */}
+                {(searchTerm || filterTgl) && (
+                    <div className="rounded-md bg-blue-50 p-2 text-xs text-blue-700">
+                        🔍 Filter aktif:{" "}
+                        {searchTerm && (
+                            <span className="font-semibold">
+                                kata kunci "{searchTerm}"
+                            </span>
+                        )}
+                        {searchTerm && filterTgl && " • "}
+                        {filterTgl && (
+                            <span className="font-semibold">
+                                tanggal {formatTanggal(filterTgl)}
+                            </span>
+                        )}{" "}
+                        → {list.length} data ditemukan
+                    </div>
+                )}
+
                 {/* Tabel */}
                 <div className="overflow-x-auto rounded-lg bg-white shadow">
                     <table className="w-full text-sm">
@@ -311,7 +395,9 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                         colSpan="7"
                                         className="p-4 text-center text-gray-500"
                                     >
-                                        Belum ada data keterlambatan.
+                                        {searchTerm || filterTgl
+                                            ? "Tidak ada data yang sesuai dengan filter."
+                                            : "Belum ada data keterlambatan."}
                                     </td>
                                 </tr>
                             ) : (
@@ -320,16 +406,21 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                         key={k.id}
                                         className="border-t border-gray-200"
                                     >
-                                        <td className="p-3">{k.tanggal}</td>
+                                        <td className="p-3 text-xs">
+                                            {formatTanggal(k.tanggal)}
+                                        </td>
                                         <td className="p-3">
                                             <div className="font-medium">
                                                 {k.siswa?.nama ?? "-"}
                                             </div>
                                             <div className="text-xs text-gray-500">
-                                                {k.siswa?.kelas ?? ""}
+                                                {k.siswa?.kelas ?? ""} •{" "}
+                                                {k.siswa?.nisn ?? ""}
                                             </div>
                                         </td>
-                                        <td className="p-3">{k.jam_datang}</td>
+                                        <td className="p-3 font-mono text-sm">
+                                            {k.jam_datang}
+                                        </td>
                                         <td className="p-3">
                                             <span
                                                 className={`rounded-md px-2 py-1 text-xs font-semibold ${
