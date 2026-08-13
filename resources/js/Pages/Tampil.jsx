@@ -2,6 +2,7 @@ import { Head, usePoll, usePage } from "@inertiajs/react";
 import { useEffect, useState } from "react";
 import KartuAbsensiPetugas from "./Dashboard/Components/KartuAbsensiPetugas";
 import KartuStatistik from "./Dashboard/Components/KartuStatistik";
+import DataHariIni from "./Dashboard/Components/DataHariIni"; // ← BARU
 import GrafikKeterlambatan from "./Dashboard/Components/GrafikKeterlambatan";
 import DonutChart from "./Dashboard/Components/DonutChart";
 import TabelTerlambatTertinggi from "./Dashboard/Components/TabelTerlambatTertinggi";
@@ -34,7 +35,6 @@ export default function Tampil(props) {
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Semester otomatis: Jul-Des = Ganjil, Jan-Jun = Genap
     const semesterOtomatis =
         new Date().getMonth() + 1 >= 7 ? "ganjil" : "genap";
 
@@ -49,7 +49,6 @@ export default function Tampil(props) {
         window.location.href = `${route("tampil.laporan")}?${params.toString()}`;
     };
 
-    // ===== BARU: Download Daftar Hadir Piket (harian) =====
     const downloadDaftarHadir = () => {
         const params = new URLSearchParams({
             periode: "harian",
@@ -63,7 +62,7 @@ export default function Tampil(props) {
         <div className="min-h-screen bg-slate-900 p-6">
             <Head title="Papan Informasi Piket" />
 
-            {/* Tombol Tentang Aplikasi - melayang kanan bawah */}
+            {/* Tombol Tentang Aplikasi */}
             <a
                 href={route("papan.informasi")}
                 target="_blank"
@@ -111,7 +110,6 @@ export default function Tampil(props) {
                         </p>
                     </div>
 
-                    {/* Pemilih periode + tombol download */}
                     <div className="flex items-center gap-2">
                         <select
                             value={periode}
@@ -135,7 +133,7 @@ export default function Tampil(props) {
             </div>
 
             <div className="space-y-6">
-                {/* ⭐ KARTU ABSENSI PETUGAS — dengan prop displayKey + downloadDaftarHadir */}
+                {/* Absensi Petugas */}
                 <KartuAbsensiPetugas
                     data={props.absensiPetugas ?? []}
                     displayKey={props.displayKey}
@@ -143,6 +141,14 @@ export default function Tampil(props) {
                 />
 
                 <KartuStatistik stats={props.stats} />
+
+                {/* ===== BARU: 4 Panel Data Hari Ini ===== */}
+                <DataHariIni
+                    keterlambatanList={props.keterlambatanList ?? []}
+                    izinKeluarList={props.izinKeluarList ?? []}
+                    pelanggaranList={props.pelanggaranList ?? []}
+                    bukuTamuList={props.bukuTamuList ?? []}
+                />
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">

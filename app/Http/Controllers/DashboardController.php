@@ -7,6 +7,7 @@ use App\Models\BukuTamu;
 use App\Models\IzinKeluar;
 use App\Models\Keterlambatan;
 use App\Models\Pelanggaran;
+use App\Models\Pengaturan;
 use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -35,18 +36,90 @@ class DashboardController extends Controller
             'sampai_tanggal' => Carbon::today()->toDateString(),
         ]);
 
+        // ===== DATA DETAIL HARI INI (khusus TV) =====
+        $hariIni = Carbon::today()->toDateString();
+
+        $keterlambatanHariIni = Keterlambatan::with('siswa:id,nama,kelas,nisn')
+            ->whereDate('tanggal', $hariIni)
+            ->orderByDesc('jam_datang')
+            ->limit(20)
+            ->get()
+            ->map(fn ($k) => [
+                'id'              => $k->id,
+                'nama'            => $k->siswa?->nama ?? '-',
+                'kelas'           => $k->siswa?->kelas ?? '-',
+                'jam_datang'      => $k->jam_datang,
+                'menit_terlambat' => (int) $k->menit_terlambat,
+                'status'          => $k->status,
+            ]);
+
+        $izinKeluarHariIni = IzinKeluar::with('siswa:id,nama,kelas,nisn')
+            ->whereDate('tanggal', $hariIni)
+            ->orderByDesc('jam_keluar')
+            ->limit(20)
+            ->get()
+            ->map(fn ($i) => [
+                'id'          => $i->id,
+                'nama'        => $i->siswa?->nama ?? '-',
+                'kelas'       => $i->siswa?->kelas ?? '-',
+                'jam_keluar'  => $i->jam_keluar,
+                'jam_kembali' => $i->jam_kembali,
+                'jenis'       => $i->jenis,
+                'status'      => $i->status,
+            ]);
+
+        $pelanggaranHariIni = Pelanggaran::with('siswa:id,nama,kelas,nisn')
+            ->whereDate('tanggal', $hariIni)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get()
+            ->map(fn ($p) => [
+                'id'                 => $p->id,
+                'nama'               => $p->siswa?->nama ?? '-',
+                'kelas'              => $p->siswa?->kelas ?? '-',
+                'jenis_pelanggaran'  => $p->jenis_pelanggaran,
+                'poin'               => (int) $p->poin,
+                'status'             => $p->status,
+            ]);
+
+        $bukuTamuHariIni = BukuTamu::whereDate('tanggal_kunjungan', $hariIni)
+            ->orderByDesc('jam_masuk')
+            ->limit(20)
+            ->get()
+            ->map(fn ($t) => [
+                'id'         => $t->id,
+                'nama'       => $t->nama,
+                'instansi'   => $t->instansi,
+                'keperluan'  => $t->keperluan,
+                'jam_masuk'  => $t->jam_masuk,
+                'jam_keluar' => $t->jam_keluar,
+                'status'     => $t->jam_keluar ? 'sudah_keluar' : 'di_sekolah',
+            ]);
+
+        // ===== BARU: kirim pengaturan (logo & nama sekolah) ke TV =====
+        $pengaturan = Pengaturan::first();
+
         return Inertia::render('Tampil', $this->buildData($request) + [
-            'displayKey' => config('services.display.key'),
+            'displayKey'         => config('services.display.key'),
+            'keterlambatanList'  => $keterlambatanHariIni,
+            'izinKeluarList'     => $izinKeluarHariIni,
+            'pelanggaranList'    => $pelanggaranHariIni,
+            'bukuTamuList'       => $bukuTamuHariIni,
+            'pengaturan'         => $pengaturan ? [
+                'nama_sekolah' => $pengaturan->nama_sekolah,
+                'logo_url'     => $pengaturan->logo ? asset('storage/'.$pengaturan->logo) : null,
+                'logo'         => $pengaturan->logo,
+            ] : null,
         ]);
     }
 
     private function buildData(Request $request): array
     {
         // ===== Filter rentang tanggal =====
-        $dariTanggal = $request->input('dari_tanggal', Carbon::today()->toDateString());
+        $dariTanggal = $request->input('dari_tanggal', Carbon::today()->startOfMonth()->toDateString());
         $sampaiTanggal = $request->input('sampai_tanggal', Carbon::today()->toDateString());
 
-        // ===== Range Carbon (timezone-aware, dipakai di semua query tanggal) =====
+        // ===== Range Carbon (timezone-aware) =====
         $rangeStart = Carbon::parse($dariTanggal)->startOfDay();
         $rangeEnd   = Carbon::parse($sampaiTanggal)->endOfDay();
 
@@ -59,7 +132,7 @@ class DashboardController extends Controller
         $grafikKelas = $request->input('grafik_kelas');
         $grafikJurusan = $request->input('grafik_jurusan');
 
-        // ===== Kartu Statistik (semua pakai range timezone-aware) =====
+        // ===== Kartu Statistik =====
         $stats = [
             'total_siswa' => Siswa::where('aktif', true)->count(),
             'terlambat'   => Keterlambatan::whereBetween('tanggal', [$rangeStart, $rangeEnd])->count(),
@@ -82,8 +155,7 @@ class DashboardController extends Controller
             ->map(fn ($d) => ['label' => $d->label, 'jumlah' => (int) $d->jumlah])
             ->values();
 
-        // ===== GRAFIK PELANGGARAN PER HARI (loop per hari, hitung di PHP) =====
-        // Ini lebih aman untuk timezone karena tidak bergantung DATE() MySQL
+        // ===== GRAFIK PELANGGARAN PER HARI =====
         $chartPelanggaran = [];
         for ($i = $hariGrafik - 1; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
@@ -151,23 +223,23 @@ class DashboardController extends Controller
                 'rata_menit' => round((float) ($k->rata_menit ?? 0), 1),
             ]);
 
-        // ===== KELAS MELANGGAR TERTINGGI (dalam rentang filter) =====
-    $kelasMelanggarTertinggi = Pelanggaran::select(
-            'siswa.kelas as kelas',
-            DB::raw('COUNT(*) as jumlah'),
-            DB::raw('SUM(pelanggarans.poin) as total_poin')   // ← plural!
-        )
-        ->join('siswa', 'siswa.id', '=', 'pelanggarans.siswa_id')
-        ->whereBetween('pelanggarans.tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa.kelas')
-        ->orderByDesc('jumlah')
-        ->limit(5)
-        ->get()
-        ->map(fn ($k) => [
-            'kelas'      => $k->kelas ?? 'Tanpa Kelas',
-            'jumlah'     => (int) $k->jumlah,
-            'total_poin' => (int) ($k->total_poin ?? 0),
-        ]);
+        // ===== KELAS MELANGGAR TERTINGGI =====
+        $kelasMelanggarTertinggi = Pelanggaran::select(
+                'siswa.kelas as kelas',
+                DB::raw('COUNT(*) as jumlah'),
+                DB::raw('SUM(pelanggarans.poin) as total_poin')
+            )
+            ->join('siswa', 'siswa.id', '=', 'pelanggarans.siswa_id')
+            ->whereBetween('pelanggarans.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.kelas')
+            ->orderByDesc('jumlah')
+            ->limit(5)
+            ->get()
+            ->map(fn ($k) => [
+                'kelas'      => $k->kelas ?? 'Tanpa Kelas',
+                'jumlah'     => (int) $k->jumlah,
+                'total_poin' => (int) ($k->total_poin ?? 0),
+            ]);
 
         // ===== Aktivitas Terbaru =====
         $aktivitas = collect();
