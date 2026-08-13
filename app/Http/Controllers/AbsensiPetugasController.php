@@ -17,6 +17,20 @@ class AbsensiPetugasController extends Controller
         $today = now()->toDateString();
         $awalBulan = now()->startOfMonth()->toDateString();
 
+        // ===== BARU: REDIRECT OTOMATIS =====
+        // Kalau petugas (bukan koordinator) sudah absen hari ini,
+        // langsung lempar ke dashboard
+        if ($user->role !== 'koordinator') {
+            $sudahAbsen = AbsensiPetugas::where('tanggal', $today)
+                ->where('nama', $user->name)
+                ->exists();
+
+            if ($sudahAbsen) {
+                return redirect()->route('dashboard');
+            }
+        }
+        // ===== AKHIR REDIRECT =====
+
         // Absen hari ini untuk user sendiri
         $absenHariIni = AbsensiPetugas::where('tanggal', $today)
             ->where('nama', $user->name)->first();
@@ -37,7 +51,7 @@ class AbsensiPetugasController extends Controller
         $riwayat = AbsensiPetugas::where('nama', $user->name)
             ->orderByDesc('tanggal')->limit(10)->get();
 
-        // ===== BARU: Daftar semua petugas + status absen hari ini =====
+        // Daftar semua petugas + status absen hari ini
         $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])
             ->orderBy('name')
             ->get()
@@ -62,8 +76,8 @@ class AbsensiPetugasController extends Controller
             'absenHariIni'  => $absenHariIni,
             'summary'       => $summary,
             'riwayat'       => $riwayat,
-            'semuaPetugas'  => $semuaPetugas, // ← BARU
-            'isKoordinator' => $user->isKoordinator(), // ← BARU
+            'semuaPetugas'  => $semuaPetugas,
+            'isKoordinator' => $user->isKoordinator(),
         ]);
     }
 
@@ -104,13 +118,11 @@ class AbsensiPetugasController extends Controller
         return back()->with('success', 'Absensi berhasil dicatat.');
     }
 
-    // ===== BARU: Update status absensi (untuk koordinator) =====
     public function update(Request $request, $id)
     {
         $user = auth()->user();
         $absen = AbsensiPetugas::findOrFail($id);
 
-        // Validasi: hanya koordinator yang boleh edit absen orang lain
         if (!$user->isKoordinator() && $absen->nama !== $user->name) {
             return back()->with('error', 'Tidak punya izin mengubah data ini.');
         }
@@ -121,7 +133,6 @@ class AbsensiPetugasController extends Controller
             'keterangan' => 'nullable|string|max:500',
         ]);
 
-        // Update data
         $absen->status = $validated['status'];
         $absen->jam_masuk = $validated['jam_masuk'] ? $validated['jam_masuk'] . ':00' : $absen->jam_masuk;
         $absen->keterangan = $validated['keterangan'];
@@ -135,7 +146,6 @@ class AbsensiPetugasController extends Controller
         $user = auth()->user();
         $absen = AbsensiPetugas::findOrFail($id);
 
-        // Validasi: hanya koordinator atau pemilik sendiri
         if (!$user->isKoordinator() && $absen->nama !== $user->name) {
             return back()->with('error', 'Tidak punya izin menghapus data ini.');
         }

@@ -2,30 +2,30 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class Pelanggaran extends Model
 {
-    use HasFactory;
-
-    protected $table = 'pelanggaran';
-
     protected $fillable = [
-        'siswa_id', 'tanggal', 'jenis_pelanggaran', 'keterangan',
-        'poin', 'foto_bukti', 'status', 'petugas_id',
+        'siswa_id',
+        'tanggal',
+        'jenis_pelanggaran',
+        'keterangan',
+        'poin',
+        'foto_bukti',
+        'status',
+        'petugas_id',
     ];
 
+    // ===== BARU: cast tanggal agar otomatis sesuai APP_TIMEZONE =====
     protected $casts = [
-        'tanggal' => 'date',
-        'poin' => 'integer',
+        'tanggal' => 'datetime',  // ← kunci utama: Laravel pakai timezone aplikasi
     ];
 
     public function siswa(): BelongsTo
     {
-        return $this->belongsTo(Siswa::class, 'siswa_id');
+        return $this->belongsTo(Siswa::class);
     }
 
     public function petugas(): BelongsTo
