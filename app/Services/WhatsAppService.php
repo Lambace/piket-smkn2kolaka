@@ -30,8 +30,8 @@ class WhatsAppService
 
         return $this->kirimKeFonnte($notifikasi, [
             'target'  => $target,
+            'message' => $caption,   // FIX: Fonnte wajib 'message'
             'url'     => $imageUrl,
-            'caption' => $caption,
         ], 60);
     }
 
@@ -43,9 +43,9 @@ class WhatsAppService
 
         return $this->kirimKeFonnte($notifikasi, [
             'target'   => $target,
+            'message'  => $caption,   // FIX: Fonnte wajib 'message'
             'url'      => $pdfUrl,
             'filename' => $filename,
-            'caption'  => $caption,
         ], 120);
     }
 
@@ -54,7 +54,6 @@ class WhatsAppService
     {
         return Notifikasi::create([
             'jenis'         => 'whatsapp',
-            // FIX: isi default 'grup' & 0 saat tidak ada penerima (kolom NOT NULL)
             'penerima_tipe' => $penerima ? get_class($penerima) : 'grup',
             'penerima_id'   => $penerima ? $penerima->id : 0,
             'nomor_tujuan'  => $target,
