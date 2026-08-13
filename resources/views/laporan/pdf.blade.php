@@ -27,15 +27,15 @@
     .judul { text-align: center; font-size: 12pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin: 8px 0 10px 0; }
 
     /* ===== Info bar ===== */
-    table.infobar { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 10px; }
+    table.infobar { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 12px; }
     table.infobar td { border: 1px solid #cbd5e0; background: #f7fafc; padding: 6px 8px; }
     table.infobar b { color: #2d3748; }
 
-    /* ===== Header seksi (jarak antar tabel lega) ===== */
-    .seksi { margin: 26px 0 8px 0; padding: 6px 10px; background: #e8ecfb; border-left: 4px solid #5b6ee1; font-weight: bold; font-size: 9.5pt; text-transform: uppercase; color: #2d3748; page-break-after: avoid; }
+    /* ===== Header seksi (JARAK ANTAR TABEL SANGAT LEGA) ===== */
+    .seksi { margin: 40px 0 10px 0; padding: 6px 10px; background: #e8ecfb; border-left: 4px solid #5b6ee1; font-weight: bold; font-size: 9.5pt; text-transform: uppercase; color: #2d3748; page-break-after: avoid; }
 
     /* ===== Tabel data (spasi kolom lega) ===== */
-    table.data { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 6px; }
     table.data th { background: #dfe8f7; color: #2d3748; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.5px; padding: 7px 10px; border: 1px solid #cbd5e0; text-align: center; }
     table.data td { border: 1px solid #e2e8f0; padding: 7px 10px; vertical-align: top; }
     table.data tr { page-break-inside: avoid; }
@@ -54,7 +54,7 @@
     .b-poin     { background: #feb2b2; color: #9b2c2c; }
 
     /* ===== Tanda tangan ===== */
-    table.ttd { width: 100%; margin-top: 26px; border-collapse: collapse; }
+    table.ttd { width: 100%; margin-top: 40px; border-collapse: collapse; }
     table.ttd td { width: 50%; text-align: center; vertical-align: top; font-size: 10pt; border: none; padding: 0; }
     .ttd-tanggal { height: 16px; margin-bottom: 2px; }
     .ttd-space { height: 60px; }
