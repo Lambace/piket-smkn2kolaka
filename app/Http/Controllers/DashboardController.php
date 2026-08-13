@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -148,12 +149,14 @@ class DashboardController extends Controller
             'izinKeluarList'     => $izinKeluarHariIni,
             'pelanggaranList'    => $pelanggaranHariIni,
             'bukuTamuList'       => $bukuTamuHariIni,
-            'pengaturan'         => $pengaturan ? [
-                'nama_sekolah' => $pengaturan->nama_sekolah,
-                'logo_url'     => $pengaturan->logo ? asset('storage/'.$pengaturan->logo) : null,
-                'logo'         => $pengaturan->logo,
-            ] : null,
+            'pengaturan' => $pengaturan ? [
+            'nama_sekolah' => $pengaturan->nama_sekolah,
+            'logo_url'     => $pengaturan->logo
+                ? Storage::disk('public')->url($pengaturan->logo)
+                : null,
+            'logo'         => $pengaturan->logo,
 
+            ] : null,
             // ===== BARU: 4 dataset grafik =====
             'chartIzinKelas'          => $chartIzinKelas,
             'donutIzinJurusan'        => $donutIzinJurusan,
