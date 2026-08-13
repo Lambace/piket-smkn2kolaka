@@ -76,7 +76,15 @@ export default function AbsensiIndex({
     });
 
     const absenMasuk = () =>
-        router.post(route("absensi.store"), { status: "masuk" });
+        router.post(
+            route("absensi.store"),
+            { status: "masuk" },
+            {
+                onSuccess: () => {
+                    router.visit(route("dashboard"));
+                },
+            },
+        );
 
     const pilihStatus = (s) => {
         setDropOpen(false);
@@ -99,9 +107,10 @@ export default function AbsensiIndex({
                 },
                 {
                     onSuccess: () => {
-                        setModalStatus(null); // ← TUTUP modal
-                        setKeterangan(""); // ← bersihkan teks
-                        setErr(""); // ← bersihkan error
+                        setModalStatus(null);
+                        setKeterangan("");
+                        setErr("");
+                        router.visit(route("dashboard"));
                     },
                 },
             );
