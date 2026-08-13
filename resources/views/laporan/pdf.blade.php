@@ -27,18 +27,18 @@
     .judul { text-align: center; font-size: 12pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin: 8px 0 10px 0; }
 
     /* ===== Info bar ===== */
-    table.infobar { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 6px; }
+    table.infobar { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 10px; }
     table.infobar td { border: 1px solid #cbd5e0; background: #f7fafc; padding: 6px 8px; }
     table.infobar b { color: #2d3748; }
 
-    /* ===== Header seksi ===== */
-    .seksi { margin: 14px 0 6px 0; padding: 5px 10px; background: #e8ecfb; border-left: 4px solid #5b6ee1; font-weight: bold; font-size: 9.5pt; text-transform: uppercase; color: #2d3748; }
+    /* ===== Header seksi (jarak antar tabel lega) ===== */
+    .seksi { margin: 26px 0 8px 0; padding: 6px 10px; background: #e8ecfb; border-left: 4px solid #5b6ee1; font-weight: bold; font-size: 9.5pt; text-transform: uppercase; color: #2d3748; page-break-after: avoid; }
 
-    /* ===== Tabel data ===== */
+    /* ===== Tabel data (spasi kolom lega) ===== */
     table.data { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-    table.data th { background: #dfe8f7; color: #2d3748; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.5px; padding: 6px; border: 1px solid #cbd5e0; text-align: center; }
-    table.data td { border: 1px solid #e2e8f0; padding: 6px; vertical-align: top; }
-    table.data tr.alt td { background: #f7fafc; }
+    table.data th { background: #dfe8f7; color: #2d3748; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.5px; padding: 7px 10px; border: 1px solid #cbd5e0; text-align: center; }
+    table.data td { border: 1px solid #e2e8f0; padding: 7px 10px; vertical-align: top; }
+    table.data tr { page-break-inside: avoid; }
     .tengah { text-align: center; }
     .sub { display: block; font-size: 7pt; color: #a0aec0; }
 
@@ -135,7 +135,7 @@
                 <span class="sub">{{ $r['jabatan'] }}@if($r['keterangan']) — “{{ $r['keterangan'] }}” @endif</span>
             </td>
             <td class="tengah">{{ $r['tanggal'] }}</td>
-                        <td class="tengah" style="font-size: 7pt; white-space: nowrap;"><strong>{{ $r['jam'] !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
+            <td class="tengah" style="font-size: 7pt; white-space: nowrap;"><strong>{{ $r['jam'] !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
             <td class="tengah">
                 <span class="badge {{ $badgeStatus[$r['status']]['cls'] ?? 'b-alpha' }}">
                     {{ $badgeStatus[$r['status']]['label'] ?? strtoupper($r['status']) }}
@@ -304,10 +304,10 @@
         <th style="width:50%">Per Jurusan</th>
     </tr>
     <tr>
-        <td style="border:1px solid #e2e8f0; padding:6px;">
+        <td style="border:1px solid #e2e8f0; padding:7px 10px;">
             @forelse($perKelas as $p){{ $p->label }}: <strong>{{ $p->jumlah }}</strong>@if(!$loop->last) &nbsp;•&nbsp; @endif @empty - @endforelse
         </td>
-        <td style="border:1px solid #e2e8f0; padding:6px;">
+        <td style="border:1px solid #e2e8f0; padding:7px 10px;">
             @forelse($perJurusan as $p){{ $p->label }}: <strong>{{ $p->jumlah }}</strong>@if(!$loop->last) &nbsp;•&nbsp; @endif @empty - @endforelse
         </td>
     </tr>
@@ -315,7 +315,7 @@
         <th colspan="2" style="margin-top:4px;">Poin Pelanggaran Tertinggi</th>
     </tr>
     <tr>
-        <td colspan="2" style="border:1px solid #e2e8f0; padding:6px;">
+        <td colspan="2" style="border:1px solid #e2e8f0; padding:7px 10px;">
             @forelse($topPoin as $p)
                 {{ $p->siswa?->nama ?? '-' }} ({{ $p->siswa?->kelas ?? '-' }}): <span class="badge b-poin">{{ $p->total_poin }} POIN</span>@if(!$loop->last) &nbsp;•&nbsp; @endif
             @empty - @endforelse
