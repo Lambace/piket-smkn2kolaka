@@ -85,18 +85,27 @@ export default function AbsensiIndex({
         setModalStatus(s);
     };
 
-    const kirimKeterangan = (e) => {
-        e.preventDefault();
-        if (keterangan.trim().length < 5) {
-            setErr("Mohon isi keterangan halangan minimal 5 karakter.");
-            return;
-        }
-        router.post(route("absensi.store"), {
-            status: modalStatus,
-            keterangan,
-        });
-    };
-
+        const kirimKeterangan = (e) => {
+            e.preventDefault();
+            if (keterangan.trim().length < 5) {
+                setErr("Mohon isi keterangan halangan minimal 5 karakter.");
+                return;
+            }
+            router.post(
+                route("absensi.store"),
+                {
+                    status: modalStatus,
+                    keterangan,
+                },
+                {
+                    onSuccess: () => {
+                        setModalStatus(null); // ← TUTUP modal
+                        setKeterangan(""); // ← bersihkan teks
+                        setErr(""); // ← bersihkan error
+                    },
+                },
+            );
+        };
     // ===== BARU: Buka modal edit =====
     const bukaEdit = (p) => {
         setEditModal(p);
