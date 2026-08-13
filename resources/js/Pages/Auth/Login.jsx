@@ -197,7 +197,7 @@ export default function Login({ status, canResetPassword }) {
                                         onChange={(e) =>
                                             setData("email", e.target.value)
                                         }
-                                        placeholder="nama@piket.com"
+                                        placeholder="namadepan@piket.com"
                                         className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm shadow-sm focus:border-transparent focus:outline-none focus:ring-2"
                                         style={{ "--tw-ring-color": warna }}
                                         autoFocus
