@@ -18,7 +18,7 @@ class Keterlambatan extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        'tanggal'         => 'datetime',  // ← ubah dari 'date' ke 'datetime'
         'menit_terlambat' => 'integer',
     ];
 
@@ -32,4 +32,3 @@ class Keterlambatan extends Model
         return $this->belongsTo(User::class, 'petugas_id');
     }
 }
-

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class BukuTamu extends Model
 {
@@ -17,6 +18,15 @@ class BukuTamu extends Model
     ];
 
     protected $casts = [
-        'tanggal_kunjungan' => 'date',
+        'tanggal_kunjungan' => 'datetime',  // ← ubah dari 'date' ke 'datetime' (timezone-aware)
     ];
+
+    // Auto-append foto_ktp_url ke response JSON (untuk link "📷 Lihat" di JSX)
+    protected $appends = ['foto_ktp_url'];
+
+    public function getFotoKtpUrlAttribute(): ?string
+    {
+        if (!$this->foto_ktp) return null;
+        return Storage::disk('public')->url($this->foto_ktp);
+    }
 }

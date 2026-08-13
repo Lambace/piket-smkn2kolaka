@@ -18,7 +18,7 @@ class IzinKeluar extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        'tanggal'        => 'datetime',  // ← ubah dari 'date' ke 'datetime' (timezone-aware)
         'disetujui_pada' => 'datetime',
     ];
 
