@@ -151,23 +151,23 @@ class DashboardController extends Controller
                 'rata_menit' => round((float) ($k->rata_menit ?? 0), 1),
             ]);
 
-        // ===== KELAS MELANGGAR TERTINGGI =====
-        $kelasMelanggarTertinggi = Pelanggaran::select(
-                'siswa.kelas as kelas',
-                DB::raw('COUNT(*) as jumlah'),
-                DB::raw('SUM(pelanggaran.poin) as total_poin')
-            )
-            ->join('siswa', 'siswa.id', '=', 'pelanggaran.siswa_id')
-            ->whereBetween('pelanggaran.tanggal', [$rangeStart, $rangeEnd])
-            ->groupBy('siswa.kelas')
-            ->orderByDesc('jumlah')
-            ->limit(5)
-            ->get()
-            ->map(fn ($k) => [
-                'kelas'      => $k->kelas ?? 'Tanpa Kelas',
-                'jumlah'     => (int) $k->jumlah,
-                'total_poin' => (int) ($k->total_poin ?? 0),
-            ]);
+        // ===== KELAS MELANGGAR TERTINGGI (dalam rentang filter) =====
+    $kelasMelanggarTertinggi = Pelanggaran::select(
+            'siswa.kelas as kelas',
+            DB::raw('COUNT(*) as jumlah'),
+            DB::raw('SUM(pelanggarans.poin) as total_poin')   // ← plural!
+        )
+        ->join('siswa', 'siswa.id', '=', 'pelanggarans.siswa_id')
+        ->whereBetween('pelanggarans.tanggal', [$rangeStart, $rangeEnd])
+        ->groupBy('siswa.kelas')
+        ->orderByDesc('jumlah')
+        ->limit(5)
+        ->get()
+        ->map(fn ($k) => [
+            'kelas'      => $k->kelas ?? 'Tanpa Kelas',
+            'jumlah'     => (int) $k->jumlah,
+            'total_poin' => (int) ($k->total_poin ?? 0),
+        ]);
 
         // ===== Aktivitas Terbaru =====
         $aktivitas = collect();
