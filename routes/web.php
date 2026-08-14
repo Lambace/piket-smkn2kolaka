@@ -14,7 +14,6 @@ use App\Http\Controllers\SiswaController;
 use App\Http\Controllers\UserPetugasController;
 use App\Http\Controllers\WaliKelasController;
 use App\Http\Controllers\WaliMuridController;
-use App\Http\Controllers\WaliMuridController;
 use App\Models\Pengaturan;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
