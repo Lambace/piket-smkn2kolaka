@@ -26,6 +26,12 @@ class KeterlambatanController extends Controller
             $query->whereDate('tanggal', $request->tanggal);
         }
 
+        // ===== BARU: filter tingkat kelas X / XI / XII =====
+        if ($request->filled('tingkat')) {
+            $tingkat = $request->tingkat;
+            $query->whereHas('siswa', fn ($q) => $q->where('kelas', 'like', "{$tingkat}%"));
+        }
+
         $keterlambatan = $query->orderByDesc('tanggal')
             ->orderByDesc('jam_datang')
             ->paginate(15)
@@ -35,34 +41,33 @@ class KeterlambatanController extends Controller
             ->orderBy('kelas')->orderBy('nama')
             ->get(['id', 'nama', 'kelas', 'nisn']);
 
-        // Tandai siswa yang punya nomor WA orang tua
         $daftarSiswa->each(function ($s) {
             $wali = $s->waliUtama ?? $s->waliMurid->first();
             $s->punya_wa = (bool) ($wali && $wali->telepon);
         });
 
-        // params selalu jadi object, bukan array kosong
-        $params = $request->only(['search', 'tanggal']);
+        // ===== BARU: tingkat ikut di params =====
+        $params = $request->only(['search', 'tanggal', 'tingkat']);
         if (empty($params)) {
             $params = new \stdClass();
         }
 
         return Inertia::render('Keterlambatan/Index', [
             'keterlambatan' => $keterlambatan,
-            'daftarSiswa' => $daftarSiswa,
-            'params' => $params,
+            'daftarSiswa'   => $daftarSiswa,
+            'params'        => $params,
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'siswa_id' => 'required|exists:siswa,id',
-            'tanggal' => 'required|date',
-            'jam_datang' => 'required',
-            'menit_terlambat' => 'required|integer|min:0',
-            'keterangan' => 'nullable|string|max:500',
-            'kirim_notif' => 'nullable|boolean',
+            'siswa_id'         => 'required|exists:siswa,id',
+            'tanggal'          => 'required|date',
+            'jam_datang'       => 'required',
+            'menit_terlambat'  => 'required|integer|min:0',
+            'keterangan'       => 'nullable|string|max:500',
+            'kirim_notif'      => 'nullable|boolean',
         ]);
 
         $kirimNotif = $request->boolean('kirim_notif');
@@ -73,20 +78,16 @@ class KeterlambatanController extends Controller
 
         $keterlambatan = Keterlambatan::create($data);
 
-        // ===== KONDISI 1: tombol "Simpan" → hanya simpan =====
         if (!$kirimNotif) {
             return back()->with('success', 'Data keterlambatan tersimpan tanpa notifikasi.');
         }
 
-        // ===== KONDISI 2: tombol "Simpan & Kirim WA ke Wali" =====
         $siswa = $keterlambatan->siswa;
-
         $wali = $siswa->waliUtama;
         if (!$wali) {
             $wali = $siswa->waliMurid()->first();
         }
 
-        // Kondisi 2a: ada nomor orang tua → simpan + kirim
         if ($wali && $wali->telepon) {
             $pesan = "*PEMBERITAHUAN KETERLAMBATAN*\n"
                 . config('app.name') . "\n\n"
@@ -104,7 +105,6 @@ class KeterlambatanController extends Controller
             return back()->with('success', 'Data tersimpan & notifikasi WA terkirim ke orang tua.');
         }
 
-        // Kondisi 2b: TIDAK ada nomor orang tua → cukup simpan
         return back()->with('success', 'Data tersimpan. Siswa ini belum punya nomor WA orang tua — notifikasi dilewati.');
     }
 

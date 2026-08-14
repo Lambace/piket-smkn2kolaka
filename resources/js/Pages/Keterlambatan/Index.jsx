@@ -12,7 +12,14 @@ const emptyForm = {
     keterangan: "",
 };
 
-// ===== Fungsi format tanggal Indonesia =====
+// ===== BARU: opsi tingkat kelas untuk filter toolbar =====
+const tingkatOptions = [
+    { value: "", label: "Semua Kelas" },
+    { value: "X", label: "Kelas X" },
+    { value: "XI", label: "Kelas XI" },
+    { value: "XII", label: "Kelas XII" },
+];
+
 const formatTanggal = (tgl) => {
     if (!tgl) return "-";
     const d = new Date(tgl);
@@ -47,14 +54,14 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [formKelas, setFormKelas] = useState("");
-    const [search, setSearch] = useState(params.search ?? "");
-    const [filterTgl, setFilterTgl] = useState(params.tanggal ?? "");
     const [searchTerm, setSearchTerm] = useState(params.search ?? "");
+    const [filterTgl, setFilterTgl] = useState(params.tanggal ?? "");
+    // ===== BARU: state filter tingkat =====
+    const [filterTingkat, setFilterTingkat] = useState(params.tingkat ?? "");
 
     const list = Array.isArray(keterlambatan?.data) ? keterlambatan.data : [];
     const siswaList = Array.isArray(daftarSiswa) ? daftarSiswa : [];
 
-    // Filter kelas untuk dropdown siswa
     const kelasOptions = [...new Set(siswaList.map((s) => s.kelas))].sort();
     const siswaFiltered = formKelas
         ? siswaList.filter((s) => s.kelas === formKelas)
@@ -66,8 +73,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
     const hitungMenit = (jam) => {
         if (!jam) return 0;
         const [h, m] = jam.split(":").map(Number);
-        const jamMasuk = 7 * 60;
-        return Math.max(0, h * 60 + m - jamMasuk);
+        return Math.max(0, h * 60 + m - 7 * 60);
     };
 
     const handleChange = (e) => {
@@ -106,29 +112,29 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
         }
     };
 
-    // ===== LIVE SEARCH dengan debounce 400ms =====
+    // ===== LIVE FILTER (search + tanggal + tingkat) debounce 400ms =====
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (searchTerm !== (params.search ?? "")) {
-                router.get(
-                    route("keterlambatan.index"),
-                    {
-                        search: searchTerm || undefined,
-                        tanggal: filterTgl || undefined,
-                    },
-                    {
-                        preserveState: true,
-                        preserveScroll: true,
-                        replace: true,
-                    },
-                );
-            }
+            router.get(
+                route("keterlambatan.index"),
+                {
+                    search: searchTerm || undefined,
+                    tanggal: filterTgl || undefined,
+                    tingkat: filterTingkat || undefined,
+                },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
         }, 400);
         return () => clearTimeout(timer);
-    }, [searchTerm, filterTgl]);
+    }, [searchTerm, filterTgl, filterTingkat]);
 
-    const onFilterTgl = (v) => {
-        setFilterTgl(v);
+    const adaFilter = searchTerm || filterTgl || filterTingkat;
+
+    const resetFilter = () => {
+        setSearchTerm("");
+        setFilterTgl("");
+        setFilterTingkat("");
+        router.get(route("keterlambatan.index"), {}, { preserveState: false });
     };
 
     return (
@@ -151,6 +157,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                 {/* Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
+                        {/* Search */}
                         <div className="relative">
                             <input
                                 type="text"
@@ -173,24 +180,34 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                 />
                             </svg>
                         </div>
+
+                        {/* ===== BARU: Dropdown Filter Tingkat Kelas ===== */}
+                        <select
+                            value={filterTingkat}
+                            onChange={(e) => setFilterTingkat(e.target.value)}
+                            className="rounded-md border-gray-300 shadow-sm"
+                            title="Filter berdasarkan tingkat kelas"
+                        >
+                            {tingkatOptions.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        {/* Filter Tanggal */}
                         <input
                             type="date"
                             value={filterTgl}
-                            onChange={(e) => onFilterTgl(e.target.value)}
+                            onChange={(e) => setFilterTgl(e.target.value)}
                             className="rounded-md border-gray-300 shadow-sm"
                             title="Filter berdasarkan tanggal"
                         />
-                        {(searchTerm || filterTgl) && (
+
+                        {/* Reset */}
+                        {adaFilter && (
                             <button
-                                onClick={() => {
-                                    setSearchTerm("");
-                                    setFilterTgl("");
-                                    router.get(
-                                        route("keterlambatan.index"),
-                                        {},
-                                        { preserveState: false },
-                                    );
-                                }}
+                                onClick={resetFilter}
                                 className="rounded-md bg-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-300"
                                 title="Hapus semua filter"
                             >
@@ -356,7 +373,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                 )}
 
                 {/* Info filter aktif */}
-                {(searchTerm || filterTgl) && (
+                {adaFilter && (
                     <div className="rounded-md bg-blue-50 p-2 text-xs text-blue-700">
                         🔍 Filter aktif:{" "}
                         {searchTerm && (
@@ -364,7 +381,13 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                 kata kunci "{searchTerm}"
                             </span>
                         )}
-                        {searchTerm && filterTgl && " • "}
+                        {searchTerm && (filterTgl || filterTingkat) && " • "}
+                        {filterTingkat && (
+                            <span className="font-semibold">
+                                Kelas {filterTingkat}
+                            </span>
+                        )}
+                        {filterTingkat && filterTgl && " • "}
                         {filterTgl && (
                             <span className="font-semibold">
                                 tanggal {formatTanggal(filterTgl)}
@@ -395,7 +418,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                         colSpan="7"
                                         className="p-4 text-center text-gray-500"
                                     >
-                                        {searchTerm || filterTgl
+                                        {adaFilter
                                             ? "Tidak ada data yang sesuai dengan filter."
                                             : "Belum ada data keterlambatan."}
                                     </td>
@@ -423,13 +446,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                         </td>
                                         <td className="p-3">
                                             <span
-                                                className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                                                    k.menit_terlambat > 30
-                                                        ? "bg-red-100 text-red-700"
-                                                        : k.menit_terlambat > 10
-                                                          ? "bg-yellow-100 text-yellow-700"
-                                                          : "bg-green-100 text-green-700"
-                                                }`}
+                                                className={`rounded-md px-2 py-1 text-xs font-semibold ${k.menit_terlambat > 30 ? "bg-red-100 text-red-700" : k.menit_terlambat > 10 ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}
                                             >
                                                 {k.menit_terlambat} mnt
                                             </span>
@@ -443,13 +460,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                                         e.target.value,
                                                     )
                                                 }
-                                                className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                                                    k.status === "dimaafkan"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : k.status === "dihukum"
-                                                          ? "bg-red-100 text-red-700"
-                                                          : "bg-yellow-100 text-yellow-700"
-                                                }`}
+                                                className={`rounded-md px-2 py-1 text-xs font-semibold ${k.status === "dimaafkan" ? "bg-green-100 text-green-700" : k.status === "dihukum" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}
                                             >
                                                 <option value="dicatat">
                                                     Dicatat
