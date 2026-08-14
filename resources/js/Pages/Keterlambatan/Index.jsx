@@ -12,7 +12,6 @@ const emptyForm = {
     keterangan: "",
 };
 
-// ===== BARU: opsi tingkat kelas untuk filter toolbar =====
 const tingkatOptions = [
     { value: "", label: "Semua Kelas" },
     { value: "X", label: "Kelas X" },
@@ -54,15 +53,21 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [formKelas, setFormKelas] = useState("");
+    const [formTingkat, setFormTingkat] = useState("");
     const [searchTerm, setSearchTerm] = useState(params.search ?? "");
     const [filterTgl, setFilterTgl] = useState(params.tanggal ?? "");
-    // ===== BARU: state filter tingkat =====
     const [filterTingkat, setFilterTingkat] = useState(params.tingkat ?? "");
 
     const list = Array.isArray(keterlambatan?.data) ? keterlambatan.data : [];
     const siswaList = Array.isArray(daftarSiswa) ? daftarSiswa : [];
 
     const kelasOptions = [...new Set(siswaList.map((s) => s.kelas))].sort();
+
+    // ===== BARU: kelas detail terfilter berdasarkan tingkat di form =====
+    const kelasDetailOptions = formTingkat
+        ? kelasOptions.filter((k) => k.startsWith(formTingkat + " "))
+        : kelasOptions;
+
     const siswaFiltered = formKelas
         ? siswaList.filter((s) => s.kelas === formKelas)
         : siswaList;
@@ -95,6 +100,8 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                 onSuccess: () => {
                     setShowForm(false);
                     setForm(emptyForm);
+                    setFormTingkat("");
+                    setFormKelas("");
                 },
             },
         );
@@ -112,7 +119,6 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
         }
     };
 
-    // ===== LIVE FILTER (search + tanggal + tingkat) debounce 400ms =====
     useEffect(() => {
         const timer = setTimeout(() => {
             router.get(
@@ -157,7 +163,6 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                 {/* Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
-                        {/* Search */}
                         <div className="relative">
                             <input
                                 type="text"
@@ -181,7 +186,6 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                             </svg>
                         </div>
 
-                        {/* ===== BARU: Dropdown Filter Tingkat Kelas ===== */}
                         <select
                             value={filterTingkat}
                             onChange={(e) => setFilterTingkat(e.target.value)}
@@ -195,7 +199,6 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                             ))}
                         </select>
 
-                        {/* Filter Tanggal */}
                         <input
                             type="date"
                             value={filterTgl}
@@ -204,7 +207,6 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                             title="Filter berdasarkan tanggal"
                         />
 
-                        {/* Reset */}
                         {adaFilter && (
                             <button
                                 onClick={resetFilter}
@@ -232,10 +234,40 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                         <h3 className="text-lg font-semibold text-gray-800">
                             Catat Keterlambatan
                         </h3>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            {/* ===== Dropdown 1: Tingkat Kelas ===== */}
                             <div>
                                 <label className="text-sm text-gray-600">
-                                    Filter Kelas
+                                    Tingkat Kelas
+                                </label>
+                                <select
+                                    value={formTingkat}
+                                    onChange={(e) => {
+                                        setFormTingkat(e.target.value);
+                                        setFormKelas("");
+                                        setForm({ ...form, siswa_id: "" });
+                                    }}
+                                    className={inputClass}
+                                >
+                                    <option value="">
+                                        -- Semua Tingkat --
+                                    </option>
+                                    <option value="X">Kelas X</option>
+                                    <option value="XI">Kelas XI</option>
+                                    <option value="XII">Kelas XII</option>
+                                </select>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    💡 Pilih tingkat dulu
+                                </p>
+                            </div>
+
+                            {/* ===== Dropdown 2: Kelas Detail (terfilter tingkat) ===== */}
+                            <div>
+                                <label className="text-sm text-gray-600">
+                                    Kelas Detail{" "}
+                                    <span className="text-gray-400">
+                                        ({kelasDetailOptions.length} kelas)
+                                    </span>
                                 </label>
                                 <select
                                     value={formKelas}
@@ -246,17 +278,18 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                     className={inputClass}
                                 >
                                     <option value="">-- Semua Kelas --</option>
-                                    {kelasOptions.map((k) => (
+                                    {kelasDetailOptions.map((k) => (
                                         <option key={k} value={k}>
                                             {k}
                                         </option>
                                     ))}
                                 </select>
                                 <p className="mt-1 text-xs text-gray-500">
-                                    💡 Pilih kelas untuk mempersempit daftar
-                                    siswa
+                                    💡 Lalu pilih kelas detail
                                 </p>
                             </div>
+
+                            {/* ===== Dropdown 3: Siswa ===== */}
                             <div>
                                 <label className="text-sm text-gray-600">
                                     Siswa *{" "}
@@ -286,17 +319,15 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                 {siswaTerpilih &&
                                     (siswaTerpilih.punya_wa ? (
                                         <p className="mt-1 text-xs text-green-600">
-                                            ✓ Nomor WA orang tua tersedia —
-                                            notifikasi akan dikirim.
+                                            ✓ Nomor WA orang tua tersedia
                                         </p>
                                     ) : (
                                         <p className="mt-1 text-xs text-yellow-600">
-                                            ⚠ Siswa ini belum punya nomor WA
-                                            orang tua — data hanya akan
-                                            disimpan.
+                                            ⚠ Belum punya nomor WA orang tua
                                         </p>
                                     ))}
                             </div>
+
                             <div>
                                 <label className="text-sm text-gray-600">
                                     Tanggal *
@@ -323,8 +354,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                     required
                                 />
                                 <p className="mt-1 text-xs text-gray-500">
-                                    Otomatis menghitung terlambat dari jam masuk
-                                    07:00
+                                    Otomatis hitung dari jam masuk 07:00
                                 </p>
                             </div>
                             <div>
@@ -340,7 +370,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                     className={inputClass}
                                 />
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-3">
                                 <label className="text-sm text-gray-600">
                                     Keterangan
                                 </label>
