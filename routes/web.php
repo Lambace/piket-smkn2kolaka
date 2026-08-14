@@ -14,6 +14,7 @@ use App\Http\Controllers\SiswaController;
 use App\Http\Controllers\UserPetugasController;
 use App\Http\Controllers\WaliKelasController;
 use App\Http\Controllers\WaliMuridController;
+use App\Http\Controllers\WaliMuridController;
 use App\Models\Pengaturan;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -76,31 +77,31 @@ Route::get('/storage/{path}', function (string $path) {
     ]);
 })->where('path', '.*');
 
-    // ===== DOWNLOAD PDF LAPORAN (header dipaksa application/pdf untuk Fonnte) =====
-    Route::get('/download/laporan/{filename}', function (string $filename) {
-        $path = 'laporan/'.$filename;
+// ===== DOWNLOAD PDF LAPORAN (header dipaksa application/pdf untuk Fonnte) =====
+Route::get('/download/laporan/{filename}', function (string $filename) {
+    $path = 'laporan/'.$filename;
 
-        if (!Storage::disk('public')->exists($path)) {
-            abort(404, 'File laporan tidak ditemukan');
-        }
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404, 'File laporan tidak ditemukan');
+    }
 
-        return response(Storage::disk('public')->get($path), 200, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-            'Content-Length'      => (string) Storage::disk('public')->size($path),
-            'Cache-Control'       => 'public, max-age=86400',
-        ]);
-    })->where('filename', '[\w\-.]+')->name('laporan.download');
+    return response(Storage::disk('public')->get($path), 200, [
+        'Content-Type'        => 'application/pdf',
+        'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        'Content-Length'      => (string) Storage::disk('public')->size($path),
+        'Cache-Control'       => 'public, max-age=86400',
+    ]);
+})->where('filename', '[\w\-.]+')->name('laporan.download');
 
 // ===== SEMUA USER LOGIN (Koordinator + Petugas) =====
-    Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ===== ABSENSI PETUGAS =====
     Route::get('absensi-petugas', [AbsensiPetugasController::class, 'index'])->name('absensi.index');
     Route::post('absensi-petugas', [AbsensiPetugasController::class, 'store'])->name('absensi.store');
-    Route::put('absensi-petugas/{id}', [AbsensiPetugasController::class, 'update'])->name('absensi-petugas.update');   // ← BARU: edit absen
-    Route::delete('absensi-petugas/{id}', [AbsensiPetugasController::class, 'destroy'])->name('absensi-petugas.destroy'); // ← DIUBAH namanya
+    Route::put('absensi-petugas/{id}', [AbsensiPetugasController::class, 'update'])->name('absensi-petugas.update');
+    Route::delete('absensi-petugas/{id}', [AbsensiPetugasController::class, 'destroy'])->name('absensi-petugas.destroy');
 
     // Menu yang bisa diakses KOORDINATOR & PETUGAS
     Route::resource('wali-murid', WaliMuridController::class)->except(['create', 'show', 'edit']);
@@ -130,7 +131,7 @@ Route::get('/storage/{path}', function (string $path) {
         Route::match(['post', 'patch'], 'pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
 
         // ===== BARU: route untuk tombol Reset Data Operasional =====
-        Route::delete('pengaturan/reset-data', [PengaturanController::class, 'resetData'])->name('reset-dat
+        Route::delete('pengaturan/reset-data', [PengaturanController::class, 'resetData'])->name('reset-data');
 
         Route::get('user-petugas', [UserPetugasController::class, 'index'])->name('user-petugas.index');
         Route::post('user-petugas', [UserPetugasController::class, 'store'])->name('user-petugas.store');
