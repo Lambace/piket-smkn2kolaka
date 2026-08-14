@@ -27,6 +27,12 @@ class PelanggaranController extends Controller
             $query->whereDate('tanggal', $request->tanggal);
         }
 
+        // ===== BARU: filter tingkat kelas X / XI / XII =====
+        if ($request->filled('tingkat')) {
+            $tingkat = $request->tingkat;
+            $query->whereHas('siswa', fn ($q) => $q->where('kelas', 'like', "{$tingkat}%"));
+        }
+
         $pelanggaran = $query->orderByDesc('tanggal')
             ->orderByDesc('created_at')
             ->paginate(15)
@@ -41,7 +47,8 @@ class PelanggaranController extends Controller
             $s->punya_wa = (bool) ($wali && $wali->telepon);
         });
 
-        $params = $request->only(['search', 'tanggal']);
+        // ===== BARU: tingkat ikut di params =====
+        $params = $request->only(['search', 'tanggal', 'tingkat']);
         if (empty($params)) {
             $params = new \stdClass();
         }
@@ -49,26 +56,25 @@ class PelanggaranController extends Controller
         return Inertia::render('Pelanggaran/Index', [
             'pelanggaran' => $pelanggaran,
             'daftarSiswa' => $daftarSiswa,
-            'params' => $params,
+            'params'      => $params,
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'siswa_id' => 'required|exists:siswa,id',
-            'tanggal' => 'required|date',
+            'siswa_id'          => 'required|exists:siswa,id',
+            'tanggal'           => 'required|date',
             'jenis_pelanggaran' => 'required|string|max:100',
-            'poin' => 'required|integer|min:0|max:100',
-            'keterangan' => 'nullable|string|max:500',
-            'foto_bukti' => 'nullable|image|max:2048',
-            'kirim_notif' => 'nullable|boolean',
+            'poin'              => 'required|integer|min:0|max:100',
+            'keterangan'        => 'nullable|string|max:500',
+            'foto_bukti'        => 'nullable|image|max:2048',
+            'kirim_notif'       => 'nullable|boolean',
         ]);
 
         $kirimNotif = $request->boolean('kirim_notif');
         unset($data['kirim_notif']);
 
-        // Upload foto bukti
         if ($request->hasFile('foto_bukti')) {
             $data['foto_bukti'] = $request->file('foto_bukti')->store('pelanggaran', 'public');
         }
@@ -78,12 +84,10 @@ class PelanggaranController extends Controller
 
         $pelanggaran = Pelanggaran::create($data);
 
-        // ===== KONDISI 1: tombol "Simpan" → hanya simpan =====
         if (!$kirimNotif) {
             return back()->with('success', 'Data pelanggaran tersimpan tanpa notifikasi.');
         }
 
-        // ===== KONDISI 2: tombol "Simpan & Kirim WA ke Wali" =====
         $siswa = $pelanggaran->siswa;
         $wali = $siswa->waliUtama ?? $siswa->waliMurid()->first();
 

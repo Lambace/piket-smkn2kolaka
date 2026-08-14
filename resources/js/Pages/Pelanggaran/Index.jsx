@@ -13,7 +13,13 @@ const emptyForm = {
     foto_bukti: null,
 };
 
-// ===== Fungsi format tanggal Indonesia =====
+const tingkatOptions = [
+    { value: "", label: "Semua Kelas" },
+    { value: "X", label: "Kelas X" },
+    { value: "XI", label: "Kelas XI" },
+    { value: "XII", label: "Kelas XII" },
+];
+
 const formatTanggal = (tgl) => {
     if (!tgl) return "-";
     const d = new Date(tgl);
@@ -48,14 +54,21 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [formKelas, setFormKelas] = useState("");
+    const [formTingkat, setFormTingkat] = useState("");
     const [filterTgl, setFilterTgl] = useState(params.tanggal ?? "");
     const [searchTerm, setSearchTerm] = useState(params.search ?? "");
+    const [filterTingkat, setFilterTingkat] = useState(params.tingkat ?? "");
 
     const list = Array.isArray(pelanggaran?.data) ? pelanggaran.data : [];
     const siswaList = Array.isArray(daftarSiswa) ? daftarSiswa : [];
 
-    // Filter kelas untuk dropdown siswa
     const kelasOptions = [...new Set(siswaList.map((s) => s.kelas))].sort();
+
+    // ===== BARU: kelas detail terfilter berdasarkan tingkat di form =====
+    const kelasDetailOptions = formTingkat
+        ? kelasOptions.filter((k) => k.startsWith(formTingkat + " "))
+        : kelasOptions;
+
     const siswaFiltered = formKelas
         ? siswaList.filter((s) => s.kelas === formKelas)
         : siswaList;
@@ -80,6 +93,8 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
             onSuccess: () => {
                 setShowForm(false);
                 setForm(emptyForm);
+                setFormTingkat("");
+                setFormKelas("");
             },
         });
     };
@@ -96,29 +111,30 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
         }
     };
 
-    // ===== LIVE SEARCH dengan debounce 400ms =====
+    // ===== LIVE FILTER (search + tanggal + tingkat) debounce 400ms =====
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (
-                searchTerm !== (params.search ?? "") ||
-                filterTgl !== (params.tanggal ?? "")
-            ) {
-                router.get(
-                    route("pelanggaran.index"),
-                    {
-                        search: searchTerm || undefined,
-                        tanggal: filterTgl || undefined,
-                    },
-                    {
-                        preserveState: true,
-                        preserveScroll: true,
-                        replace: true,
-                    },
-                );
-            }
+            router.get(
+                route("pelanggaran.index"),
+                {
+                    search: searchTerm || undefined,
+                    tanggal: filterTgl || undefined,
+                    tingkat: filterTingkat || undefined,
+                },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
         }, 400);
         return () => clearTimeout(timer);
-    }, [searchTerm, filterTgl]);
+    }, [searchTerm, filterTgl, filterTingkat]);
+
+    const adaFilter = searchTerm || filterTgl || filterTingkat;
+
+    const resetFilter = () => {
+        setSearchTerm("");
+        setFilterTgl("");
+        setFilterTingkat("");
+        router.get(route("pelanggaran.index"), {}, { preserveState: false });
+    };
 
     const statusBadge = (status) => {
         switch (status) {
@@ -184,6 +200,21 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                                 />
                             </svg>
                         </div>
+
+                        {/* ===== BARU: Dropdown Filter Tingkat Kelas ===== */}
+                        <select
+                            value={filterTingkat}
+                            onChange={(e) => setFilterTingkat(e.target.value)}
+                            className="rounded-md border-gray-300 shadow-sm"
+                            title="Filter berdasarkan tingkat kelas"
+                        >
+                            {tingkatOptions.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                    {o.label}
+                                </option>
+                            ))}
+                        </select>
+
                         <input
                             type="date"
                             value={filterTgl}
@@ -191,17 +222,10 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                             className="rounded-md border-gray-300 shadow-sm"
                             title="Filter berdasarkan tanggal"
                         />
-                        {(searchTerm || filterTgl) && (
+
+                        {adaFilter && (
                             <button
-                                onClick={() => {
-                                    setSearchTerm("");
-                                    setFilterTgl("");
-                                    router.get(
-                                        route("pelanggaran.index"),
-                                        {},
-                                        { preserveState: false },
-                                    );
-                                }}
+                                onClick={resetFilter}
                                 className="rounded-md bg-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-300"
                                 title="Hapus semua filter"
                             >
@@ -226,10 +250,40 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                         <h3 className="text-lg font-semibold text-gray-800">
                             Catat Pelanggaran
                         </h3>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            {/* ===== Dropdown 1: Tingkat Kelas ===== */}
                             <div>
                                 <label className="text-sm text-gray-600">
-                                    Filter Kelas
+                                    Tingkat Kelas
+                                </label>
+                                <select
+                                    value={formTingkat}
+                                    onChange={(e) => {
+                                        setFormTingkat(e.target.value);
+                                        setFormKelas("");
+                                        setForm({ ...form, siswa_id: "" });
+                                    }}
+                                    className={inputClass}
+                                >
+                                    <option value="">
+                                        -- Semua Tingkat --
+                                    </option>
+                                    <option value="X">Kelas X</option>
+                                    <option value="XI">Kelas XI</option>
+                                    <option value="XII">Kelas XII</option>
+                                </select>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    💡 Pilih tingkat dulu
+                                </p>
+                            </div>
+
+                            {/* ===== Dropdown 2: Kelas Detail (terfilter tingkat) ===== */}
+                            <div>
+                                <label className="text-sm text-gray-600">
+                                    Kelas Detail{" "}
+                                    <span className="text-gray-400">
+                                        ({kelasDetailOptions.length} kelas)
+                                    </span>
                                 </label>
                                 <select
                                     value={formKelas}
@@ -240,17 +294,18 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                                     className={inputClass}
                                 >
                                     <option value="">-- Semua Kelas --</option>
-                                    {kelasOptions.map((k) => (
+                                    {kelasDetailOptions.map((k) => (
                                         <option key={k} value={k}>
                                             {k}
                                         </option>
                                     ))}
                                 </select>
                                 <p className="mt-1 text-xs text-gray-500">
-                                    💡 Pilih kelas untuk mempersempit daftar
-                                    siswa
+                                    💡 Lalu pilih kelas detail
                                 </p>
                             </div>
+
+                            {/* ===== Dropdown 3: Siswa ===== */}
                             <div>
                                 <label className="text-sm text-gray-600">
                                     Siswa *{" "}
@@ -280,15 +335,15 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                                 {siswaTerpilih &&
                                     (siswaTerpilih.punya_wa ? (
                                         <p className="mt-1 text-xs text-green-600">
-                                            ✓ Nomor WA orang tua tersedia.
+                                            ✓ Nomor WA orang tua tersedia
                                         </p>
                                     ) : (
                                         <p className="mt-1 text-xs text-yellow-600">
-                                            ⚠ Siswa ini belum punya nomor WA
-                                            orang tua.
+                                            ⚠ Belum punya nomor WA orang tua
                                         </p>
                                     ))}
                             </div>
+
                             <div>
                                 <label className="text-sm text-gray-600">
                                     Tanggal *
@@ -330,7 +385,7 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                                     required
                                 />
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-3">
                                 <label className="text-sm text-gray-600">
                                     Keterangan
                                 </label>
@@ -342,7 +397,7 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                                     className={inputClass}
                                 ></textarea>
                             </div>
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-3">
                                 <label className="text-sm text-gray-600">
                                     Foto Bukti (opsional)
                                 </label>
@@ -375,7 +430,7 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                 )}
 
                 {/* Info filter aktif */}
-                {(searchTerm || filterTgl) && (
+                {adaFilter && (
                     <div className="rounded-md bg-blue-50 p-2 text-xs text-blue-700">
                         🔍 Filter aktif:{" "}
                         {searchTerm && (
@@ -383,7 +438,13 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                                 kata kunci "{searchTerm}"
                             </span>
                         )}
-                        {searchTerm && filterTgl && " • "}
+                        {searchTerm && (filterTgl || filterTingkat) && " • "}
+                        {filterTingkat && (
+                            <span className="font-semibold">
+                                Kelas {filterTingkat}
+                            </span>
+                        )}
+                        {filterTingkat && filterTgl && " • "}
                         {filterTgl && (
                             <span className="font-semibold">
                                 tanggal {formatTanggal(filterTgl)}
@@ -414,7 +475,7 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                                         colSpan="7"
                                         className="p-4 text-center text-gray-500"
                                     >
-                                        {searchTerm || filterTgl
+                                        {adaFilter
                                             ? "Tidak ada data yang sesuai dengan filter."
                                             : "Belum ada data pelanggaran."}
                                     </td>
@@ -497,6 +558,7 @@ export default function Index({ pelanggaran, daftarSiswa, params = {} }) {
                     </table>
                 </div>
 
+                {/* Pagination */}
                 <div className="flex items-center justify-between">
                     <div>
                         {pelanggaran?.prev_page_url && (
