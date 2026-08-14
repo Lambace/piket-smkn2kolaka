@@ -34,3 +34,9 @@ Schedule::command('laporan:kirim-pdf')
 Schedule::command('laporan:bersih-pdf')
     ->timezone('Asia/Makassar')
     ->dailyAt('03:00');
+
+    // ===== Auto Hadir =====
+    Schedule::command('piket:auto-hadir')
+    ->saturdays()                 // ← hanya hari Sabtu
+    ->at('07:31')
+    ->timezone('Asia/Makassar');
