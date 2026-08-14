@@ -17,7 +17,7 @@ const statusInfo = {
     izin: { label: "Izin", cls: "bg-yellow-100 text-yellow-700", icon: "📩" },
     dl: { label: "Dinas Luar", cls: "bg-blue-100 text-blue-700", icon: "🚗" },
     lainnya: { label: "Lainnya", cls: "bg-gray-100 text-gray-700", icon: "📝" },
-    alpha: { label: "Alpha", cls: "bg-red-100 text-red-700", icon: "❌" }, // ← BARU
+    alpha: { label: "Alpha", cls: "bg-red-100 text-red-700", icon: "❌" },
 };
 
 const opsiLainnya = [
@@ -27,7 +27,6 @@ const opsiLainnya = [
     { value: "lainnya", label: "📝 Lainnya" },
 ];
 
-// ===== BARU: Opsi status untuk modal EDIT =====
 const opsiEdit = [
     { value: "tepat_waktu", label: "✅ Tepat Waktu" },
     { value: "terlambat", label: "⏰ Terlambat" },
@@ -38,12 +37,25 @@ const opsiEdit = [
     { value: "alpha", label: "❌ Alpha (hapus sebagai hadir)" },
 ];
 
+// ===== BARU: Hitung jarak Haversine di frontend (meter) =====
+const haversine = (lat1, lng1, lat2, lng2) => {
+    const R = 6371000;
+    const toRad = (x) => (x * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export default function AbsensiIndex({
     absenHariIni,
     summary,
     riwayat,
     semuaPetugas = [],
     isKoordinator = false,
+    geofence = { aktif: false }, // ← BARU
 }) {
     const { flash, auth } = usePage().props;
     const [now, setNow] = useState(new Date());
@@ -52,18 +64,105 @@ export default function AbsensiIndex({
     const [keterangan, setKeterangan] = useState("");
     const [err, setErr] = useState("");
 
-    // ===== BARU: Modal Edit =====
-    const [editModal, setEditModal] = useState(null); // { id, nama, status, jam_masuk, keterangan }
+    const [editModal, setEditModal] = useState(null);
     const [editForm, setEditForm] = useState({
         status: "",
         jam_masuk: "",
         keterangan: "",
     });
 
+    // ===== BARU: State geofencing =====
+    const [geo, setGeo] = useState({
+        status: "loading", // loading | ok | far | denied | error
+        lat: null,
+        lng: null,
+        accuracy: null,
+        jarakMeter: null,
+        pesan: "",
+    });
+
+    // Jam & tanggal live
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(t);
     }, []);
+
+    // ===== BARU: Ambil GPS saat mount =====
+    useEffect(() => {
+        if (!geofence.aktif) {
+            setGeo((g) => ({
+                ...g,
+                status: "off",
+                pesan: "Geofence tidak aktif",
+            }));
+            return;
+        }
+
+        if (!("geolocation" in navigator)) {
+            setGeo((g) => ({
+                ...g,
+                status: "error",
+                pesan: "Browser tidak mendukung GPS. Gunakan Chrome/Edge terbaru.",
+            }));
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude, longitude, accuracy } = pos.coords;
+                const jarak = haversine(
+                    latitude,
+                    longitude,
+                    geofence.lat,
+                    geofence.lng,
+                );
+                const jarakBulat = Math.round(jarak);
+                const dekat = jarakBulat <= geofence.radius_meter;
+                const sinyalOk = accuracy <= 500;
+
+                if (!sinyalOk) {
+                    setGeo({
+                        status: "error",
+                        lat: latitude,
+                        lng: longitude,
+                        accuracy,
+                        jarakMeter: jarakBulat,
+                        pesan: `Sinyal GPS lemah (akurasi ${Math.round(accuracy)} m). Pindah ke tempat terbuka.`,
+                    });
+                } else if (dekat) {
+                    setGeo({
+                        status: "ok",
+                        lat: latitude,
+                        lng: longitude,
+                        accuracy,
+                        jarakMeter: jarakBulat,
+                        pesan: `Anda berada ${jarakBulat} m dari sekolah ✓`,
+                    });
+                } else {
+                    setGeo({
+                        status: "far",
+                        lat: latitude,
+                        lng: longitude,
+                        accuracy,
+                        jarakMeter: jarakBulat,
+                        pesan: `Anda ${jarakBulat} m dari sekolah (maks ${geofence.radius_meter} m).`,
+                    });
+                }
+            },
+            (error) => {
+                let pesan = "Gagal membaca lokasi.";
+                if (error.code === 1)
+                    pesan =
+                        "Izin lokasi ditolak. Aktifkan di pengaturan browser.";
+                else if (error.code === 2)
+                    pesan = "Posisi tidak tersedia. Pastikan GPS aktif.";
+                else if (error.code === 3)
+                    pesan = "Timeout membaca GPS. Coba lagi.";
+                setGeo((g) => ({ ...g, status: "denied", pesan }));
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        );
+    }, [geofence]);
 
     const jam = now.toLocaleTimeString("id-ID", {
         hour: "2-digit",
@@ -75,16 +174,30 @@ export default function AbsensiIndex({
         year: "numeric",
     });
 
-    const absenMasuk = () =>
+    // ===== BARU: Absen masuk dengan lokasi =====
+    const absenMasuk = () => {
+        if (geofence.aktif && geo.status !== "ok") {
+            setErr(
+                geo.status === "far"
+                    ? `Absen ditolak: ${geo.pesan}`
+                    : geo.status === "denied" || geo.status === "error"
+                      ? geo.pesan
+                      : "Menunggu GPS… coba beberapa detik lagi.",
+            );
+            return;
+        }
+
         router.post(
             route("absensi.store"),
-            { status: "masuk" },
             {
-                onSuccess: () => {
-                    router.visit(route("dashboard"));
-                },
+                status: "masuk",
+                lat: geo.lat,
+                lng: geo.lng,
+                accuracy: geo.accuracy,
             },
+            { onSuccess: () => router.visit(route("dashboard")) },
         );
+    };
 
     const pilihStatus = (s) => {
         setDropOpen(false);
@@ -93,29 +206,33 @@ export default function AbsensiIndex({
         setModalStatus(s);
     };
 
-        const kirimKeterangan = (e) => {
-            e.preventDefault();
-            if (keterangan.trim().length < 5) {
-                setErr("Mohon isi keterangan halangan minimal 5 karakter.");
-                return;
-            }
-            router.post(
-                route("absensi.store"),
-                {
-                    status: modalStatus,
-                    keterangan,
+    const kirimKeterangan = (e) => {
+        e.preventDefault();
+        if (keterangan.trim().length < 5) {
+            setErr("Mohon isi keterangan halangan minimal 5 karakter.");
+            return;
+        }
+        router.post(
+            route("absensi.store"),
+            {
+                status: modalStatus,
+                keterangan,
+                // Status non-masuk tidak kirim lokasi (privasi)
+                lat: null,
+                lng: null,
+                accuracy: null,
+            },
+            {
+                onSuccess: () => {
+                    setModalStatus(null);
+                    setKeterangan("");
+                    setErr("");
+                    router.visit(route("dashboard"));
                 },
-                {
-                    onSuccess: () => {
-                        setModalStatus(null);
-                        setKeterangan("");
-                        setErr("");
-                        router.visit(route("dashboard"));
-                    },
-                },
-            );
-        };
-    // ===== BARU: Buka modal edit =====
+            },
+        );
+    };
+
     const bukaEdit = (p) => {
         setEditModal(p);
         setEditForm({
@@ -125,7 +242,6 @@ export default function AbsensiIndex({
         });
     };
 
-    // ===== BARU: Simpan edit =====
     const simpanEdit = (e) => {
         e.preventDefault();
         router.put(
@@ -137,20 +253,55 @@ export default function AbsensiIndex({
         );
     };
 
-    // ===== BARU: Hapus absensi =====
     const hapusAbsen = (p) => {
         if (!confirm(`Hapus absensi ${p.nama}?`)) return;
         router.delete(route("absensi-petugas.destroy", p.absen_id));
     };
 
-    // ===== BARU: Cek hak edit/hapus =====
     const bolehEdit = (p) => isKoordinator || p.nama === auth?.user?.name;
-
     const infoModal = opsiLainnya.find((o) => o.value === modalStatus);
-
-    // ===== BARU: Statistik hari ini =====
     const sudahAbsen = semuaPetugas.filter((p) => p.sudah_absen).length;
     const belumAbsen = semuaPetugas.length - sudahAbsen;
+
+    // ===== BARU: Warna kartu lokasi =====
+    const geoStyle = {
+        ok: {
+            bg: "bg-green-50 border-green-200",
+            text: "text-green-700",
+            icon: "🟢",
+        },
+        far: {
+            bg: "bg-red-50 border-red-200",
+            text: "text-red-700",
+            icon: "🔴",
+        },
+        denied: {
+            bg: "bg-yellow-50 border-yellow-200",
+            text: "text-yellow-700",
+            icon: "⚠️",
+        },
+        error: {
+            bg: "bg-yellow-50 border-yellow-200",
+            text: "text-yellow-700",
+            icon: "⚠️",
+        },
+        loading: {
+            bg: "bg-slate-50 border-slate-200",
+            text: "text-slate-500",
+            icon: "⏳",
+        },
+        off: {
+            bg: "bg-slate-50 border-slate-200",
+            text: "text-slate-500",
+            icon: "🔕",
+        },
+    }[geo.status] || {
+        bg: "bg-slate-50 border-slate-200",
+        text: "text-slate-500",
+        icon: "❓",
+    };
+
+    const tombolTerkunci = geofence.aktif && geo.status !== "ok";
 
     return (
         <AuthenticatedLayout
@@ -175,7 +326,6 @@ export default function AbsensiIndex({
                         </div>
                     )}
 
-                    {/* ═══════════ KARTU UTAMA ═══════════ */}
                     <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-2xl ring-1 ring-slate-900/10">
                         <div className="bg-slate-900 px-6 py-5 text-white">
                             <div className="flex flex-col items-center gap-3 md:flex-row md:justify-between">
@@ -215,7 +365,6 @@ export default function AbsensiIndex({
                         </div>
 
                         <div className="grid gap-4 bg-slate-50 p-4 lg:grid-cols-5 lg:p-6">
-                            {/* ===== KOLOM KIRI ===== */}
                             <div className="space-y-4 lg:col-span-2">
                                 <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
                                     <h4 className="text-center font-bold text-gray-800">
@@ -260,6 +409,52 @@ export default function AbsensiIndex({
                                     </p>
                                 </div>
 
+                                {/* ===== BARU: Kartu Status Lokasi ===== */}
+                                {geofence.aktif && !absenHariIni && (
+                                    <div
+                                        className={`rounded-2xl border-2 p-4 transition ${geoStyle.bg}`}
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <span className="text-3xl">
+                                                {geoStyle.icon}
+                                            </span>
+                                            <div className="flex-1">
+                                                <h5
+                                                    className={`text-sm font-bold ${geoStyle.text}`}
+                                                >
+                                                    Verifikasi Lokasi
+                                                </h5>
+                                                <p
+                                                    className={`mt-1 text-xs ${geoStyle.text}`}
+                                                >
+                                                    {geo.pesan}
+                                                </p>
+                                                {geo.accuracy &&
+                                                    geo.status !== "denied" && (
+                                                        <p className="mt-1 text-[10px] text-gray-500">
+                                                            Akurasi GPS: ±
+                                                            {Math.round(
+                                                                geo.accuracy,
+                                                            )}{" "}
+                                                            m
+                                                        </p>
+                                                    )}
+                                                {(geo.status === "denied" ||
+                                                    geo.status === "error") && (
+                                                    <button
+                                                        onClick={() =>
+                                                            window.location.reload()
+                                                        }
+                                                        className="mt-2 rounded-lg bg-white px-3 py-1 text-[11px] font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+                                                    >
+                                                        🔄 Coba Lagi
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {!absenHariIni ? (
                                     <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 text-white shadow-lg">
                                         <p className="mb-4 text-center font-bold">
@@ -268,13 +463,28 @@ export default function AbsensiIndex({
                                         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
                                             <button
                                                 onClick={absenMasuk}
-                                                className="flex w-full flex-col items-center rounded-2xl bg-green-600 px-6 py-3 shadow-lg transition hover:scale-105 hover:bg-green-700 sm:w-auto sm:rounded-full sm:px-8"
+                                                disabled={tombolTerkunci}
+                                                className={`flex w-full flex-col items-center rounded-2xl px-6 py-3 shadow-lg transition sm:w-auto sm:rounded-full sm:px-8 ${
+                                                    tombolTerkunci
+                                                        ? "cursor-not-allowed bg-gray-500 opacity-60"
+                                                        : "bg-green-600 hover:scale-105 hover:bg-green-700"
+                                                }`}
+                                                title={
+                                                    tombolTerkunci
+                                                        ? "Anda di luar area sekolah"
+                                                        : "Absen sekarang"
+                                                }
                                             >
                                                 <span className="font-mono text-lg font-extrabold">
-                                                    🕐 {jam} WITA
+                                                    {tombolTerkunci
+                                                        ? "🔒"
+                                                        : "🕐"}{" "}
+                                                    {jam} WITA
                                                 </span>
                                                 <span className="text-sm font-semibold">
-                                                    Absen Sekarang
+                                                    {tombolTerkunci
+                                                        ? "Absen Terkunci"
+                                                        : "Absen Sekarang"}
                                                 </span>
                                             </button>
                                             <div className="relative w-full sm:w-auto">
@@ -310,9 +520,21 @@ export default function AbsensiIndex({
                                             </div>
                                         </div>
                                         <p className="mt-4 text-center text-[11px] text-emerald-100">
-                                            Klik <b>Masuk</b> = langsung
-                                            tersimpan • <b>Lainnya</b> = wajib
-                                            isi keterangan
+                                            {geofence.aktif ? (
+                                                <>
+                                                    <b>Masuk</b> hanya di area
+                                                    sekolah (≤
+                                                    {geofence.radius_meter} m) •{" "}
+                                                    <b>Lainnya</b> bisa dari
+                                                    mana saja
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Klik <b>Masuk</b> = langsung
+                                                    tersimpan • <b>Lainnya</b> =
+                                                    wajib isi keterangan
+                                                </>
+                                            )}
                                         </p>
                                     </div>
                                 ) : (
@@ -353,7 +575,6 @@ export default function AbsensiIndex({
                                 )}
                             </div>
 
-                            {/* ===== KOLOM KANAN: RIWAYAT ===== */}
                             <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 lg:col-span-3">
                                 <h4 className="mb-3 font-bold text-gray-800">
                                     📜 Riwayat Absensi Terakhir
@@ -407,7 +628,6 @@ export default function AbsensiIndex({
                             </div>
                         </div>
 
-                        {/* ===== BARU: DAFTAR SEMUA PETUGAS HARI INI ===== */}
                         <div className="border-t border-slate-100 bg-white p-4 lg:p-6">
                             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                                 <div>
@@ -471,6 +691,17 @@ export default function AbsensiIndex({
                                                             "{p.keterangan}"
                                                         </p>
                                                     )}
+                                                    {/* ===== BARU: jarak audit ===== */}
+                                                    {p.jarak_meter !== null &&
+                                                        p.jarak_meter !==
+                                                            undefined && (
+                                                            <p className="mt-0.5 text-[10px] text-slate-500">
+                                                                📍 Absen dari
+                                                                jarak{" "}
+                                                                {p.jarak_meter}{" "}
+                                                                m
+                                                            </p>
+                                                        )}
                                                 </div>
                                                 <div className="flex shrink-0 items-center gap-2">
                                                     <div className="text-right">
@@ -527,7 +758,6 @@ export default function AbsensiIndex({
                 </div>
             </div>
 
-            {/* ===== MODAL KETERANGAN HALANGAN ===== */}
             {modalStatus && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                     <form
@@ -569,7 +799,6 @@ export default function AbsensiIndex({
                 </div>
             )}
 
-            {/* ===== BARU: MODAL EDIT ABSENSI ===== */}
             {editModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
                     <form
@@ -606,7 +835,6 @@ export default function AbsensiIndex({
                                     ))}
                                 </select>
                             </div>
-
                             <div>
                                 <label className="mb-1 block text-xs font-semibold text-gray-700">
                                     Jam Masuk{" "}
@@ -626,7 +854,6 @@ export default function AbsensiIndex({
                                     className="w-full rounded-lg border-gray-300 text-sm font-mono"
                                 />
                             </div>
-
                             <div>
                                 <label className="mb-1 block text-xs font-semibold text-gray-700">
                                     Keterangan{" "}
