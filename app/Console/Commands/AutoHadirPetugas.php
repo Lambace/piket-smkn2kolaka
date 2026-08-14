@@ -33,7 +33,7 @@ class AutoHadirPetugas extends Command
                 'tanggal'    => $today,
                 'jam_masuk'  => $jamMasuk,
                 'status'     => 'tepat_waktu',
-                'keterangan' => 'Hadir otomatis (default hadir)',
+                'keterangan' => null,
             ]);
 
             $this->info("Auto-hadir tercatat: {$u->name} ({$jamMasuk})");
