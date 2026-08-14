@@ -129,6 +129,9 @@ Route::get('/storage/{path}', function (string $path) {
         Route::get('pengaturan', [PengaturanController::class, 'edit'])->name('pengaturan.edit');
         Route::match(['post', 'patch'], 'pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
 
+        // ===== BARU: route untuk tombol Reset Data Operasional =====
+        Route::delete('pengaturan/reset-data', [PengaturanController::class, 'resetData'])->name('reset-dat
+
         Route::get('user-petugas', [UserPetugasController::class, 'index'])->name('user-petugas.index');
         Route::post('user-petugas', [UserPetugasController::class, 'store'])->name('user-petugas.store');
         Route::patch('user-petugas/{user}', [UserPetugasController::class, 'update'])->name('user-petugas.update');
