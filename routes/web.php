@@ -130,7 +130,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::match(['post', 'patch'], 'pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
 
         // ===== BARU: route untuk tombol Reset Data Operasional =====
-        Route::delete('pengaturan/reset-data', [PengaturanController::class, 'resetData'])->name('reset-data');
+        Route::match(['post', 'delete'], 'pengaturan/reset-data', [PengaturanController::class, 'resetData'])->name('reset-data');
 
         Route::get('user-petugas', [UserPetugasController::class, 'index'])->name('user-petugas.index');
         Route::post('user-petugas', [UserPetugasController::class, 'store'])->name('user-petugas.store');
