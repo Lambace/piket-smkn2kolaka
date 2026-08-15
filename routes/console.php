@@ -11,16 +11,14 @@ Artisan::command('inspire', function () {
 // Sabtu 15:00 WITA - pesan pribadi ke setiap wali kelas
 Schedule::command('rekap:kirim-harian')
     ->timezone('Asia/Makassar')
-    ->saturdays()
-    ->at('15:00')
+    ->weeklyOn(6, '15:00')
     ->withoutOverlapping();
 
 // ===== LAPORAN PDF + LIVE VIEW KE GRUP SEKOLAH =====
 // Sabtu 15:02 WITA - 1x kirim berisi file PDF + link Live View di caption
 Schedule::command('laporan:kirim-pdf')
     ->timezone('Asia/Makassar')
-    ->saturdays()
-    ->weeklyOn(6, '22:23') 
+    ->weeklyOn(6, '15:01') 
     ->withoutOverlapping()
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('Laporan PDF gagal terkirim ke grup WA');
@@ -38,5 +36,5 @@ Schedule::command('laporan:bersih-pdf')
     // ===== Auto Hadir =====
     Schedule::command('piket:auto-hadir')
     ->saturdays()                 // ← hanya hari Sabtu
-    ->at('07:31')
+    ->at('07:05')
     ->timezone('Asia/Makassar');
