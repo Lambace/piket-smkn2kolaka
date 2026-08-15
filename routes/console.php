@@ -20,7 +20,7 @@ Schedule::command('rekap:kirim-harian')
 Schedule::command('laporan:kirim-pdf')
     ->timezone('Asia/Makassar')
     ->saturdays()
-    ->at('17:45')
+    ->weeklyOn(6, '18:21') 
     ->withoutOverlapping()
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('Laporan PDF gagal terkirim ke grup WA');
