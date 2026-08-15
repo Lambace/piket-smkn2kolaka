@@ -140,6 +140,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
+    // ===== CRON EKSTERNAL: picu scheduler setiap menit =====
+    Route::get('/cron/schedule-run', function () {
+        if (request()->query('key') !== env('CRON_KEY')) {
+            abort(404);
+        }
+        \Illuminate\Support\Facades\Artisan::call('schedule:run');
+        return response()->json(['ok' => true]);
+    });
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
