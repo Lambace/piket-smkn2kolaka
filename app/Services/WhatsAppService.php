@@ -13,7 +13,8 @@ class WhatsAppService
     // ===== Kirim pesan teks =====
     public function kirim(string $nomor, string $pesan, $penerima = null): Notifikasi
     {
-        $nomor = $this->normalisasiNomor($nomor);
+        // ===== FIX: pakai normalisasiTarget agar ID grup @g.us tidak dirusak =====
+        $nomor = $this->normalisasiTarget($nomor);
         $notifikasi = $this->buatNotifikasi($nomor, $pesan, $penerima);
 
         return $this->kirimKeFonnte($notifikasi, [
@@ -44,7 +45,7 @@ class WhatsAppService
         return $this->kirimKeFonnte($notifikasi, [
             'target'   => $target,
             'message'  => $caption,
-            'filename' => $filename,   // tampil sebagai nama file di WA
+            'filename' => $filename,
         ], 120, $pdfContent, $filename);
     }
 
@@ -78,12 +79,10 @@ class WhatsAppService
             $request = Http::withHeaders(['Authorization' => $token])->timeout($timeout);
 
             if ($fileContent !== null) {
-                // ===== UPLOAD LANGSUNG: parameter 'file' (CURLFile) =====
                 $response = $request
                     ->attach('file', $fileContent, $fileName)
                     ->post($this->apiUrl, $payload);
             } else {
-                // ===== MODE FORM: untuk teks & gambar via url =====
                 $response = $request->asForm()->post($this->apiUrl, $payload);
             }
 
