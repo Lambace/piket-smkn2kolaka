@@ -272,7 +272,7 @@ export default function KartuAbsensiPetugas({ data }) {
                                 <div className="flex flex-col items-center justify-center py-6 text-center">
                                     <span className="mb-2 text-3xl">🎉</span>
                                     <p className="text-sm font-semibold text-green-400">
-                                        Semua petugas terdaftar!
+                                        Semua petugas hadir!
                                     </p>
                                 </div>
                             ) : (
