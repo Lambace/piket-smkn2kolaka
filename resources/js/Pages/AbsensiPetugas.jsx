@@ -37,7 +37,6 @@ const opsiEdit = [
     { value: "alpha", label: "❌ Alpha (hapus sebagai hadir)" },
 ];
 
-// ===== BARU: Hitung jarak Haversine di frontend (meter) =====
 const haversine = (lat1, lng1, lat2, lng2) => {
     const R = 6371000;
     const toRad = (x) => (x * Math.PI) / 180;
@@ -55,7 +54,7 @@ export default function AbsensiIndex({
     riwayat,
     semuaPetugas = [],
     isKoordinator = false,
-    geofence = { aktif: false }, // ← BARU
+    geofence = { aktif: false },
 }) {
     const { flash, auth } = usePage().props;
     const [now, setNow] = useState(new Date());
@@ -71,9 +70,11 @@ export default function AbsensiIndex({
         keterangan: "",
     });
 
-    // ===== BARU: State geofencing =====
+    // ===== BARU: State popup sukses absensi =====
+    const [showSukses, setShowSukses] = useState(false);
+
     const [geo, setGeo] = useState({
-        status: "loading", // loading | ok | far | denied | error
+        status: "loading",
         lat: null,
         lng: null,
         accuracy: null,
@@ -81,13 +82,11 @@ export default function AbsensiIndex({
         pesan: "",
     });
 
-    // Jam & tanggal live
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(t);
     }, []);
 
-    // ===== BARU: Ambil GPS saat mount =====
     useEffect(() => {
         if (!geofence.aktif) {
             setGeo((g) => ({
@@ -174,7 +173,7 @@ export default function AbsensiIndex({
         year: "numeric",
     });
 
-    // ===== BARU: Absen masuk dengan lokasi =====
+    // ===== BARU: Absen masuk → popup dulu, redirect nanti =====
     const absenMasuk = () => {
         if (geofence.aktif && geo.status !== "ok") {
             setErr(
@@ -195,7 +194,7 @@ export default function AbsensiIndex({
                 lng: geo.lng,
                 accuracy: geo.accuracy,
             },
-            { onSuccess: () => router.visit(route("dashboard")) },
+            { onSuccess: () => setShowSukses(true) }, // ← trigger popup
         );
     };
 
@@ -206,6 +205,7 @@ export default function AbsensiIndex({
         setModalStatus(s);
     };
 
+    // ===== BARU: Kirim keterangan → popup dulu, redirect nanti =====
     const kirimKeterangan = (e) => {
         e.preventDefault();
         if (keterangan.trim().length < 5) {
@@ -217,7 +217,6 @@ export default function AbsensiIndex({
             {
                 status: modalStatus,
                 keterangan,
-                // Status non-masuk tidak kirim lokasi (privasi)
                 lat: null,
                 lng: null,
                 accuracy: null,
@@ -227,10 +226,16 @@ export default function AbsensiIndex({
                     setModalStatus(null);
                     setKeterangan("");
                     setErr("");
-                    router.visit(route("dashboard"));
+                    setShowSukses(true); // ← trigger popup
                 },
             },
         );
+    };
+
+    // ===== BARU: Handler klik OK di popup =====
+    const tutupPopupSukses = () => {
+        setShowSukses(false);
+        router.visit(route("dashboard"));
     };
 
     const bukaEdit = (p) => {
@@ -247,9 +252,7 @@ export default function AbsensiIndex({
         router.put(
             route("absensi-petugas.update", editModal.absen_id),
             editForm,
-            {
-                onSuccess: () => setEditModal(null),
-            },
+            { onSuccess: () => setEditModal(null) },
         );
     };
 
@@ -263,7 +266,6 @@ export default function AbsensiIndex({
     const sudahAbsen = semuaPetugas.filter((p) => p.sudah_absen).length;
     const belumAbsen = semuaPetugas.length - sudahAbsen;
 
-    // ===== BARU: Warna kartu lokasi =====
     const geoStyle = {
         ok: {
             bg: "bg-green-50 border-green-200",
@@ -409,7 +411,6 @@ export default function AbsensiIndex({
                                     </p>
                                 </div>
 
-                                {/* ===== BARU: Kartu Status Lokasi ===== */}
                                 {geofence.aktif && !absenHariIni && (
                                     <div
                                         className={`rounded-2xl border-2 p-4 transition ${geoStyle.bg}`}
@@ -691,7 +692,6 @@ export default function AbsensiIndex({
                                                             "{p.keterangan}"
                                                         </p>
                                                     )}
-                                                    {/* ===== BARU: jarak audit ===== */}
                                                     {p.jarak_meter !== null &&
                                                         p.jarak_meter !==
                                                             undefined && (
@@ -757,6 +757,37 @@ export default function AbsensiIndex({
                     </div>
                 </div>
             </div>
+
+            {/* ===== BARU: Popup Sukses Absensi ===== */}
+            {showSukses && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 animate-[fadeIn_0.3s_ease-out]">
+                        <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 text-center text-white">
+                            <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-6xl ring-4 ring-white/30">
+                                ✅
+                            </div>
+                            <h3 className="text-xl font-extrabold">
+                                Berhasil!
+                            </h3>
+                        </div>
+                        <div className="p-6 text-center">
+                            <p className="text-base leading-relaxed text-gray-700">
+                                Absensi anda telah{" "}
+                                <b className="text-green-600">terekam</b> !
+                            </p>
+                        </div>
+                        <div className="border-t border-gray-100 bg-gray-50 p-4">
+                            <button
+                                onClick={tutupPopupSukses}
+                                autoFocus
+                                className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 text-base font-bold text-white shadow-lg transition hover:from-green-700 hover:to-emerald-700 active:scale-[0.98]"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {modalStatus && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
