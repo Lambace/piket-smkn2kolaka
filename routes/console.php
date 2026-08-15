@@ -18,7 +18,7 @@ Schedule::command('rekap:kirim-harian')
 // Sabtu 15:02 WITA - 1x kirim berisi file PDF + link Live View di caption
 Schedule::command('laporan:kirim-pdf')
     ->timezone('Asia/Makassar')
-    ->weeklyOn(6, '15:01') 
+    ->weeklyOn(6, '22:41') 
     ->withoutOverlapping()
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('Laporan PDF gagal terkirim ke grup WA');
@@ -36,5 +36,5 @@ Schedule::command('laporan:bersih-pdf')
     // ===== Auto Hadir =====
     Schedule::command('piket:auto-hadir')
     ->saturdays()                 // ← hanya hari Sabtu
-    ->at('07:05')
+    ->at('07:00')
     ->timezone('Asia/Makassar');
