@@ -3,12 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\Pengaturan;
-// Tambahkan import untuk File dan Intervention Image
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Facades\Image; // <-- Gunakan Facade untuk v2
 
 class KirimTvKeGrup extends Command
 {
@@ -28,7 +26,6 @@ class KirimTvKeGrup extends Command
         // ===== 1. Token Fonnte =====
         $token = env('FONNTE_TOKEN');
         
-        // Fallback ke database jika tidak ada di .env (menggunakan logika asli Anda)
         if (empty($token)) {
             $pengaturan = Pengaturan::first();
             if ($pengaturan) {
@@ -42,7 +39,7 @@ class KirimTvKeGrup extends Command
         }
 
         if (empty($token)) {
-            $this->error('❌ Token Fonnte tidak ditemukan. Isi di menu Pengaturan atau env FONNTE_TOKEN.');
+            $this->error(' Token Fonnte tidak ditemukan.');
             return Command::FAILURE;
         }
 
@@ -50,12 +47,11 @@ class KirimTvKeGrup extends Command
         $pengaturan = Pengaturan::first();
         $sekolah = $pengaturan?->nama_sekolah ?? 'SMKN 2 KOLAKA';
         $now = now()->locale('id');
-        $hari = $now->isoFormat('dddd'); // Contoh: Sabtu
-        $tanggal = $now->isoFormat('dddd, D MMMM Y'); // Contoh: Sabtu, 18 Agustus 2026
+        $hari = $now->isoFormat('dddd');
+        $tanggal = $now->isoFormat('dddd, D MMMM Y');
 
-        // ⚠️ PENTING: Ganti angka di bawah ini dengan Query Database asli Anda!
-        // Contoh: $petugasHadir = AbsensiPiket::where('tanggal', $now->toDateString())->where('status', 'hadir')->count();
-        $petugasHadir = 12; 
+        // ⚠️ GANTI dengan query database asli Anda!
+        $petugasHadir = 0; 
         $alpha = 0; 
 
         $key = env('DISPLAY_KEY', 'piket2026');
@@ -67,7 +63,7 @@ class KirimTvKeGrup extends Command
             'k'       => $key,
         ]);
 
-        // ===== 3. Generate Banner Profesional =====
+        // ===== 3. Generate Banner Profesional (Intervention Image v2) =====
         $this->info('🎨 Sedang membuat banner...');
         
         $templatePath = public_path('images/banner-bg.png');
@@ -76,16 +72,22 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
-        $manager = new ImageManager(new Driver());
-        $image = $manager->read($templatePath);
+        // Load template dengan sintaks v2
+        $image = Image::make($templatePath);
 
-        // A. Overlay Logo Dinamis (Menimpa lingkaran putih)
+        // A. Overlay Logo Dinamis
         if ($pengaturan?->logo) {
             $logoPath = public_path('storage/' . $pengaturan->logo);
             if (File::exists($logoPath)) {
-                $logo = $manager->read($logoPath);
-                $logo->resize(180, 180); // Ukuran logo
-                $image->place($logo, 'center', 0, -550); // Geser ke atas agar pas di lingkaran
+                // Resize logo
+                $logo = Image::make($logoPath)->resize(180, 180, function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+                
+                // Tempel logo di posisi tengah atas (sesuaikan X, Y)
+                // X = (lebar banner / 2) - (lebar logo / 2)
+                // Y = offset dari atas
+                $image->insert($logo, 'top', 0, 50);
                 $this->info('✅ Logo dinamis ditambahkan.');
             }
         }
@@ -105,7 +107,6 @@ class KirimTvKeGrup extends Command
             $font->align('center');
             $font->valign('middle');
         });
-        // Label Hadir
         $image->text('HADIR', 340, 1200, function($font) {
             $font->size(22);
             $font->color('#ffffff');
@@ -119,14 +120,13 @@ class KirimTvKeGrup extends Command
             $font->align('center');
             $font->valign('middle');
         });
-        // Label Alpha
         $image->text('ALPHA', 740, 1200, function($font) {
             $font->size(22);
             $font->color('#ffffff');
             $font->align('center');
         });
 
-        // Simpan banner sementara di folder public/banners
+        // Simpan banner sementara
         $folder = public_path('banners');
         if (!File::isDirectory($folder)) {
             File::makeDirectory($folder, 0755, true);
@@ -139,7 +139,7 @@ class KirimTvKeGrup extends Command
         $bannerUrl = url('banners/' . $fileName);
         $this->info('✅ Banner berhasil dibuat: ' . $bannerUrl);
 
-        // ===== 4. Siapkan Caption (Opsi 1: Link di Caption) =====
+        // ===== 4. Siapkan Caption =====
         $caption = implode("\n", [
             '*LAPORAN TIM PIKET ' . strtoupper($hari) . '*',
             '_' . $sekolah . '_',
@@ -157,11 +157,11 @@ class KirimTvKeGrup extends Command
             '_© Sistem Informasi Piket - Si Piket_',
         ]);
 
-        // ===== 5. Kirim ke API Fonnte =====
+        // ===== 5. Kirim ke Fonnte =====
         $payload = [
             'target'  => $grup,
             'message' => $caption,
-            'url'     => $bannerUrl, // Mengirim gambar banner yang baru digenerate
+            'url'     => $bannerUrl,
         ];
 
         $res = Http::withHeaders(['Authorization' => $token])
@@ -169,11 +169,11 @@ class KirimTvKeGrup extends Command
             ->asForm()
             ->post('https://api.fonnte.com/send', $payload);
 
-        // ===== 6. Hapus File Sementara (Agar server tidak penuh) =====
+        // ===== 6. Hapus File Sementara =====
         File::delete($savePath);
         $this->info('🗑️ File banner sementara dihapus.');
 
-        // ===== 7. Evaluasi Response =====
+        // ===== 7. Evaluasi =====
         $body = [];
         if ($res->successful()) {
             try {
