@@ -48,7 +48,7 @@ class KirimTvKeGrup extends Command
         $hari = $now->isoFormat('dddd');
         $tanggal = $now->isoFormat('dddd, D MMMM Y');
 
-        // ️ GANTI dengan query database asli Anda!
+        // ⚠️ GANTI dengan query database asli Anda!
         $petugasHadir = 0; 
         $alpha = 0; 
 
@@ -118,8 +118,8 @@ class KirimTvKeGrup extends Command
             $font->align('center');
         });
 
-        // Simpan sementara
-        $folder = storage_path('app/public/banners');
+        // Simpan di folder PUBLIC agar URL langsung bisa diakses tanpa symlink storage
+        $folder = public_path('banners');
         if (!File::isDirectory($folder)) {
             File::makeDirectory($folder, 0755, true);
         }
@@ -127,44 +127,18 @@ class KirimTvKeGrup extends Command
         $fileName = 'piket-' . now()->timestamp . '.png';
         $savePath = $folder . '/' . $fileName;
         $image->save($savePath);
-        $this->info('✅ Banner berhasil disimpan di storage.');
-
-        // ===== 4. Upload Banner ke Catbox.moe (Hosting Gambar Gratis) =====
-        $this->info('📤 Mengupload banner ke hosting...');
         
-        $bannerUrl = null;
-        
-        try {
-            $uploadRes = Http::timeout(30)
-                ->attach('fileToUpload', file_get_contents($savePath), $fileName)
-                ->post('https://catbox.moe/user/api.php', [
-                    'reqtype' => 'fileupload',
-                    'userhash' => '', // Kosongkan untuk upload anonim
-                ]);
+        // URL Publik langsung dari folder public
+        $bannerUrl = url('banners/' . $fileName);
+        $this->info('✅ Banner berhasil disimpan: ' . $bannerUrl);
 
-            if ($uploadRes->successful()) {
-                $bannerUrl = trim($uploadRes->body());
-                $this->info('✅ Banner diupload ke: ' . $bannerUrl);
-            } else {
-                $this->warn('⚠️ Upload ke catbox gagal, coba fallback...');
-            }
-        } catch (\Exception $e) {
-            $this->warn('⚠️ Upload error: ' . $e->getMessage());
-        }
-
-        // Fallback: Jika upload gagal, gunakan URL lokal (dengan delay)
-        if (empty($bannerUrl)) {
-            $bannerUrl = url('storage/banners/' . $fileName);
-            $this->info('⚠️ Menggunakan URL lokal: ' . $bannerUrl);
-        }
-
-        // ===== 5. Siapkan Caption =====
+        // ===== 4. Siapkan Caption =====
         $caption = implode("\n", [
             '*LAPORAN TIM PIKET ' . strtoupper($hari) . '*',
             '_' . $sekolah . '_',
             $tanggal,
             '',
-            ' Petugas Hadir: *' . $petugasHadir . ' orang*',
+            '👥 Petugas Hadir: *' . $petugasHadir . ' orang*',
             '🔴 Alpha: *' . $alpha . ' orang*',
             '',
             '🔴 *Live View* — lihat dashboard piket hari ini:',
@@ -176,7 +150,7 @@ class KirimTvKeGrup extends Command
             '_© Sistem Informasi Piket - Si Piket_',
         ]);
 
-        // ===== 6. Kirim ke Fonnte =====
+        // ===== 5. Kirim ke Fonnte =====
         $this->info('📱 Mengirim ke Fonnte...');
         
         $payload = [
@@ -190,23 +164,26 @@ class KirimTvKeGrup extends Command
             ->asForm()
             ->post('https://api.fonnte.com/send', $payload);
 
-        // ===== 7. Evaluasi =====
+        // ===== 6. Evaluasi =====
         $body = [];
         if ($res->successful()) {
             try {
                 $body = $res->json() ?? [];
-                $this->info(' Response Fonnte: ' . json_encode($body));
+                $this->info('📱 Response Fonnte: ' . json_encode($body));
             } catch (\Throwable $e) {
                 $body = ['status' => false, 'reason' => 'Response bukan JSON'];
             }
         } else {
-            $this->error(' HTTP Error: ' . $res->status());
+            $this->error('❌ HTTP Error: ' . $res->status());
             $this->error('Response: ' . $res->body());
         }
 
-        // ===== 8. Hapus File Lokal =====
-        File::delete($savePath);
-        $this->info('🗑️ File banner lokal dihapus.');
+        // ===== 7. JANGAN HAPUS FILE SEKARANG =====
+        // Fonnte memproses pesan secara "pending" (antrean). 
+        // Jika file dihapus sekarang, Fonnte akan gagal mendownload gambar (404).
+        // File akan menumpuk sedikit di folder public/banners (hanya ~100KB per hari), 
+        // Anda bisa membersihkannya manual per bulan jika perlu.
+        $this->info('💾 File banner disimpan (tidak dihapus agar Fonnte bisa memproses antrean).');
 
         $ok = $res->successful() && ($body['status'] ?? false);
 
