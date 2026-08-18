@@ -6,8 +6,7 @@ use App\Models\Pengaturan;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManagerStatic as Image;
 
 class KirimTvKeGrup extends Command
 {
@@ -19,7 +18,7 @@ class KirimTvKeGrup extends Command
         $grup = $this->option('grup') ?? env('WA_GROUP_ID');
 
         if (empty($grup)) {
-            $this->error('❌ WA_GROUP_ID belum diisi (contoh: 628xxx@g.us).');
+            $this->error('❌ WA_GROUP_ID belum diisi.');
             return Command::FAILURE;
         }
 
@@ -62,7 +61,7 @@ class KirimTvKeGrup extends Command
             'k'       => $key,
         ]);
 
-        // ===== 3. Generate Banner (Intervention Image v4.x) =====
+        // ===== 3. Generate Banner (Intervention Image v2.7) =====
         $this->info('🎨 Sedang membuat banner...');
         
         $templatePath = public_path('images/banner-bg.png');
@@ -71,17 +70,19 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // Inisialisasi Manager v4
-        $manager = new ImageManager(new Driver());
-        $image = $manager->read($templatePath);
+        // Load gambar dengan sintaks v2
+        $image = Image::make($templatePath);
 
         // A. Overlay Logo Dinamis
         if ($pengaturan?->logo) {
             $logoPath = public_path('storage/' . $pengaturan->logo);
             if (File::exists($logoPath)) {
-                $logo = $manager->read($logoPath)->resize(180, 180);
-                // place() adalah method v4 untuk menempelkan gambar
-                $image->place($logo, 'center', 0, 50); 
+                $logo = Image::make($logoPath)->resize(180, 180, function ($constraint) {
+                    $constraint->aspectRatio();
+                });
+                
+                // Insert logo di posisi tengah atas (X=0 dari tengah, Y=50 dari atas)
+                $image->insert($logo, 'top', 0, 50);
                 $this->info('✅ Logo dinamis ditambahkan.');
             }
         }
@@ -142,7 +143,7 @@ class KirimTvKeGrup extends Command
             '👥 Petugas Hadir: *' . $petugasHadir . ' orang*',
             '🔴 Alpha: *' . $alpha . ' orang*',
             '',
-            '🔴 *Live View* — lihat dashboard piket hari ini:',
+            ' *Live View* — lihat dashboard piket hari ini:',
             $urlTv,
             '',
             '📄 *Download Laporan* — unduh PDF laporan harian:',
