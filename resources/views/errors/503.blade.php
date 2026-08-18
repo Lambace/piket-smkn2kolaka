@@ -43,13 +43,13 @@
         <!-- Judul & Pesan -->
         <h1 class="text-3xl font-bold text-gray-800 mb-3">Sedang Dalam Pemeliharaan</h1>
         <p class="text-gray-600 mb-6 leading-relaxed">
-            Sistem Informasi Piket (<strong>Si Piket</strong>) sedang dalam proses pembaruan untuk memberikan layanan yang lebih baik.
+            Nabilang Orang pinta (<strong>Si Piket</strong>) Under Maintenance.
         </p>
 
         <!-- Info Waktu (Opsional) -->
         <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-left rounded">
             <p class="text-sm text-blue-700 font-semibold">⏱️ Estimasi Selesai:</p>
-            <p class="text-blue-600">Beberapa menit lagi. Mohon maaf atas ketidaknyamanannya.</p>
+            <p class="text-blue-600">Kalau Sudah Beres terbukami Itu. Biarpi saya kore--korek dulu untuk mengisi waktu iye !. Mohon maaf atas ketidaknyamanannya.</p>
         </div>
 
         <!-- Kontak Darurat -->
