@@ -6,12 +6,12 @@ use App\Models\Pengaturan;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
-use Intervention\Image\Facades\Image; // <-- Gunakan Facade untuk v2
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class KirimTvKeGrup extends Command
 {
     protected $signature = 'tv:kirim-grup {--grup= : ID grup WA (default: env WA_GROUP_ID)}';
-
     protected $description = 'Kirim banner Laporan Tim Piket profesional ke grup WhatsApp';
 
     public function handle(): int
@@ -25,7 +25,6 @@ class KirimTvKeGrup extends Command
 
         // ===== 1. Token Fonnte =====
         $token = env('FONNTE_TOKEN');
-        
         if (empty($token)) {
             $pengaturan = Pengaturan::first();
             if ($pengaturan) {
@@ -39,7 +38,7 @@ class KirimTvKeGrup extends Command
         }
 
         if (empty($token)) {
-            $this->error(' Token Fonnte tidak ditemukan.');
+            $this->error('❌ Token Fonnte tidak ditemukan.');
             return Command::FAILURE;
         }
 
@@ -63,7 +62,7 @@ class KirimTvKeGrup extends Command
             'k'       => $key,
         ]);
 
-        // ===== 3. Generate Banner Profesional (Intervention Image v2) =====
+        // ===== 3. Generate Banner (Intervention Image v4.x) =====
         $this->info('🎨 Sedang membuat banner...');
         
         $templatePath = public_path('images/banner-bg.png');
@@ -72,22 +71,17 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // Load template dengan sintaks v2
-        $image = Image::make($templatePath);
+        // Inisialisasi Manager v4
+        $manager = new ImageManager(new Driver());
+        $image = $manager->read($templatePath);
 
         // A. Overlay Logo Dinamis
         if ($pengaturan?->logo) {
             $logoPath = public_path('storage/' . $pengaturan->logo);
             if (File::exists($logoPath)) {
-                // Resize logo
-                $logo = Image::make($logoPath)->resize(180, 180, function ($constraint) {
-                    $constraint->aspectRatio();
-                });
-                
-                // Tempel logo di posisi tengah atas (sesuaikan X, Y)
-                // X = (lebar banner / 2) - (lebar logo / 2)
-                // Y = offset dari atas
-                $image->insert($logo, 'top', 0, 50);
+                $logo = $manager->read($logoPath)->resize(180, 180);
+                // place() adalah method v4 untuk menempelkan gambar
+                $image->place($logo, 'center', 0, 50); 
                 $this->info('✅ Logo dinamis ditambahkan.');
             }
         }
