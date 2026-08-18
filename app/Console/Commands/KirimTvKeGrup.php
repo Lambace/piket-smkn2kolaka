@@ -48,7 +48,7 @@ class KirimTvKeGrup extends Command
         $hari = $now->isoFormat('dddd');
         $tanggal = $now->isoFormat('dddd, D MMMM Y');
 
-        // ⚠️ GANTI dengan query database asli Anda!
+        // ️ GANTI dengan query database asli Anda!
         $petugasHadir = 0; 
         $alpha = 0; 
 
@@ -62,7 +62,7 @@ class KirimTvKeGrup extends Command
         ]);
 
         // ===== 3. Generate Banner =====
-        $this->info(' Sedang membuat banner...');
+        $this->info('🎨 Sedang membuat banner...');
         
         $templatePath = public_path('images/banner-bg.png');
         if (!File::exists($templatePath)) {
@@ -118,7 +118,7 @@ class KirimTvKeGrup extends Command
             $font->align('center');
         });
 
-        // Simpan banner di storage (lebih stabil di Laravel Cloud)
+        // Simpan sementara
         $folder = storage_path('app/public/banners');
         if (!File::isDirectory($folder)) {
             File::makeDirectory($folder, 0755, true);
@@ -127,19 +127,47 @@ class KirimTvKeGrup extends Command
         $fileName = 'piket-' . now()->timestamp . '.png';
         $savePath = $folder . '/' . $fileName;
         $image->save($savePath);
-        
         $this->info('✅ Banner berhasil disimpan di storage.');
 
-        // ===== 4. Siapkan Caption =====
+        // ===== 4. Upload Banner ke Catbox.moe (Hosting Gambar Gratis) =====
+        $this->info('📤 Mengupload banner ke hosting...');
+        
+        $bannerUrl = null;
+        
+        try {
+            $uploadRes = Http::timeout(30)
+                ->attach('fileToUpload', file_get_contents($savePath), $fileName)
+                ->post('https://catbox.moe/user/api.php', [
+                    'reqtype' => 'fileupload',
+                    'userhash' => '', // Kosongkan untuk upload anonim
+                ]);
+
+            if ($uploadRes->successful()) {
+                $bannerUrl = trim($uploadRes->body());
+                $this->info('✅ Banner diupload ke: ' . $bannerUrl);
+            } else {
+                $this->warn('⚠️ Upload ke catbox gagal, coba fallback...');
+            }
+        } catch (\Exception $e) {
+            $this->warn('⚠️ Upload error: ' . $e->getMessage());
+        }
+
+        // Fallback: Jika upload gagal, gunakan URL lokal (dengan delay)
+        if (empty($bannerUrl)) {
+            $bannerUrl = url('storage/banners/' . $fileName);
+            $this->info('⚠️ Menggunakan URL lokal: ' . $bannerUrl);
+        }
+
+        // ===== 5. Siapkan Caption =====
         $caption = implode("\n", [
             '*LAPORAN TIM PIKET ' . strtoupper($hari) . '*',
             '_' . $sekolah . '_',
             $tanggal,
             '',
-            '👥 Petugas Hadir: *' . $petugasHadir . ' orang*',
+            ' Petugas Hadir: *' . $petugasHadir . ' orang*',
             '🔴 Alpha: *' . $alpha . ' orang*',
             '',
-            ' *Live View* — lihat dashboard piket hari ini:',
+            '🔴 *Live View* — lihat dashboard piket hari ini:',
             $urlTv,
             '',
             '📄 *Download Laporan* — unduh PDF laporan harian:',
@@ -148,33 +176,26 @@ class KirimTvKeGrup extends Command
             '_© Sistem Informasi Piket - Si Piket_',
         ]);
 
-        // ===== 5. Kirim ke Fonnte via Base64 =====
-        $this->info('📤 Mengirim ke Fonnte via base64...');
-        
-        // Baca file dan convert ke base64
-        $imageData = base64_encode(file_get_contents($savePath));
+        // ===== 6. Kirim ke Fonnte =====
+        $this->info('📱 Mengirim ke Fonnte...');
         
         $payload = [
             'target'  => $grup,
             'message' => $caption,
-            'url'     => 'data:image/png;base64,' . $imageData, // Base64 langsung
+            'url'     => $bannerUrl,
         ];
 
         $res = Http::withHeaders(['Authorization' => $token])
-            ->timeout(120) // Timeout lebih lama untuk base64
+            ->timeout(120)
             ->asForm()
             ->post('https://api.fonnte.com/send', $payload);
-
-        // ===== 6. Hapus File =====
-        File::delete($savePath);
-        $this->info('🗑️ File banner dihapus.');
 
         // ===== 7. Evaluasi =====
         $body = [];
         if ($res->successful()) {
             try {
                 $body = $res->json() ?? [];
-                $this->info('📱 Response Fonnte: ' . json_encode($body));
+                $this->info(' Response Fonnte: ' . json_encode($body));
             } catch (\Throwable $e) {
                 $body = ['status' => false, 'reason' => 'Response bukan JSON'];
             }
@@ -182,6 +203,10 @@ class KirimTvKeGrup extends Command
             $this->error(' HTTP Error: ' . $res->status());
             $this->error('Response: ' . $res->body());
         }
+
+        // ===== 8. Hapus File Lokal =====
+        File::delete($savePath);
+        $this->info('🗑️ File banner lokal dihapus.');
 
         $ok = $res->successful() && ($body['status'] ?? false);
 
