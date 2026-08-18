@@ -61,8 +61,8 @@ class KirimTvKeGrup extends Command
             'k'       => $key,
         ]);
 
-        // ===== 3. Generate Banner (Intervention Image v2.7) =====
-        $this->info('🎨 Sedang membuat banner...');
+        // ===== 3. Generate Banner =====
+        $this->info(' Sedang membuat banner...');
         
         $templatePath = public_path('images/banner-bg.png');
         if (!File::exists($templatePath)) {
@@ -70,7 +70,6 @@ class KirimTvKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // Load gambar dengan sintaks v2
         $image = Image::make($templatePath);
 
         // A. Overlay Logo Dinamis
@@ -80,14 +79,12 @@ class KirimTvKeGrup extends Command
                 $logo = Image::make($logoPath)->resize(180, 180, function ($constraint) {
                     $constraint->aspectRatio();
                 });
-                
-                // Insert logo di posisi tengah atas (X=0 dari tengah, Y=50 dari atas)
                 $image->insert($logo, 'top', 0, 50);
                 $this->info('✅ Logo dinamis ditambahkan.');
             }
         }
 
-        // B. Overlay Tanggal (Kotak Putih)
+        // B. Overlay Tanggal
         $image->text($tanggal, 540, 750, function($font) {
             $font->size(40);
             $font->color('#2c3e50');
@@ -95,7 +92,7 @@ class KirimTvKeGrup extends Command
             $font->valign('middle');
         });
 
-        // C. Overlay Angka Hadir (Kotak Hijau)
+        // C. Overlay Angka Hadir
         $image->text((string)$petugasHadir, 340, 1300, function($font) {
             $font->size(100);
             $font->color('#ffffff');
@@ -108,7 +105,7 @@ class KirimTvKeGrup extends Command
             $font->align('center');
         });
 
-        // D. Overlay Angka Alpha (Kotak Merah)
+        // D. Overlay Angka Alpha
         $image->text((string)$alpha, 740, 1300, function($font) {
             $font->size(100);
             $font->color('#ffffff');
@@ -121,7 +118,7 @@ class KirimTvKeGrup extends Command
             $font->align('center');
         });
 
-        // Simpan banner di storage/app/public/banners (lebih stabil)
+        // Simpan banner di storage (lebih stabil di Laravel Cloud)
         $folder = storage_path('app/public/banners');
         if (!File::isDirectory($folder)) {
             File::makeDirectory($folder, 0755, true);
@@ -130,10 +127,9 @@ class KirimTvKeGrup extends Command
         $fileName = 'piket-' . now()->timestamp . '.png';
         $savePath = $folder . '/' . $fileName;
         $image->save($savePath);
+        
+        $this->info('✅ Banner berhasil disimpan di storage.');
 
-        // Generate URL publik dari storage
-        $bannerUrl = asset('storage/banners/' . $fileName);
-        $this->info('✅ Banner berhasil dibuat: ' . $bannerUrl);
         // ===== 4. Siapkan Caption =====
         $caption = implode("\n", [
             '*LAPORAN TIM PIKET ' . strtoupper($hari) . '*',
@@ -152,40 +148,49 @@ class KirimTvKeGrup extends Command
             '_© Sistem Informasi Piket - Si Piket_',
         ]);
 
-        // ===== 5. Kirim ke Fonnte =====
+        // ===== 5. Kirim ke Fonnte via Base64 =====
+        $this->info('📤 Mengirim ke Fonnte via base64...');
+        
+        // Baca file dan convert ke base64
+        $imageData = base64_encode(file_get_contents($savePath));
+        
         $payload = [
             'target'  => $grup,
             'message' => $caption,
-            'url'     => $bannerUrl,
+            'url'     => 'data:image/png;base64,' . $imageData, // Base64 langsung
         ];
 
         $res = Http::withHeaders(['Authorization' => $token])
-            ->timeout(60)
+            ->timeout(120) // Timeout lebih lama untuk base64
             ->asForm()
             ->post('https://api.fonnte.com/send', $payload);
 
-        // ===== 6. Hapus File Sementara =====
+        // ===== 6. Hapus File =====
         File::delete($savePath);
-        $this->info('🗑️ File banner sementara dihapus.');
+        $this->info('🗑️ File banner dihapus.');
 
         // ===== 7. Evaluasi =====
         $body = [];
         if ($res->successful()) {
             try {
                 $body = $res->json() ?? [];
+                $this->info('📱 Response Fonnte: ' . json_encode($body));
             } catch (\Throwable $e) {
                 $body = ['status' => false, 'reason' => 'Response bukan JSON'];
             }
+        } else {
+            $this->error(' HTTP Error: ' . $res->status());
+            $this->error('Response: ' . $res->body());
         }
 
         $ok = $res->successful() && ($body['status'] ?? false);
 
         if ($ok) {
-            $this->info("✅ Banner Tim Piket berhasil terkirim ke {$grup}");
+            $this->info("✅ Banner berhasil terkirim ke {$grup}");
             return Command::SUCCESS;
         }
 
-        $this->error('❌ Gagal kirim: ' . ($body['reason'] ?? ($res->successful() ? 'Status false' : 'HTTP ' . $res->status())));
+        $this->error('❌ Gagal kirim: ' . ($body['reason'] ?? 'Unknown error'));
         return Command::FAILURE;
     }
 }
