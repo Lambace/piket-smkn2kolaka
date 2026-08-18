@@ -121,8 +121,8 @@ class KirimTvKeGrup extends Command
             $font->align('center');
         });
 
-        // Simpan banner sementara
-        $folder = public_path('banners');
+        // Simpan banner di storage/app/public/banners (lebih stabil)
+        $folder = storage_path('app/public/banners');
         if (!File::isDirectory($folder)) {
             File::makeDirectory($folder, 0755, true);
         }
@@ -130,10 +130,10 @@ class KirimTvKeGrup extends Command
         $fileName = 'piket-' . now()->timestamp . '.png';
         $savePath = $folder . '/' . $fileName;
         $image->save($savePath);
-        
-        $bannerUrl = url('banners/' . $fileName);
-        $this->info('✅ Banner berhasil dibuat: ' . $bannerUrl);
 
+        // Generate URL publik dari storage
+        $bannerUrl = asset('storage/banners/' . $fileName);
+        $this->info('✅ Banner berhasil dibuat: ' . $bannerUrl);
         // ===== 4. Siapkan Caption =====
         $caption = implode("\n", [
             '*LAPORAN TIM PIKET ' . strtoupper($hari) . '*',
