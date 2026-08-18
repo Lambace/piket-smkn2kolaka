@@ -43,7 +43,7 @@
         <!-- Judul & Pesan -->
         <h1 class="text-3xl font-bold text-gray-800 mb-3">Sedang Dalam Pemeliharaan</h1>
         <p class="text-gray-600 mb-6 leading-relaxed">
-            Nabilang Orang pinta (<strong>Si Piket</strong>) Under Maintenance.
+            Nabilang Orang pintar (<strong>Si Piket</strong>) Under Maintenance.
         </p>
 
         <!-- Info Waktu (Opsional) -->
