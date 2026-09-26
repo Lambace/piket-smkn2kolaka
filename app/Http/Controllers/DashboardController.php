@@ -382,70 +382,68 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-               // ===== 4. ABSENSI PETUGAS + ALPHA OTOMATIS =====
+               // ===== 4. ABSENSI PETUGAS + ALPHA (LOGIKA LENGKAP) =====
         $hariIniStr = Carbon::today()->toDateString();
         $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
         $batasAlpha = '08:30';
 
-        // Ambil semua absensi hari ini
-        $absensiHariIni = \App\Models\AbsensiPetugas::where('tanggal', $hariIniStr)
+        // Ambil SEMUA absensi dalam rentang tanggal filter (bukan hanya hari ini)
+        $absensiDalamRentang = \App\Models\AbsensiPetugas::whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->orderBy('tanggal')
             ->orderBy('jam_masuk')
             ->get();
 
-        // Pisahkan berdasarkan status
-        $absensiTercatat = $absensiHariIni
-            ->filter(fn ($a) => in_array($a->status, ['tepat_waktu', 'terlambat', 'sakit', 'izin', 'dl']))
+        // 1. Petugas HADIR (status bukan alpha)
+        $absensiTercatat = $absensiDalamRentang
+            ->filter(fn ($a) => $a->status !== 'alpha')
             ->map(fn ($a) => [
                 'nama'    => trim($a->nama),
                 'jabatan' => $a->jabatan,
                 'jam'     => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null,
                 'status'  => $a->status,
+                'tanggal' => $a->tanggal instanceof \Carbon\Carbon ? $a->tanggal->format('d/m/Y') : $a->tanggal,
             ])
             ->values()
             ->toBase();
 
-        $alphaDariDB = $absensiHariIni
+        // 2. Petugas ALPHA yang sudah tercatat manual di database
+        $alphaDariDB = $absensiDalamRentang
             ->filter(fn ($a) => $a->status === 'alpha')
             ->map(fn ($a) => [
                 'nama'    => trim($a->nama),
                 'jabatan' => $a->jabatan,
                 'jam'     => null,
                 'status'  => 'alpha',
+                'tanggal' => $a->tanggal instanceof \Carbon\Carbon ? $a->tanggal->format('d/m/Y') : $a->tanggal,
             ])
             ->values()
             ->toBase();
 
-        // Daftar nama yang sudah absen (termasuk alpha)
-        $namaSudahAbsen = $absensiHariIni->pluck('nama')->map(fn ($n) => strtolower(trim($n)))->toArray();
-
-        // Ambil semua user dengan role petugas atau koordinator
-        $semuaPetugas = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
-            ->orderBy('name')
-            ->get();
-
-        // Hitung alpha tambahan: petugas yang belum absen sama sekali
-        $alphaOtomatis = collect();
+        // 3. Alpha OTOMATIS: petugas yang belum absen sama sekali dalam rentang ini
+        $namaSudahAbsen = $absensiDalamRentang->pluck('nama')->map(fn ($n) => strtolower(trim($n)))->toArray();
         
+        $alphaOtomatis = collect();
         if ($jamSekarang >= $batasAlpha) {
+            $semuaPetugas = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
+                ->orderBy('name')
+                ->get();
+            
             foreach ($semuaPetugas as $petugas) {
                 $namaLower = strtolower(trim($petugas->name));
-                
-                // Jika nama tidak ada di daftar yang sudah absen
                 if (!in_array($namaLower, $namaSudahAbsen)) {
                     $alphaOtomatis->push([
                         'nama'    => $petugas->name,
                         'jabatan' => $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
                         'jam'     => null,
                         'status'  => 'alpha',
+                        'tanggal' => $hariIniStr,
                     ]);
                 }
             }
         }
 
-        // Gabungkan: alpha dari DB + alpha otomatis
+        // Gabungkan: hadir + alpha dari DB + alpha otomatis
         $alphaList = $alphaDariDB->merge($alphaOtomatis)->values();
-        
-        // Gabungkan semua data absensi
         $absensiPetugas = $absensiTercatat->merge($alphaList)->values();
 
         return [
