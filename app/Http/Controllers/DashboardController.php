@@ -382,69 +382,51 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-               // ===== 4. ABSENSI PETUGAS + ALPHA (LOGIKA LENGKAP) =====
-        $hariIniStr = Carbon::today()->toDateString();
-        $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
-        $batasAlpha = '08:30';
-
-        // Ambil SEMUA absensi dalam rentang tanggal filter (bukan hanya hari ini)
-        $absensiDalamRentang = \App\Models\AbsensiPetugas::whereBetween('tanggal', [$rangeStart, $rangeEnd])
-            ->orderBy('tanggal')
-            ->orderBy('jam_masuk')
+        // ===== 4. ABSENSI PETUGAS + ALPHA (LOGIKA BARU) =====
+        // Ambil semua user yang bertugas sebagai petugas/koordinator
+        $semuaPetugas = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
+            ->orderBy('name')
             ->get();
 
-        // 1. Petugas HADIR (status bukan alpha)
-        $absensiTercatat = $absensiDalamRentang
-            ->filter(fn ($a) => $a->status !== 'alpha')
-            ->map(fn ($a) => [
-                'nama'    => trim($a->nama),
-                'jabatan' => $a->jabatan,
-                'jam'     => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null,
-                'status'  => $a->status,
-                'tanggal' => $a->tanggal instanceof \Carbon\Carbon ? $a->tanggal->format('d/m/Y') : $a->tanggal,
-            ])
-            ->values()
-            ->toBase();
+        // Ambil semua absensi dalam rentang tanggal filter
+        $absensiHariIni = \App\Models\AbsensiPetugas::whereBetween('tanggal', [$rangeStart, $rangeEnd])->get();
 
-        // 2. Petugas ALPHA yang sudah tercatat manual di database
-        $alphaDariDB = $absensiDalamRentang
-            ->filter(fn ($a) => $a->status === 'alpha')
-            ->map(fn ($a) => [
-                'nama'    => trim($a->nama),
-                'jabatan' => $a->jabatan,
-                'jam'     => null,
-                'status'  => 'alpha',
-                'tanggal' => $a->tanggal instanceof \Carbon\Carbon ? $a->tanggal->format('d/m/Y') : $a->tanggal,
-            ])
-            ->values()
-            ->toBase();
+        // Buat peta absensi berdasarkan nama (lowercase) untuk pencocokan cepat
+        $absensiMap = [];
+        foreach ($absensiHariIni as $absen) {
+            $namaKey = strtolower(trim($absen->nama));
+            $absensiMap[$namaKey] = $absen;
+        }
 
-        // 3. Alpha OTOMATIS: petugas yang belum absen sama sekali dalam rentang ini
-        $namaSudahAbsen = $absensiDalamRentang->pluck('nama')->map(fn ($n) => strtolower(trim($n)))->toArray();
-        
-        $alphaOtomatis = collect();
-        if ($jamSekarang >= $batasAlpha) {
-            $semuaPetugas = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
-                ->orderBy('name')
-                ->get();
+        $hadirList = collect();
+        $alphaList = collect();
+
+        // Cek setiap petugas: apakah dia sudah absen hari ini?
+        foreach ($semuaPetugas as $petugas) {
+            $namaKey = strtolower(trim($petugas->name));
             
-            foreach ($semuaPetugas as $petugas) {
-                $namaLower = strtolower(trim($petugas->name));
-                if (!in_array($namaLower, $namaSudahAbsen)) {
-                    $alphaOtomatis->push([
-                        'nama'    => $petugas->name,
-                        'jabatan' => $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
-                        'jam'     => null,
-                        'status'  => 'alpha',
-                        'tanggal' => $hariIniStr,
-                    ]);
-                }
+            if (isset($absensiMap[$namaKey])) {
+                // Petugas sudah absen -> masuk daftar Hadir
+                $absen = $absensiMap[$namaKey];
+                $hadirList->push([
+                    'nama'    => $petugas->name,
+                    'jabatan' => $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                    'jam'     => $absen->jam_masuk ? substr($absen->jam_masuk, 0, 5) : null,
+                    'status'  => $absen->status, // tepat_waktu, terlambat, sakit, izin, dll
+                ]);
+            } else {
+                // Petugas belum absen -> masuk daftar Alpha
+                $alphaList->push([
+                    'nama'    => $petugas->name,
+                    'jabatan' => $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                    'jam'     => null,
+                    'status'  => 'alpha',
+                ]);
             }
         }
 
-        // Gabungkan: hadir + alpha dari DB + alpha otomatis
-        $alphaList = $alphaDariDB->merge($alphaOtomatis)->values();
-        $absensiPetugas = $absensiTercatat->merge($alphaList)->values();
+        // Gabungkan: Daftar Hadir dulu, baru Daftar Alpha
+        $absensiPetugas = $hadirList->merge($alphaList)->values();
 
         return [
             'stats'                   => $stats,
