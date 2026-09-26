@@ -382,12 +382,12 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-        // ===== ABSENSI PETUGAS + ALPHA OTOMATIS =====
-        $tanggalHariIni = Carbon::today()->toDateString();
-        $jamSekarang    = now()->format('H:i');
-        $batasAlpha     = '08:30';
+               // ===== 4. ABSENSI PETUGAS + ALPHA OTOMATIS =====
+        $hariIniStr = Carbon::today()->toDateString();
+        $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
+        $batasAlpha = '08:30';
 
-        $absensiTercatat = AbsensiPetugas::where('tanggal', $tanggalHariIni)
+        $absensiTercatat = \App\Models\AbsensiPetugas::where('tanggal', $hariIniStr)
             ->orderBy('jam_masuk')->get()
             ->map(fn ($a) => [
                 'nama'    => $a->nama,
@@ -398,17 +398,19 @@ class DashboardController extends Controller
             ->values()
             ->toBase();
 
+        // Hitung petugas alpha: user dengan role petugas/koordinator yang belum absen
         $alphaList = collect();
         if ($jamSekarang >= $batasAlpha) {
             $namaSudahAbsen = $absensiTercatat->pluck('nama')->toArray();
 
-            $alphaList = User::where('role', 'petugas')
+            $alphaList = \App\Models\User::where('role', 'petugas')
+                ->orWhere('role', 'koordinator')
                 ->whereNotIn('name', $namaSudahAbsen)
                 ->orderBy('name')
                 ->get()
                 ->map(fn ($u) => [
                     'nama'    => $u->name,
-                    'jabatan' => 'Petugas Piket',
+                    'jabatan' => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
                     'jam'     => null,
                     'status'  => 'alpha',
                 ])
