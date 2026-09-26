@@ -50,20 +50,22 @@ const formatTanggal = (tgl) => {
 
 export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
     const { flash, errors } = usePage().props;
+
+    // State Form
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [formKelas, setFormKelas] = useState("");
     const [formTingkat, setFormTingkat] = useState("");
+
+    // State Filter
     const [searchTerm, setSearchTerm] = useState(params.search ?? "");
     const [filterTgl, setFilterTgl] = useState(params.tanggal ?? "");
     const [filterTingkat, setFilterTingkat] = useState(params.tingkat ?? "");
 
     const list = Array.isArray(keterlambatan?.data) ? keterlambatan.data : [];
     const siswaList = Array.isArray(daftarSiswa) ? daftarSiswa : [];
-
     const kelasOptions = [...new Set(siswaList.map((s) => s.kelas))].sort();
 
-    // ===== BARU: kelas detail terfilter berdasarkan tingkat di form =====
     const kelasDetailOptions = formTingkat
         ? kelasOptions.filter((k) => k.startsWith(formTingkat + " "))
         : kelasOptions;
@@ -119,6 +121,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
         }
     };
 
+    // Auto-submit saat filter berubah (dengan debounce)
     useEffect(() => {
         const timer = setTimeout(() => {
             router.get(
@@ -127,6 +130,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                     search: searchTerm || undefined,
                     tanggal: filterTgl || undefined,
                     tingkat: filterTingkat || undefined,
+                    page: 1, // Reset ke halaman 1 saat filter berubah
                 },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
@@ -140,7 +144,25 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
         setSearchTerm("");
         setFilterTgl("");
         setFilterTingkat("");
-        router.get(route("keterlambatan.index"), {}, { preserveState: false });
+        router.get(
+            route("keterlambatan.index"),
+            { page: 1 },
+            { preserveState: false },
+        );
+    };
+
+    // ✅ FUNGSI BARU: Navigasi halaman yang aman dan mempertahankan filter
+    const goToPage = (page) => {
+        router.get(
+            route("keterlambatan.index"),
+            {
+                search: searchTerm || undefined,
+                tanggal: filterTgl || undefined,
+                tingkat: filterTingkat || undefined,
+                page: page,
+            },
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     return (
@@ -225,7 +247,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                     </button>
                 </div>
 
-                {/* Form */}
+                {/* Form Input */}
                 {showForm && (
                     <form
                         onSubmit={submit}
@@ -235,7 +257,6 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                             Catat Keterlambatan
                         </h3>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                            {/* ===== Dropdown 1: Tingkat Kelas ===== */}
                             <div>
                                 <label className="text-sm text-gray-600">
                                     Tingkat Kelas
@@ -256,18 +277,12 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                     <option value="XI">Kelas XI</option>
                                     <option value="XII">Kelas XII</option>
                                 </select>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    💡 Pilih tingkat dulu
-                                </p>
                             </div>
 
-                            {/* ===== Dropdown 2: Kelas Detail (terfilter tingkat) ===== */}
                             <div>
                                 <label className="text-sm text-gray-600">
-                                    Kelas Detail{" "}
-                                    <span className="text-gray-400">
-                                        ({kelasDetailOptions.length} kelas)
-                                    </span>
+                                    Kelas Detail ({kelasDetailOptions.length}{" "}
+                                    kelas)
                                 </label>
                                 <select
                                     value={formKelas}
@@ -284,18 +299,11 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                                         </option>
                                     ))}
                                 </select>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    💡 Lalu pilih kelas detail
-                                </p>
                             </div>
 
-                            {/* ===== Dropdown 3: Siswa ===== */}
                             <div>
                                 <label className="text-sm text-gray-600">
-                                    Siswa *{" "}
-                                    <span className="text-gray-400">
-                                        ({siswaFiltered.length} siswa)
-                                    </span>
+                                    Siswa * ({siswaFiltered.length} siswa)
                                 </label>
                                 <select
                                     name="siswa_id"
@@ -427,7 +435,7 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                     </div>
                 )}
 
-                {/* Tabel */}
+                {/* Tabel Data */}
                 <div className="overflow-x-auto rounded-lg bg-white shadow">
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 text-left text-gray-600">
@@ -521,37 +529,37 @@ export default function Index({ keterlambatan, daftarSiswa, params = {} }) {
                     </table>
                 </div>
 
-                {/* Pagination */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        {keterlambatan?.prev_page_url && (
-                            <button
-                                onClick={() =>
-                                    router.get(keterlambatan.prev_page_url)
-                                }
-                                className="rounded-md bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300"
-                            >
-                                ← Sebelumnya
-                            </button>
-                        )}
+                {/* ✅ Pagination yang Diperbaiki */}
+                {keterlambatan?.last_page > 1 && (
+                    <div className="flex items-center justify-between rounded-lg bg-white p-4 shadow">
+                        <button
+                            onClick={() =>
+                                goToPage(keterlambatan.current_page - 1)
+                            }
+                            disabled={!keterlambatan?.prev_page_url}
+                            className="rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            ← Sebelumnya
+                        </button>
+
+                        <span className="text-sm text-gray-600">
+                            Halaman{" "}
+                            <strong>{keterlambatan?.current_page ?? 1}</strong>{" "}
+                            dari{" "}
+                            <strong>{keterlambatan?.last_page ?? 1}</strong>
+                        </span>
+
+                        <button
+                            onClick={() =>
+                                goToPage(keterlambatan.current_page + 1)
+                            }
+                            disabled={!keterlambatan?.next_page_url}
+                            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Berikutnya →
+                        </button>
                     </div>
-                    <span className="text-sm text-gray-500">
-                        Halaman {keterlambatan?.current_page ?? 1} dari{" "}
-                        {keterlambatan?.last_page ?? 1}
-                    </span>
-                    <div>
-                        {keterlambatan?.next_page_url && (
-                            <button
-                                onClick={() =>
-                                    router.get(keterlambatan.next_page_url)
-                                }
-                                className="rounded-md bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300"
-                            >
-                                Berikutnya →
-                            </button>
-                        )}
-                    </div>
-                </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );

@@ -26,12 +26,20 @@ class LaporanController extends Controller
     {
         $jenis = $request->input('jenis', 'gabungan');
         $periode = $request->input('periode', 'harian');
-        // ✅ PERBAIKAN: Default tanggal menggunakan WITA
         $tanggal = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
         $semester = $request->input('semester', 'ganjil');
 
+        // ✅ 1. Ambil nomor halaman dari URL (default 1), minimal 1
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = 15; // Batas 15 baris per halaman
+
         [$start, $end, $labelPeriode] = $this->hitungRentang($periode, $tanggal, $semester);
-        $data = $this->ambilData($jenis, $start, $end);
+        
+        // 2. Ambil SEMUA data dulu sebagai Collection
+        $dataLengkap = $this->ambilData($jenis, $start, $end);
+
+        // ✅ 3. Potong data sesuai halaman saat ini (Server-side pagination untuk Collection)
+        $preview = $dataLengkap->forPage($page, $perPage)->values();
 
         return Inertia::render('Laporan/Index', [
             'jenis' => $jenis,
@@ -42,13 +50,24 @@ class LaporanController extends Controller
             'start' => $start->isoFormat('D MMMM Y'),
             'end' => $end->isoFormat('D MMMM Y'),
             'ringkasan' => [
-                'total' => $data->count(),
-                'keterlambatan' => $data->where('jenis_aktivitas', 'Keterlambatan')->count(),
-                'izin_keluar' => $data->where('jenis_aktivitas', 'Izin Keluar')->count(),
-                'pelanggaran' => $data->where('jenis_aktivitas', 'Pelanggaran')->count(),
-                'tamu' => $data->where('jenis_aktivitas', 'Tamu')->count(),
+                // Ringkasan tetap menghitung dari TOTAL data, bukan data per halaman
+                'total' => $dataLengkap->count(),
+                'keterlambatan' => $dataLengkap->where('jenis_aktivitas', 'Keterlambatan')->count(),
+                'izin_keluar' => $dataLengkap->where('jenis_aktivitas', 'Izin Keluar')->count(),
+                'pelanggaran' => $dataLengkap->where('jenis_aktivitas', 'Pelanggaran')->count(),
+                'tamu' => $dataLengkap->where('jenis_aktivitas', 'Tamu')->count(),
             ],
-            'preview' => $data->values(),
+            'preview' => $preview, // Data yang sudah dipotong (maks 15 baris)
+            
+            // ✅ 4. Kirim metadata pagination ke frontend agar tombol Next/Prev tahu kapan harus disable
+            'pagination' => [
+                'current_page' => $page,
+                'last_page' => (int) ceil($dataLengkap->count() / $perPage),
+                'per_page' => $perPage,
+                'total' => $dataLengkap->count(),
+            ],
+            
+            // ✅ 5. Pertahankan params agar filter tidak hilang saat pindah halaman
             'params' => compact('jenis', 'periode', 'tanggal', 'semester'),
         ]);
     }
