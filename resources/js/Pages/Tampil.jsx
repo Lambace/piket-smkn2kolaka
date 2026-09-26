@@ -1,4 +1,4 @@
-import { Head, usePoll, usePage } from "@inertiajs/react";
+import { Head, usePoll, usePage, router } from "@inertiajs/react";
 import { useEffect, useState } from "react";
 import KartuAbsensiPetugas from "./Dashboard/Components/KartuAbsensiPetugas";
 import KartuStatistik from "./Dashboard/Components/KartuStatistik";
@@ -20,9 +20,20 @@ export default function Tampil(props) {
     usePoll(60000);
 
     const pengaturan = usePage().props.pengaturan ?? {};
+    const currentFilters = usePage().props.currentFilters ?? {};
 
     const [now, setNow] = useState(new Date());
     const [periode, setPeriode] = useState("harian");
+
+    // ✅ STATE UNTUK FILTER RENTANG TANGGAL
+    const [dariTanggal, setDariTanggal] = useState(
+        currentFilters?.dari_tanggal ?? new Date().toISOString().split("T")[0],
+    );
+    const [sampaiTanggal, setSampaiTanggal] = useState(
+        currentFilters?.sampai_tanggal ??
+            new Date().toISOString().split("T")[0],
+    );
+    const [showFilter, setShowFilter] = useState(false);
 
     useEffect(() => {
         const t = setInterval(() => setNow(new Date()), 1000);
@@ -37,6 +48,30 @@ export default function Tampil(props) {
 
     const semesterOtomatis =
         new Date().getMonth() + 1 >= 7 ? "ganjil" : "genap";
+
+    // ✅ FUNGSI UNTUK MENERAPKAN FILTER TANGGAL
+    const applyFilter = () => {
+        router.get(
+            route("tampil"),
+            {
+                k: props.displayKey,
+                dari_tanggal: dariTanggal,
+                sampai_tanggal: sampaiTanggal,
+            },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
+
+    // ✅ FUNGSI UNTUK RESET FILTER KE HARI INI
+    const resetFilter = () => {
+        setDariTanggal(today);
+        setSampaiTanggal(today);
+        router.get(
+            route("tampil"),
+            { k: props.displayKey },
+            { preserveState: true, preserveScroll: true },
+        );
+    };
 
     const downloadLaporan = () => {
         const params = new URLSearchParams({
@@ -59,7 +94,7 @@ export default function Tampil(props) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 p-6">
+        <div className="min-h-screen bg-slate-900 p-4 sm:p-6">
             <Head title="Papan Informasi Piket" />
 
             {/* Tombol Tentang Aplikasi */}
@@ -116,7 +151,7 @@ export default function Tampil(props) {
                             onChange={(e) => setPeriode(e.target.value)}
                             className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-red-500"
                         >
-                            <option value="harian">📅 Harian</option>
+                            <option value="harian"> Harian</option>
                             <option value="mingguan">🗓️ Mingguan</option>
                             <option value="bulanan">📆 Bulanan</option>
                             <option value="semester">🎓 Semester</option>
@@ -126,9 +161,85 @@ export default function Tampil(props) {
                             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-red-700"
                             title="Download PDF laporan sesuai periode terpilih"
                         >
-                            📥 Download Laporan {labelPeriode[periode]}
+                            Download Laporan {labelPeriode[periode]}
                         </button>
                     </div>
+                </div>
+            </div>
+
+            {/* ===== FILTER RENTANG TANGGAL ===== */}
+            <div className="mb-6 rounded-lg bg-slate-800 p-4 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowFilter(!showFilter)}
+                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                        >
+                            <span>📅</span>
+                            <span>
+                                {showFilter
+                                    ? "Sembunyikan Filter"
+                                    : "Tampilkan Filter Tanggal"}
+                            </span>
+                        </button>
+
+                        {(currentFilters?.dari_tanggal ||
+                            currentFilters?.sampai_tanggal) && (
+                            <span className="text-sm text-slate-400">
+                                Aktif:{" "}
+                                <strong className="text-white">
+                                    {currentFilters.dari_tanggal}
+                                </strong>{" "}
+                                s/d{" "}
+                                <strong className="text-white">
+                                    {currentFilters.sampai_tanggal}
+                                </strong>
+                            </span>
+                        )}
+                    </div>
+
+                    {showFilter && (
+                        <div className="flex flex-wrap items-end gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-400 mb-1">
+                                    Dari Tanggal
+                                </label>
+                                <input
+                                    type="date"
+                                    value={dariTanggal}
+                                    onChange={(e) =>
+                                        setDariTanggal(e.target.value)
+                                    }
+                                    className="rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-400 mb-1">
+                                    Sampai Tanggal
+                                </label>
+                                <input
+                                    type="date"
+                                    value={sampaiTanggal}
+                                    onChange={(e) =>
+                                        setSampaiTanggal(e.target.value)
+                                    }
+                                    className="rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <button
+                                onClick={applyFilter}
+                                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+                            >
+                                ✅ Terapkan
+                            </button>
+                            <button
+                                onClick={resetFilter}
+                                className="rounded-lg bg-slate-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+                            >
+                                🔄 Reset
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -150,7 +261,7 @@ export default function Tampil(props) {
                     bukuTamuList={props.bukuTamuList ?? []}
                 />
 
-                {/* ===== GRAFIK 1: KETERLAMBATAN (sudah ada) ===== */}
+                {/* ===== GRAFIK 1: KETERLAMBATAN ===== */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
                         <GrafikKeterlambatan
@@ -164,7 +275,7 @@ export default function Tampil(props) {
                     />
                 </div>
 
-                {/* ===== GRAFIK 2: IZIN KELUAR (BARU - warna biru) ===== */}
+                {/* ===== GRAFIK 2: IZIN KELUAR ===== */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
                         <GrafikKeterlambatan
@@ -179,12 +290,12 @@ export default function Tampil(props) {
                     />
                 </div>
 
-                {/* ===== GRAFIK 3: PELANGGARAN (BARU - warna oranye) ===== */}
+                {/* ===== GRAFIK 3: PELANGGARAN ===== */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
                         <GrafikKeterlambatan
                             data={props.chartPelanggaranKelas ?? []}
-                            judul="📊 Pelanggaran per Kelas"
+                            judul=" Pelanggaran per Kelas"
                             warna="orange"
                         />
                     </div>
