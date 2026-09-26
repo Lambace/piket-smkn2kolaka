@@ -8,13 +8,44 @@ export default function GrafikKeterlambatan({
     const maxJumlah = Math.max(...list.map((d) => d.jumlah), 1);
     const gridLines = [0, Math.round(maxJumlah / 2), maxJumlah];
 
-    const barClass =
+    // ✅ PALET WARNA SINKRON DENGAN DONUT CHART
+    // Mapping berdasarkan label jurusan/kelas
+    const paletWarna = {
+        TSM: "from-indigo-600 to-indigo-400 hover:from-indigo-700 hover:to-indigo-500",
+        TPM: "from-red-600 to-red-400 hover:from-red-700 hover:to-red-500",
+        TKR: "from-amber-500 to-amber-300 hover:from-amber-600 hover:to-amber-400",
+        TKJ: "from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500",
+        TAB: "from-violet-600 to-violet-400 hover:from-violet-700 hover:to-violet-500",
+        ATU: "from-pink-500 to-pink-300 hover:from-pink-600 hover:to-pink-400",
+        DPIB: "from-teal-600 to-teal-400 hover:from-teal-700 hover:to-teal-500",
+        ATPH: "from-orange-500 to-orange-300 hover:from-orange-600 hover:to-orange-400",
+    };
+
+    // Fallback warna default jika tidak ada di palet
+    const defaultWarna =
         warna === "orange"
-            ? "bg-gradient-to-t from-orange-600 to-orange-400 hover:from-orange-700 hover:to-orange-500"
-            : "bg-gradient-to-t from-indigo-600 to-indigo-400 hover:from-indigo-700 hover:to-indigo-500";
+            ? "from-orange-600 to-orange-400 hover:from-orange-700 hover:to-orange-500"
+            : "from-indigo-600 to-indigo-400 hover:from-indigo-700 hover:to-indigo-500";
+
+    // Fungsi untuk mendapatkan warna berdasarkan label
+    const getWarnaBar = (label) => {
+        if (!label) return defaultWarna;
+
+        // Cek exact match
+        if (paletWarna[label]) return paletWarna[label];
+
+        // Cek partial match (misal "XI TSM" mengandung "TSM")
+        for (const [key, warna] of Object.entries(paletWarna)) {
+            if (label.toUpperCase().includes(key.toUpperCase())) {
+                return warna;
+            }
+        }
+
+        return defaultWarna;
+    };
 
     return (
-        <div className="h-full rounded-xl bg-white p-6 shadow">
+        <div className="h-full rounded-xl bg-white p-4 sm:p-6 shadow">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-base font-semibold text-gray-800">
                     {judul}
@@ -72,7 +103,7 @@ export default function GrafikKeterlambatan({
                     Belum ada data pada rentang ini
                 </p>
             ) : (
-                <div className="relative h-64">
+                <div className="relative h-64 sm:h-72">
                     {gridLines.map((line) => (
                         <div
                             key={line}
@@ -84,20 +115,26 @@ export default function GrafikKeterlambatan({
                             </span>
                         </div>
                     ))}
-                    <div className="absolute inset-0 flex items-end gap-2 pl-8">
+
+                    {/* ✅ CONTAINER DENGAN SCROLL HORIZONTAL DI MOBILE */}
+                    <div className="absolute inset-0 flex items-end gap-1 sm:gap-2 pl-6 sm:pl-8 overflow-x-auto pb-6">
                         {list.map((d, idx) => {
                             const height =
                                 maxJumlah > 0
                                     ? (d.jumlah / maxJumlah) * 100
                                     : 0;
+
+                            // ✅ AMBIL WARNA BERDASARKAN LABEL
+                            const barWarna = getWarnaBar(d.label);
+
                             return (
                                 <div
                                     key={idx}
-                                    className="flex h-full flex-1 flex-col items-center"
+                                    className="flex h-full flex-col items-center min-w-[40px] sm:min-w-[50px] flex-shrink-0"
                                 >
                                     <div className="relative flex w-full flex-1 items-end">
                                         <div
-                                            className={`w-full rounded-t-md transition-all ${barClass}`}
+                                            className={`w-full rounded-t-md bg-gradient-to-t transition-all ${barWarna}`}
                                             style={{
                                                 height: `${height}%`,
                                                 minHeight:
@@ -106,14 +143,14 @@ export default function GrafikKeterlambatan({
                                             title={`${d.title ?? d.label}: ${d.jumlah} kasus`}
                                         >
                                             {d.jumlah > 0 && (
-                                                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-600">
+                                                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-600 whitespace-nowrap">
                                                     {d.jumlah}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
                                     <span
-                                        className="mt-2 max-w-full truncate text-[10px] font-medium text-gray-500"
+                                        className="mt-2 text-[9px] sm:text-[10px] font-medium text-gray-500 text-center leading-tight break-words max-w-[40px] sm:max-w-[50px]"
                                         title={d.label}
                                     >
                                         {d.label}
