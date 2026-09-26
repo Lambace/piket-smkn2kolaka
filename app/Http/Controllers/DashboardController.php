@@ -23,272 +23,174 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', $this->buildData($request));
     }
 
-    public function tampil(Request $request)
-{
-    $key = config('services.display.key');
+        public function tampil(Request $request)
+    {
+        $key = config('services.display.key');
 
-    if ($key && $request->query('k') !== $key) {
-        abort(403, 'Akses ditolak. Tautan tidak valid.');
-    }
+        if ($key && $request->query('k') !== $key) {
+            abort(403, 'Akses ditolak. Tautan tidak valid.');
+        }
 
-    // ===== FILTER RENTANG TANGGAL DARI REQUEST (default: hari ini) =====
-    $dariTanggal = $request->input('dari_tanggal', Carbon::today()->toDateString());
-    $sampaiTanggal = $request->input('sampai_tanggal', Carbon::today()->toDateString());
-    
-    $rangeStart = Carbon::parse($dariTanggal)->startOfDay();
-    $rangeEnd = Carbon::parse($sampaiTanggal)->endOfDay();
-
-    // ===== DATA KETERLAMBATAN =====
-    $keterlambatanList = Keterlambatan::with('siswa:id,nama,kelas,jurusan,nisn')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->orderByDesc('tanggal')
-        ->orderByDesc('jam_datang')
-        ->limit(50)
-        ->get()
-        ->map(fn ($k) => [
-            'id'              => $k->id,
-            'nama'            => $k->siswa?->nama ?? '-',
-            'kelas'           => $k->siswa?->kelas ?? '-',
-            'jurusan'         => $k->siswa?->jurusan ?? '-',
-            'tanggal'         => $k->tanggal->format('d/m/Y'),
-            'jam_datang'      => $k->jam_datang,
-            'menit_terlambat' => (int) $k->menit_terlambat,
-            'status'          => $k->status,
-        ]);
-
-    // ===== DATA IZIN KELUAR =====
-    $izinKeluarList = IzinKeluar::with('siswa:id,nama,kelas,jurusan,nisn')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->orderByDesc('tanggal')
-        ->orderByDesc('jam_keluar')
-        ->limit(50)
-        ->get()
-        ->map(fn ($i) => [
-            'id'          => $i->id,
-            'nama'        => $i->siswa?->nama ?? '-',
-            'kelas'       => $i->siswa?->kelas ?? '-',
-            'jurusan'     => $i->siswa?->jurusan ?? '-',
-            'tanggal'     => $i->tanggal->format('d/m/Y'),
-            'jam_keluar'  => $i->jam_keluar,
-            'jam_kembali' => $i->jam_kembali,
-            'jenis'       => $i->jenis,
-            'status'      => $i->status,
-        ]);
-
-    // ===== DATA PELANGGARAN =====
-    $pelanggaranList = Pelanggaran::with('siswa:id,nama,kelas,jurusan,nisn')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->orderByDesc('tanggal')
-        ->orderByDesc('created_at')
-        ->limit(50)
-        ->get()
-        ->map(fn ($p) => [
-            'id'                => $p->id,
-            'nama'              => $p->siswa?->nama ?? '-',
-            'kelas'             => $p->siswa?->kelas ?? '-',
-            'jurusan'           => $p->siswa?->jurusan ?? '-',
-            'tanggal'           => $p->tanggal->format('d/m/Y'),
-            'jenis_pelanggaran' => $p->jenis_pelanggaran,
-            'poin'              => (int) $p->poin,
-            'status'            => $p->status,
-        ]);
-
-    // ===== DATA BUKU TAMU =====
-    $bukuTamuList = BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd])
-        ->orderByDesc('tanggal_kunjungan')
-        ->orderByDesc('jam_masuk')
-        ->limit(50)
-        ->get()
-        ->map(fn ($t) => [
-            'id'         => $t->id,
-            'nama'       => $t->nama,
-            'instansi'   => $t->instansi,
-            'keperluan'  => $t->keperluan,
-            'tanggal'    => $t->tanggal_kunjungan->format('d/m/Y'),
-            'jam_masuk'  => $t->jam_masuk,
-            'jam_keluar' => $t->jam_keluar,
-            'status'     => $t->jam_keluar ? 'sudah_keluar' : 'di_sekolah',
-        ]);
-
-    // ===== GRAFIK KETERLAMBATAN PER KELAS =====
-    $chartKeterlambatanKelas = Keterlambatan::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
-        ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
-        ->whereBetween('keterlambatan.tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa.kelas')
-        ->orderByDesc('jumlah')
-        ->get()
-        ->map(fn ($d) => ['label' => $d->label ?? 'Tanpa Kelas', 'jumlah' => (int) $d->jumlah])
-        ->values();
-
-    // ===== DONUT KETERLAMBATAN PER JURUSAN =====
-    $donutKeterlambatanJurusan = Keterlambatan::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
-        ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
-        ->whereBetween('keterlambatan.tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa.jurusan')
-        ->orderByDesc('jumlah')
-        ->get()
-        ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
-
-    // ===== GRAFIK IZIN PER KELAS =====
-    $chartIzinKelas = IzinKeluar::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
-        ->join('siswa', 'siswa.id', '=', 'izin_keluar.siswa_id')
-        ->whereBetween('izin_keluar.tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa.kelas')
-        ->orderByDesc('jumlah')
-        ->get()
-        ->map(fn ($d) => ['label' => $d->label ?? 'Tanpa Kelas', 'jumlah' => (int) $d->jumlah])
-        ->values();
-
-    // ===== DONUT IZIN PER JURUSAN =====
-    $donutIzinJurusan = IzinKeluar::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
-        ->join('siswa', 'siswa.id', '=', 'izin_keluar.siswa_id')
-        ->whereBetween('izin_keluar.tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa.jurusan')
-        ->orderByDesc('jumlah')
-        ->get()
-        ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
-
-    // ===== GRAFIK PELANGGARAN PER KELAS =====
-    $chartPelanggaranKelas = Pelanggaran::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
-        ->join('siswa', 'siswa.id', '=', 'pelanggaran.siswa_id')
-        ->whereBetween('pelanggaran.tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa.kelas')
-        ->orderByDesc('jumlah')
-        ->get()
-        ->map(fn ($d) => ['label' => $d->label ?? 'Tanpa Kelas', 'jumlah' => (int) $d->jumlah])
-        ->values();
-
-    // ===== DONUT PELANGGARAN PER JURUSAN =====
-    $donutPelanggaranJurusan = Pelanggaran::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
-        ->join('siswa', 'siswa.id', '=', 'pelanggaran.siswa_id')
-        ->whereBetween('pelanggaran.tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa.jurusan')
-        ->orderByDesc('jumlah')
-        ->get()
-        ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
-
-    // ===== TOP SISWA SERING TERLAMBAT =====
-    $topTerlambat = Keterlambatan::select(
-            'siswa_id',
-            DB::raw('COUNT(*) as jumlah'),
-            DB::raw('AVG(menit_terlambat) as rata_menit')
-        )
-        ->with('siswa:id,nisn,nama,kelas')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa_id')
-        ->orderByDesc('jumlah')
-        ->limit(5)
-        ->get()
-        ->map(fn ($k) => [
-            'nisn'       => $k->siswa?->nisn ?? '-',
-            'nama'       => $k->siswa?->nama ?? '-',
-            'kelas'      => $k->siswa?->kelas ?? '-',
-            'jumlah'     => (int) ($k->jumlah ?? 0),
-            'rata_menit' => round((float) ($k->rata_menit ?? 0), 1),
-        ]);
-
-    // ===== TOP POIN PELANGGARAN =====
-    $topPoin = Pelanggaran::select(
-            'siswa_id',
-            DB::raw('SUM(poin) as total_poin'),
-            DB::raw('COUNT(*) as jumlah_kasus')
-        )
-        ->with('siswa:id,nisn,nama,kelas')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->groupBy('siswa_id')
-        ->orderByDesc('total_poin')
-        ->limit(5)
-        ->get()
-        ->map(fn ($p) => [
-            'nisn'         => $p->siswa?->nisn ?? '-',
-            'nama'         => $p->siswa?->nama ?? '-',
-            'kelas'        => $p->siswa?->kelas ?? '-',
-            'total_poin'   => (int) ($p->total_poin ?? 0),
-            'jumlah_kasus' => (int) ($p->jumlah_kasus ?? 0),
-        ]);
-
-    // ===== AKTIVITAS TERBARU =====
-    $aktivitas = collect();
-
-    Keterlambatan::with('siswa:id,nama,kelas')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->latest()
-        ->take(5)
-        ->get()
-        ->each(fn ($k) => $aktivitas->push([
-            'waktu'  => $k->created_at?->toIsoString(),
-            'tipe'   => 'Terlambat',
-            'warna'  => 'red',
-            'teks'   => ($k->siswa?->nama ?? '-') . ' (' . ($k->siswa?->kelas ?? '-') . ') terlambat ' . ($k->menit_terlambat ?? 0) . ' menit',
-        ]));
-
-    IzinKeluar::with('siswa:id,nama,kelas')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->latest()
-        ->take(5)
-        ->get()
-        ->each(fn ($i) => $aktivitas->push([
-            'waktu'  => $i->created_at?->toIsoString(),
-            'tipe'   => 'Izin Keluar',
-            'warna'  => 'yellow',
-            'teks'   => ($i->siswa?->nama ?? '-') . ' (' . ($i->siswa?->kelas ?? '-') . ') izin keluar: ' . ($i->jenis ?? '-'),
-        ]));
-
-    Pelanggaran::with('siswa:id,nama,kelas')
-        ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
-        ->latest()
-        ->take(5)
-        ->get()
-        ->each(fn ($p) => $aktivitas->push([
-            'waktu'  => $p->created_at?->toIsoString(),
-            'tipe'   => 'Pelanggaran',
-            'warna'  => 'orange',
-            'teks'   => ($p->siswa?->nama ?? '-') . ' (' . ($p->siswa?->kelas ?? '-') . ') ' . ($p->jenis_pelanggaran ?? '-') . ' (' . ($p->poin ?? 0) . ' poin)',
-        ]));
-
-    BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd])
-        ->latest()
-        ->take(5)
-        ->get()
-        ->each(fn ($t) => $aktivitas->push([
-            'waktu'  => $t->created_at?->toIsoString(),
-            'tipe'   => 'Tamu',
-            'warna'  => 'blue',
-            'teks'   => $t->nama . ' (' . ($t->instansi ?: 'Umum') . ') — ' . ($t->keperluan ?? '-'),
-        ]));
-
-    $aktivitas = $aktivitas->sortByDesc('waktu')->take(8)->values();
-
-    $pengaturan = Pengaturan::first();
-
-    return Inertia::render('Tampil', [
-        'displayKey'         => config('services.display.key'),
-        'keterlambatanList'  => $keterlambatanList,
-        'izinKeluarList'     => $izinKeluarList,
-        'pelanggaranList'    => $pelanggaranList,
-        'bukuTamuList'       => $bukuTamuList,
-        'chartKeterlambatanKelas'   => $chartKeterlambatanKelas,
-        'donutKeterlambatanJurusan' => $donutKeterlambatanJurusan,
-        'chartIzinKelas'            => $chartIzinKelas,
-        'donutIzinJurusan'          => $donutIzinJurusan,
-        'chartPelanggaranKelas'     => $chartPelanggaranKelas,
-        'donutPelanggaranJurusan'   => $donutPelanggaranJurusan,
-        'topTerlambat'       => $topTerlambat,
-        'topPoin'            => $topPoin,
-        'aktivitas'          => $aktivitas,
-        'pengaturan' => $pengaturan ? [
-            'nama_sekolah' => $pengaturan->nama_sekolah,
-            'logo_url'     => $pengaturan->logo ? Storage::url($pengaturan->logo) : null,
-            'logo'         => $pengaturan->logo,
-        ] : null,
+        // ===== 1. FILTER RENTANG TANGGAL =====
+        $dariTanggal = $request->input('dari_tanggal', Carbon::today()->toDateString());
+        $sampaiTanggal = $request->input('sampai_tanggal', Carbon::today()->toDateString());
         
-        // ===== KIRIM FILTER SAAT INI KE FRONTEND =====
-        'currentFilters' => [
-            'dari_tanggal'   => $dariTanggal,
-            'sampai_tanggal' => $sampaiTanggal,
-        ],
-    ]);
-}
+        $rangeStart = Carbon::parse($dariTanggal, 'Asia/Makassar')->startOfDay();
+        $rangeEnd   = Carbon::parse($sampaiTanggal, 'Asia/Makassar')->endOfDay();
+
+        $withSiswa = 'siswa:id,nama,kelas,jurusan,nisn';
+
+        // ===== 2. DATA LIST (Sesuai nama props di Tampil.jsx) =====
+        $keterlambatanList = \App\Models\Keterlambatan::with($withSiswa)
+            ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal')->orderByDesc('jam_datang')->limit(50)->get()
+            ->map(fn ($k) => [
+                'id' => $k->id, 'nama' => $k->siswa?->nama, 'kelas' => $k->siswa?->kelas, 
+                'tanggal' => $k->tanggal->format('d/m/Y'), 'jam_datang' => $k->jam_datang, 
+                'menit_terlambat' => (int) $k->menit_terlambat, 'status' => $k->status,
+            ]);
+
+        $izinKeluarList = \App\Models\IzinKeluar::with($withSiswa)
+            ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal')->orderByDesc('jam_keluar')->limit(50)->get()
+            ->map(fn ($i) => [
+                'id' => $i->id, 'nama' => $i->siswa?->nama, 'kelas' => $i->siswa?->kelas, 
+                'tanggal' => $i->tanggal->format('d/m/Y'), 'jam_keluar' => $i->jam_keluar, 
+                'jam_kembali' => $i->jam_kembali, 'jenis' => $i->jenis, 'status' => $i->status,
+            ]);
+
+        $pelanggaranList = \App\Models\Pelanggaran::with($withSiswa)
+            ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal')->orderByDesc('created_at')->limit(50)->get()
+            ->map(fn ($p) => [
+                'id' => $p->id, 'nama' => $p->siswa?->nama, 'kelas' => $p->siswa?->kelas, 
+                'tanggal' => $p->tanggal->format('d/m/Y'), 'jenis_pelanggaran' => $p->jenis_pelanggaran, 
+                'poin' => (int) $p->poin, 'status' => $p->status,
+            ]);
+
+        $bukuTamuList = \App\Models\BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal_kunjungan')->orderByDesc('jam_masuk')->limit(50)->get()
+            ->map(fn ($t) => [
+                'id' => $t->id, 'nama' => $t->nama, 'instansi' => $t->instansi, 
+                'tanggal' => $t->tanggal_kunjungan->format('d/m/Y'), 'jam_masuk' => $t->jam_masuk, 
+                'jam_keluar' => $t->jam_keluar, 'status' => $t->jam_keluar ? 'sudah_keluar' : 'di_sekolah',
+            ]);
+
+        // ===== 3. STATISTIK (Wajib ada untuk KartuStatistik) =====
+        $stats = [
+            'total_siswa' => \App\Models\Siswa::where('aktif', true)->count(),
+            'terlambat'   => \App\Models\Keterlambatan::whereBetween('tanggal', [$rangeStart, $rangeEnd])->count(),
+            'izin_keluar' => \App\Models\IzinKeluar::whereBetween('tanggal', [$rangeStart, $rangeEnd])->count(),
+            'pelanggaran' => \App\Models\Pelanggaran::whereBetween('tanggal', [$rangeStart, $rangeEnd])->count(),
+            'tamu'        => \App\Models\BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd])->count(),
+        ];
+
+        // ===== 4. ABSENSI PETUGAS (Wajib ada untuk KartuAbsensiPetugas) =====
+        $hariIniStr = Carbon::today()->toDateString();
+        $absensiTercatat = \App\Models\AbsensiPetugas::where('tanggal', $hariIniStr)
+            ->orderBy('jam_masuk')->get()->map(fn ($a) => [
+                'nama' => $a->nama, 'jabatan' => $a->jabatan, 
+                'jam' => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null, 'status' => $a->status,
+            ])->values()->toBase();
+        
+        $absensiPetugas = $absensiTercatat; // Disederhanakan untuk live view
+
+        // ===== 5. GRAFIK & CHART (Nama props harus persis sama dengan Tampil.jsx) =====
+        // chartData (Keterlambatan per Kelas)
+        $chartData = \App\Models\Keterlambatan::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
+            ->whereBetween('keterlambatan.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.kelas')->orderByDesc('jumlah')->get()
+            ->map(fn ($d) => ['label' => $d->label, 'jumlah' => (int) $d->jumlah])->values();
+
+        // donutJurusan (Keterlambatan per Jurusan)
+        $donutJurusan = \App\Models\Keterlambatan::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
+            ->whereBetween('keterlambatan.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.jurusan')->orderByDesc('jumlah')->get()
+            ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
+
+        // chartIzinKelas & donutIzinJurusan
+        $chartIzinKelas = \App\Models\IzinKeluar::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'izin_keluar.siswa_id')
+            ->whereBetween('izin_keluar.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.kelas')->orderByDesc('jumlah')->get()
+            ->map(fn ($d) => ['label' => $d->label ?? 'Tanpa Kelas', 'jumlah' => (int) $d->jumlah])->values();
+
+        $donutIzinJurusan = \App\Models\IzinKeluar::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'izin_keluar.siswa_id')
+            ->whereBetween('izin_keluar.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.jurusan')->orderByDesc('jumlah')->get()
+            ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
+
+        // chartPelanggaranKelas & donutPelanggaranJurusan
+        $chartPelanggaranKelas = \App\Models\Pelanggaran::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'pelanggaran.siswa_id')
+            ->whereBetween('pelanggaran.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.kelas')->orderByDesc('jumlah')->get()
+            ->map(fn ($d) => ['label' => $d->label ?? 'Tanpa Kelas', 'jumlah' => (int) $d->jumlah])->values();
+
+        $donutPelanggaranJurusan = \App\Models\Pelanggaran::select('siswa.jurusan as label', DB::raw('COUNT(*) as jumlah'))
+            ->join('siswa', 'siswa.id', '=', 'pelanggaran.siswa_id')
+            ->whereBetween('pelanggaran.tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa.jurusan')->orderByDesc('jumlah')->get()
+            ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
+
+        // ===== 6. TABEL RANKING & AKTIVITAS =====
+        // topTerlambat
+        $topTerlambat = \App\Models\Keterlambatan::select('siswa_id', DB::raw('COUNT(*) as jumlah'), DB::raw('AVG(menit_terlambat) as rata_menit'))
+            ->with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa_id')->orderByDesc('jumlah')->limit(5)->get()
+            ->map(fn ($k) => ['nisn' => $k->siswa?->nisn, 'nama' => $k->siswa?->nama, 'kelas' => $k->siswa?->kelas, 'jumlah' => (int) $k->jumlah, 'rata_menit' => round((float) $k->rata_menit, 1)]);
+
+        // topPelanggaran (Wajib pakai nama ini agar cocok dengan Tampil.jsx)
+        $topPelanggaran = \App\Models\Pelanggaran::select('siswa_id', DB::raw('SUM(poin) as total_poin'), DB::raw('COUNT(*) as jumlah_kasus'))
+            ->with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->groupBy('siswa_id')->orderByDesc('total_poin')->limit(5)->get()
+            ->map(fn ($p) => ['nisn' => $p->siswa?->nisn, 'nama' => $p->siswa?->nama, 'kelas' => $p->siswa?->kelas, 'total_poin' => (int) $p->total_poin, 'jumlah_kasus' => (int) $p->jumlah_kasus]);
+
+        // aktivitas
+        $aktivitas = collect();
+        \App\Models\Keterlambatan::with('siswa:id,nama,kelas')->whereBetween('tanggal', [$rangeStart, $rangeEnd])->latest()->take(3)->get()->each(fn ($k) => $aktivitas->push(['waktu' => $k->created_at?->toIsoString(), 'tipe' => 'Terlambat', 'warna' => 'red', 'teks' => ($k->siswa?->nama ?? '-').' terlambat '.($k->menit_terlambat ?? 0).' menit']));
+        \App\Models\Pelanggaran::with('siswa:id,nama,kelas')->whereBetween('tanggal', [$rangeStart, $rangeEnd])->latest()->take(3)->get()->each(fn ($p) => $aktivitas->push(['waktu' => $p->created_at?->toIsoString(), 'tipe' => 'Pelanggaran', 'warna' => 'orange', 'teks' => ($p->siswa?->nama ?? '-').' - '.($p->jenis_pelanggaran ?? '-')]));
+        $aktivitas = $aktivitas->sortByDesc('waktu')->take(8)->values();
+
+        $pengaturan = \App\Models\Pengaturan::first();
+
+        // ===== 7. KIRIM KE FRONTEND DENGAN NAMA PROPS YANG PERSIS =====
+        return Inertia::render('Tampil', [
+            'hariIni'             => Carbon::now('Asia/Makassar')->isoFormat('dddd, D MMMM Y'),
+            'stats'               => $stats,
+            'absensiPetugas'      => $absensiPetugas,
+            'displayKey'          => $key,
+            'keterlambatanList'   => $keterlambatanList,
+            'izinKeluarList'      => $izinKeluarList,
+            'pelanggaranList'     => $pelanggaranList,
+            'bukuTamuList'        => $bukuTamuList,
+            
+            // Nama variabel ini HARUS sama persis dengan yang dipakai di Tampil.jsx
+            'chartData'                 => $chartData, 
+            'donutJurusan'              => $donutJurusan,
+            'chartIzinKelas'            => $chartIzinKelas,
+            'donutIzinJurusan'          => $donutIzinJurusan,
+            'chartPelanggaranKelas'     => $chartPelanggaranKelas,
+            'donutPelanggaranJurusan'   => $donutPelanggaranJurusan,
+            
+            'topTerlambat'        => $topTerlambat,
+            'topPelanggaran'      => $topPelanggaran, 
+            'aktivitas'           => $aktivitas,
+            'pengaturan' => $pengaturan ? [
+                'nama_sekolah' => $pengaturan->nama_sekolah,
+                'logo_url'     => $pengaturan->logo ? Storage::url($pengaturan->logo) : null,
+                'logo'         => $pengaturan->logo,
+            ] : null,
+            
+            'currentFilters' => [
+                'dari_tanggal'   => $dariTanggal,
+                'sampai_tanggal' => $sampaiTanggal,
+            ],
+        ]);
+    }
     private function buildData(Request $request): array
     {
         // ===== Filter rentang tanggal =====
