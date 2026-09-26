@@ -18,7 +18,7 @@ class Keterlambatan extends Model
     ];
 
     protected $casts = [
-        'tanggal'         => 'datetime',  // ← ubah dari 'date' ke 'datetime'
+        'tanggal'         => 'date',  // ← ubah dari 'date' ke 'datetime'
         'menit_terlambat' => 'integer',
     ];
 

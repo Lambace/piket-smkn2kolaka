@@ -26,7 +26,8 @@ class LaporanController extends Controller
     {
         $jenis = $request->input('jenis', 'gabungan');
         $periode = $request->input('periode', 'harian');
-        $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
+        // ✅ PERBAIKAN: Default tanggal menggunakan WITA
+        $tanggal = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
         $semester = $request->input('semester', 'ganjil');
 
         [$start, $end, $labelPeriode] = $this->hitungRentang($periode, $tanggal, $semester);
@@ -56,7 +57,8 @@ class LaporanController extends Controller
     {
         $jenis = $request->input('jenis', 'gabungan');
         $periode = $request->input('periode', 'harian');
-        $tanggal = $request->input('tanggal', Carbon::today()->toDateString());
+        // ✅ PERBAIKAN: Default tanggal menggunakan WITA
+        $tanggal = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
         $semester = $request->input('semester', 'ganjil');
 
         [$start, $end, $labelPeriode] = $this->hitungRentang($periode, $tanggal, $semester);
@@ -79,10 +81,12 @@ class LaporanController extends Controller
             }
 
             $periode  = $request->input('periode', 'harian');
-            $tanggal  = $request->input('tanggal', now()->toDateString());
+            // ✅ PERBAIKAN 1: Paksa default tanggal menggunakan timezone WITA
+            $tanggal  = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
             $semester = $request->input('semester', 'ganjil');
 
-            $tanggalRef = Carbon::parse($tanggal);
+            // ✅ PERBAIKAN 2: Parse tanggal dengan timezone WITA
+            $tanggalRef = Carbon::parse($tanggal, 'Asia/Makassar');
 
             switch ($periode) {
                 case 'mingguan':
@@ -118,10 +122,14 @@ class LaporanController extends Controller
             $sampaiStr = $sampai->toDateString();
             $withSiswa = 'siswa:id,nisn,nis,nama,kelas,jurusan';
 
+            // ✅ PERBAIKAN 3: Ambil data pengaturan DI AWAL agar tidak error undefined variable
+            $pengaturan = Pengaturan::first();
+
+            // ✅ PERBAIKAN 4: Query absensi petugas (sebelumnya hilang di kode Anda)
             $absensiPetugas = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
                 ->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
-            // ===== REKAP SEMUA PETUGAS — satu baris per orang sesuai statusnya =====
+            // ===== REKAP SEMUA PETUGAS =====
             $rekapPetugas = User::whereIn('role', ['petugas', 'koordinator'])
                 ->orderBy('name')
                 ->get()
@@ -138,7 +146,7 @@ class LaporanController extends Controller
                         'status'     => $r?->status ?? 'alpha',
                         'keterangan' => $r?->keterangan ?? '',
                         'tanggal'    => $r?->tanggal
-                                            ? $r->tanggal->isoFormat('D MMM Y')
+                                            ? Carbon::parse($r->tanggal, 'Asia/Makassar')->isoFormat('D MMM Y')
                                             : ($periode === 'harian'
                                                 ? $tanggalRef->isoFormat('D MMM Y')
                                                 : $dari->isoFormat('D MMM').' – '.$sampai->isoFormat('D MMM Y')),
@@ -186,9 +194,7 @@ class LaporanController extends Controller
                 ['label' => 'Kunjungan Tamu', 'nilai' => $tamu->count().' kunjungan'],
             ];
 
-            // ===== KOP + LOGO (via Storage — WAJIB di Laravel Cloud) =====
-            $pengaturan = Pengaturan::first();
-
+            // ===== KOP + LOGO =====
             $logo = null;
             if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
                 $mime = Storage::disk('public')->mimeType($pengaturan->logo) ?: 'image/png';
@@ -203,7 +209,8 @@ class LaporanController extends Controller
 
             // ===== DATA TANDA TANGAN =====
             $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
-            $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.now()->isoFormat('D MMMM Y');
+            // ✅ PERBAIKAN 5: Tempat tanggal pakai WITA
+            $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.Carbon::now('Asia/Makassar')->isoFormat('D MMMM Y');
 
             $totalData = $absensiPetugas->count()
                        + $keterlambatan->count()
@@ -229,7 +236,7 @@ class LaporanController extends Controller
                 'topTerlambat'      => $topTerlambat,
                 'totalData'         => $totalData,
                 'dicetakOleh'       => auth()->user()?->name ?? 'Sistem Otomatis',
-                'waktuCetak'        => now()->format('d-m-Y H:i'),
+                'waktuCetak'        => Carbon::now('Asia/Makassar')->format('d-m-Y H:i'),
                 'koordinator'       => $koordinator,
                 'tempatTanggal'     => $tempatTanggal,
             ];
@@ -247,7 +254,7 @@ class LaporanController extends Controller
         }
     }
 
-    // ===== DAFTAR HADIR PIKET (format resmi kedinasan + rentang bebas) =====
+    // ===== DAFTAR HADIR PIKET =====
     public function daftarHadir(Request $request)
     {
         if ($request->routeIs('tampil.*')) {
@@ -256,18 +263,19 @@ class LaporanController extends Controller
         }
 
         $periode     = $request->input('periode', 'harian');
-        $tanggal     = $request->input('tanggal', now()->toDateString());
+        // ✅ PERBAIKAN 6: Default tanggal pakai WITA
+        $tanggal     = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
         $semester    = $request->input('semester', 'ganjil');
-        $mode        = $request->input('mode', 'hadir'); // 'hadir' = checklist | 'rekap' = angka
+        $mode        = $request->input('mode', 'hadir');
         $dariInput   = $request->input('dari');
         $sampaiInput = $request->input('sampai');
 
-        $tanggalRef = Carbon::parse($tanggal);
+        // ✅ PERBAIKAN 7: Parse tanggal dengan WITA
+        $tanggalRef = Carbon::parse($tanggal, 'Asia/Makassar');
 
-        // ===== RENTANG BEBAS (dari datepicker) =====
         if ($periode === 'rentang' && $dariInput && $sampaiInput) {
-            $dari   = Carbon::parse($dariInput)->startOfDay();
-            $sampai = Carbon::parse($sampaiInput)->endOfDay();
+            $dari   = Carbon::parse($dariInput, 'Asia/Makassar')->startOfDay();
+            $sampai = Carbon::parse($sampaiInput, 'Asia/Makassar')->endOfDay();
         } else {
             switch ($periode) {
                 case 'mingguan':
@@ -295,14 +303,9 @@ class LaporanController extends Controller
         }
 
         $dariStr   = $dari->toDateString();
-        $sampaiStr = min($sampai->toDateString(), now()->toDateString());
+        // ✅ PERBAIKAN 8: now() diganti dengan Carbon::now('Asia/Makassar')
+        $sampaiStr = min($sampai->toDateString(), Carbon::now('Asia/Makassar')->toDateString());
 
-        // ===== Baris data: JUMLAH per status (H/A/I/S/DL) =====
-        // Prioritas:
-        // 1. Field "hari_piket" manual di akun (jika diisi)
-        // 2. Tebakan dari riwayat (hari paling sering)
-        // Alpha = ekspektasi hari piket - jumlah input
-        // Aturan: hari ini dihitung alpha hanya jika sudah lewat 08:30
         $mapHari = [
             'Minggu' => 0, 'Senin' => 1, 'Selasa' => 2, 'Rabu' => 3,
             'Kamis' => 4, 'Jumat' => 5, 'Sabtu' => 6,
@@ -314,34 +317,29 @@ class LaporanController extends Controller
                     ? $v->format('Y-m-d')
                     : substr((string) $v, 0, 10);
 
-                // Semua riwayat petugas (untuk fallback tebakan)
                 $semua = AbsensiPetugas::where('nama', $u->name)->get();
 
-                // ===== PRIORITAS 1: Field hari_piket manual =====
                 $hariPiket = $u->hari_piket !== null
                     ? ($mapHari[$u->hari_piket] ?? null)
                     : null;
 
-                // ===== PRIORITAS 2: Tebakan dari riwayat =====
                 if ($hariPiket === null) {
                     $hariPiket = $semua
-                        ->groupBy(fn ($r) => Carbon::parse($norm($r->tanggal))->dayOfWeek)
+                        ->groupBy(fn ($r) => Carbon::parse($norm($r->tanggal), 'Asia/Makassar')->dayOfWeek)
                         ->sortByDesc(fn ($grup) => $grup->count())
                         ->keys()
                         ->first();
                 }
 
-                // ===== Ekspektasi = jumlah hari piket dalam periode =====
-                // Aturan: hari ini hanya dihitung jika sudah lewat 08:30
                 $ekspektasi = 0;
                 if ($hariPiket !== null) {
                     $cursor = $dari->copy();
                     while ($cursor->toDateString() <= $sampaiStr) {
                         if ($cursor->dayOfWeek === $hariPiket) {
-                            // Hari ini hanya dihitung alpha kalau sudah lewat 08:30
-                            if ($cursor->toDateString() === now()->toDateString()
-                                && now()->format('H:i') < '08:30') {
-                                // belum lewat batas → belum dihitung
+                            // ✅ PERBAIKAN 9: Cek waktu alpha pakai WITA
+                            if ($cursor->toDateString() === Carbon::now('Asia/Makassar')->toDateString()
+                                && Carbon::now('Asia/Makassar')->format('H:i') < '08:30') {
+                                // belum lewat batas
                             } else {
                                 $ekspektasi++;
                             }
@@ -350,23 +348,19 @@ class LaporanController extends Controller
                     }
                 }
 
-                // Record dalam periode saja
                 $records = $semua->filter(
                     fn ($r) => $norm($r->tanggal) >= $dariStr && $norm($r->tanggal) <= $sampaiStr
                 );
 
-                // Satu status per tanggal (record pertama hari itu)
                 $statuses = $records
                     ->groupBy(fn ($r) => $norm($r->tanggal))
                     ->map(fn ($grup) => $grup->first()->status)
                     ->values();
 
-                // ===== Jumlah dari yang TERINPUT saja =====
                 $h  = $statuses->filter(fn ($st) => in_array($st, ['tepat_waktu', 'terlambat']))->count();
                 $iz = $statuses->filter(fn ($st) => $st === 'izin')->count();
                 $sk = $statuses->filter(fn ($st) => $st === 'sakit')->count();
                 $dl = $statuses->filter(fn ($st) => $st === 'dl')->count();
-                // Alpha = hari piket yang terlewat tanpa input
                 $a  = max(0, $ekspektasi - $statuses->count());
 
                 return [
@@ -384,7 +378,6 @@ class LaporanController extends Controller
                 ];
             });
 
-        // Kop + logo (via Storage)
         $pengaturan = Pengaturan::first();
         $logo = null;
         if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
@@ -399,11 +392,11 @@ class LaporanController extends Controller
 
         $hariTanggal = $periode === 'harian'
             ? $tanggalRef->isoFormat('dddd, D MMMM Y')
-            : $dari->isoFormat('D MMMM Y').' s/d '.Carbon::parse($sampaiStr)->isoFormat('D MMMM Y');
+            : $dari->isoFormat('D MMMM Y').' s/d '.Carbon::parse($sampaiStr, 'Asia/Makassar')->isoFormat('D MMMM Y');
 
-        // Data tanda tangan
         $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
-        $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.now()->isoFormat('D MMMM Y');
+        // ✅ PERBAIKAN 10: Tempat tanggal pakai WITA
+        $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.Carbon::now('Asia/Makassar')->isoFormat('D MMMM Y');
 
         $pdf = Pdf::loadView('laporan.daftar-hadir', [
             'pengaturan'    => $pengaturan,
@@ -422,7 +415,8 @@ class LaporanController extends Controller
 
     private function hitungRentang(string $periode, string $tanggal, string $semester): array
     {
-        $date = Carbon::parse($tanggal);
+        // ✅ PERBAIKAN 11: Parse tanggal dengan WITA di helper ini
+        $date = Carbon::parse($tanggal, 'Asia/Makassar');
 
         switch ($periode) {
             case 'mingguan':
