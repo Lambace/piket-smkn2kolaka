@@ -382,15 +382,17 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-               // ===== 4. ABSENSI PETUGAS + ALPHA OTOMATIS =====
+              // ===== 4. ABSENSI PETUGAS + ALPHA OTOMATIS =====
         $hariIniStr = Carbon::today()->toDateString();
         $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
         $batasAlpha = '08:30';
 
+        // Ambil semua absensi hari ini
         $absensiTercatat = \App\Models\AbsensiPetugas::where('tanggal', $hariIniStr)
-            ->orderBy('jam_masuk')->get()
+            ->orderBy('jam_masuk')
+            ->get()
             ->map(fn ($a) => [
-                'nama'    => $a->nama,
+                'nama'    => trim($a->nama),
                 'jabatan' => $a->jabatan,
                 'jam'     => $a->jam_masuk ? substr($a->jam_masuk, 0, 5) : null,
                 'status'  => $a->status,
@@ -398,26 +400,32 @@ class DashboardController extends Controller
             ->values()
             ->toBase();
 
-        // Hitung petugas alpha: user dengan role petugas/koordinator yang belum absen
-        $alphaList = collect();
-        if ($jamSekarang >= $batasAlpha) {
-            $namaSudahAbsen = $absensiTercatat->pluck('nama')->toArray();
+        // Daftar nama yang sudah absen (lowercase untuk perbandingan)
+        $namaSudahAbsen = $absensiTercatat->pluck('nama')->map(fn ($n) => strtolower($n))->toArray();
 
-            $alphaList = \App\Models\User::where('role', 'petugas')
-                ->orWhere('role', 'koordinator')
-                ->whereNotIn('name', $namaSudahAbsen)
-                ->orderBy('name')
-                ->get()
-                ->map(fn ($u) => [
-                    'nama'    => $u->name,
-                    'jabatan' => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+        // Ambil semua user dengan role petugas atau koordinator
+        $semuaPetugas = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
+            ->orderBy('name')
+            ->get();
+
+        // Hitung alpha: petugas yang belum absen
+        $alphaList = collect();
+        
+        foreach ($semuaPetugas as $petugas) {
+            $namaLower = strtolower(trim($petugas->name));
+            
+            // Jika nama tidak ada di daftar yang sudah absen
+            if (!in_array($namaLower, $namaSudahAbsen)) {
+                $alphaList->push([
+                    'nama'    => $petugas->name,
+                    'jabatan' => $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
                     'jam'     => null,
                     'status'  => 'alpha',
-                ])
-                ->values()
-                ->toBase();
+                ]);
+            }
         }
 
+        // Gabungkan data absensi dan alpha
         $absensiPetugas = $absensiTercatat->merge($alphaList)->values();
 
         return [
