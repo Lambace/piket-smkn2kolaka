@@ -69,20 +69,26 @@ export default function Tampil(props) {
                 k: props.displayKey,
                 dari_tanggal: dariTanggal,
                 sampai_tanggal: sampaiTanggal,
-                filter_hari: filterHari,
+                // TIDAK mengirim filter_hari dan periode_tampilan
+                // Backend akan pakai default: 'Semua Hari' dan 'harian'
             },
             { preserveState: true, preserveScroll: true },
         );
     };
 
+
     // ✅ FUNGSI UNTUK RESET FILTER KE HARI INI
     const resetFilter = () => {
         setDariTanggal(today);
         setSampaiTanggal(today);
-        setFilterHari("Semua Hari");
         router.get(
             route("tampil"),
-            { k: props.displayKey, filter_hari: "Semua Hari" },
+            {
+                k: props.displayKey,
+                dari_tanggal: today,
+                sampai_tanggal: today,
+                // TIDAK mengirim filter_hari dan periode_tampilan
+            },
             { preserveState: true, preserveScroll: true },
         );
     };
