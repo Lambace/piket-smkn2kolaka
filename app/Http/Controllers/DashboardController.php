@@ -382,19 +382,20 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-               // ===== 4. ABSENSI PETUGAS (LOGIKA PALING ROBUST) =====
-        // Kita paksa ambil tanggal hari ini berdasarkan waktu WITA
+                     // ===== 4. ABSENSI PETUGAS DENGAN LOGIKA JAM 07:30 =====
         $hariIniStr = Carbon::today('Asia/Makassar')->toDateString();
+        $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
+        $batasAlpha = '07:30'; // Petugas baru dianggap Alpha setelah jam ini
 
         // 1. Ambil semua petugas dari tabel users
         $semuaPetugas = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
             ->orderBy('name')
             ->get();
 
-        // 2. Ambil absensi HARI INI saja (pakai whereDate agar aman dari masalah jam/timezone)
+        // 2. Ambil absensi HARI INI (pakai whereDate agar aman dari timezone)
         $absensiHariIni = \App\Models\AbsensiPetugas::whereDate('tanggal', $hariIniStr)->get();
 
-        // 3. Peta absensi berdasarkan nama (lowercase & trim) untuk pencocokan cepat
+        // 3. Peta absensi berdasarkan nama (lowercase & trim)
         $absensiMap = [];
         foreach ($absensiHariIni as $absen) {
             $namaKey = strtolower(trim($absen->nama));
@@ -403,6 +404,7 @@ class DashboardController extends Controller
 
         $hadirList = collect();
         $alphaList = collect();
+        $belumAbsenList = collect(); // ✅ BARU: Daftar petugas yang belum absen (sebelum 07:30)
 
         // 4. Cek setiap petugas
         foreach ($semuaPetugas as $petugas) {
@@ -413,7 +415,7 @@ class DashboardController extends Controller
                 $absen = $absensiMap[$namaKey];
                 $status = $absen->status;
 
-                // Jika di database statusnya sudah dicatat 'alpha', masukkan ke list alpha
+                // Jika di database sudah tercatat alpha → masuk Alpha
                 if ($status === 'alpha') {
                     $alphaList->push([
                         'nama'    => $petugas->name,
@@ -422,7 +424,7 @@ class DashboardController extends Controller
                         'status'  => 'alpha',
                     ]);
                 } 
-                // Selain alpha (tepat_waktu, terlambat, sakit, izin, dll) masuk ke daftar Hadir
+                // Selain alpha (tepat_waktu, terlambat, sakit, izin, dl) → masuk Hadir
                 else {
                     $hadirList->push([
                         'nama'    => $petugas->name,
@@ -432,16 +434,33 @@ class DashboardController extends Controller
                     ]);
                 }
             } else {
-                // TIDAK ADA record absensi hari ini = Otomatis Alpha
-                $alphaList->push([
-                    'nama'    => $petugas->name,
-                    'jabatan' => $jabatan,
-                    'jam'     => null,
-                    'status'  => 'alpha',
-                ]);
+                // TIDAK ADA record absensi hari ini
+                // ✅ LOGIKA BARU: Cek apakah sudah lewat jam 07:30
+                if ($jamSekarang >= $batasAlpha) {
+                    // Sudah lewat 07:30 → otomatis Alpha
+                    $alphaList->push([
+                        'nama'    => $petugas->name,
+                        'jabatan' => $jabatan,
+                        'jam'     => null,
+                        'status'  => 'alpha',
+                    ]);
+                } else {
+                    // Belum 07:30 → masuk daftar "Belum Absen" (bukan Alpha)
+                    $belumAbsenList->push([
+                        'nama'    => $petugas->name,
+                        'jabatan' => $jabatan,
+                        'jam'     => null,
+                        'status'  => 'belum_absen',
+                    ]);
+                }
             }
         }
 
+        // Gabungkan: Hadir + Belum Absen + Alpha
+        $absensiPetugas = $hadirList
+            ->merge($belumAbsenList)
+            ->merge($alphaList)
+            ->values();
         // Gabungkan: Daftar Hadir dulu, baru Daftar Alpha
         $absensiPetugas = $hadirList->merge($alphaList)->values();
 

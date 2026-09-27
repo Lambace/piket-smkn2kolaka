@@ -14,7 +14,13 @@ export default function KartuAbsensiPetugas({ data }) {
     const [dari, setDari] = useState(firstOfMonth);
     const [sampai, setSampai] = useState(todayStr);
 
-    const hadirList = data?.filter((p) => p.status !== "alpha") ?? [];
+    // ===== PERBAIKAN 1: Pisahkan menjadi 3 kategori =====
+    const hadirList =
+        data?.filter(
+            (p) => p.status !== "alpha" && p.status !== "belum_absen",
+        ) ?? [];
+    const belumAbsenList =
+        data?.filter((p) => p.status === "belum_absen") ?? [];
     const alphaList = data?.filter((p) => p.status === "alpha") ?? [];
 
     // ===== Download Daftar Hadir (checklist harian) =====
@@ -82,6 +88,13 @@ export default function KartuAbsensiPetugas({ data }) {
                         "bg-blue-500/20 text-blue-400 border border-blue-500/30",
                     icon: "🚗",
                     text: "DL",
+                };
+            case "belum_absen": // PERBAIKAN 2: Tambahkan status belum_absen
+                return {
+                    className:
+                        "bg-slate-500/20 text-slate-400 border border-slate-500/30",
+                    icon: "⏳",
+                    text: "Menunggu",
                 };
             case "lainnya":
                 return {
@@ -179,7 +192,7 @@ export default function KartuAbsensiPetugas({ data }) {
                 </div>
             </div>
 
-            {/* ===== ISI KARTU (tidak berubah) ===== */}
+            {/* ===== ISI KARTU ===== */}
             {!data || data.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                     <span className="mb-2 text-4xl">📭</span>
@@ -193,18 +206,9 @@ export default function KartuAbsensiPetugas({ data }) {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {hadirList.length === 0 && alphaList.length > 0 && (
-                        <div className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
-                            <span className="text-xl">⚠️</span>
-                            <p className="text-sm text-amber-300">
-                                <strong>Belum ada petugas yang hadir.</strong>{" "}
-                                {alphaList.length} petugas tercatat tidak hadir
-                                (alpha).
-                            </p>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {/* PERBAIKAN 3: Ubah grid menjadi 3 kolom untuk menampung "Belum Absen" */}
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        {/* KOLOM 1: HADIR */}
                         <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-green-400">
@@ -219,11 +223,11 @@ export default function KartuAbsensiPetugas({ data }) {
                                 <div className="flex flex-col items-center justify-center py-6 text-center">
                                     <span className="mb-2 text-3xl">🕐</span>
                                     <p className="text-sm font-semibold text-slate-400">
-                                        Belum ada petugas yang terdaftar
+                                        Belum ada yang hadir
                                     </p>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                                     {hadirList.map((p, i) => {
                                         const badge = getBadge(p.status, p.jam);
                                         return (
@@ -258,6 +262,52 @@ export default function KartuAbsensiPetugas({ data }) {
                             )}
                         </div>
 
+                        {/* KOLOM 2: BELUM ABSEN (BARU) */}
+                        <div className="rounded-lg border border-slate-600/50 bg-slate-800/50 p-4">
+                            <div className="mb-3 flex items-center justify-between">
+                                <h4 className="flex items-center gap-2 text-sm font-bold text-slate-300">
+                                    <span>⏳</span>
+                                    <span>Belum Absen</span>
+                                </h4>
+                                <span className="rounded-full bg-slate-500/20 px-2.5 py-0.5 text-xs font-bold text-slate-300">
+                                    {belumAbsenList.length} orang
+                                </span>
+                            </div>
+                            {belumAbsenList.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-6 text-center">
+                                    <span className="mb-2 text-3xl">✨</span>
+                                    <p className="text-sm font-semibold text-slate-400">
+                                        Semua sudah absen
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                                    {belumAbsenList.map((p, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center justify-between rounded-lg bg-slate-700/60 px-3 py-2.5"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-semibold text-white">
+                                                    {p.nama}
+                                                </p>
+                                                <p className="truncate text-xs text-slate-400">
+                                                    {p.jabatan}
+                                                </p>
+                                            </div>
+                                            <span className="ml-2 shrink-0 rounded-full border border-slate-500/30 bg-slate-500/20 px-2.5 py-1 text-xs font-bold text-slate-300">
+                                                ⏳ Menunggu
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="mt-3 text-center text-[10px] italic text-slate-500">
+                                *Otomatis Alpha setelah 07:30 WITA
+                            </p>
+                        </div>
+
+                        {/* KOLOM 3: ALPHA */}
                         <div className="rounded-lg border border-red-900/50 bg-red-950/30 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-red-400">
@@ -272,11 +322,11 @@ export default function KartuAbsensiPetugas({ data }) {
                                 <div className="flex flex-col items-center justify-center py-6 text-center">
                                     <span className="mb-2 text-3xl">🎉</span>
                                     <p className="text-sm font-semibold text-green-400">
-                                        Semua petugas hadir!
+                                        Tidak ada yang alpha!
                                     </p>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
                                     {alphaList.map((p, i) => (
                                         <div
                                             key={i}
