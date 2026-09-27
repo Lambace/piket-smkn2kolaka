@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -382,18 +383,24 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-                     // ===== 4. ABSENSI PETUGAS DENGAN LOGIKA JAM 07:30 =====
+                // ===== 4. ABSENSI PETUGAS DENGAN LOGIKA ALPHA OTOMATIS =====
         $hariIniStr = Carbon::today('Asia/Makassar')->toDateString();
         $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
-        $batasAlpha = '07:30'; // Petugas baru dianggap Alpha setelah jam ini
+        $batasAlpha = '07:30';
 
-        // 1. Ambil semua petugas dari tabel users
+        // 1. Ambil SEMUA petugas dari tabel users (pastikan query ini benar)
         $semuaPetugas = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
             ->orderBy('name')
             ->get();
 
-        // 2. Ambil absensi HARI INI (pakai whereDate agar aman dari timezone)
+        // Debug: Log jumlah petugas yang ditemukan
+        \Log::info("Total petugas ditemukan: " . $semuaPetugas->count());
+
+        // 2. Ambil absensi HARI INI
         $absensiHariIni = \App\Models\AbsensiPetugas::whereDate('tanggal', $hariIniStr)->get();
+        
+        // Debug: Log jumlah absensi hari ini
+        \Log::info("Absensi hari ini (" . $hariIniStr . "): " . $absensiHariIni->count());
 
         // 3. Peta absensi berdasarkan nama (lowercase & trim)
         $absensiMap = [];
@@ -404,7 +411,7 @@ class DashboardController extends Controller
 
         $hadirList = collect();
         $alphaList = collect();
-        $belumAbsenList = collect(); // ✅ BARU: Daftar petugas yang belum absen (sebelum 07:30)
+        $belumAbsenList = collect();
 
         // 4. Cek setiap petugas
         foreach ($semuaPetugas as $petugas) {
@@ -412,20 +419,20 @@ class DashboardController extends Controller
             $jabatan = $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket';
 
             if (isset($absensiMap[$namaKey])) {
+                // Petugas SUDAH absen hari ini
                 $absen = $absensiMap[$namaKey];
                 $status = $absen->status;
 
-                // Jika di database sudah tercatat alpha → masuk Alpha
                 if ($status === 'alpha') {
+                    // Sudah dicatat alpha manual
                     $alphaList->push([
                         'nama'    => $petugas->name,
                         'jabatan' => $jabatan,
                         'jam'     => null,
                         'status'  => 'alpha',
                     ]);
-                } 
-                // Selain alpha (tepat_waktu, terlambat, sakit, izin, dl) → masuk Hadir
-                else {
+                } else {
+                    // Hadir dengan berbagai status
                     $hadirList->push([
                         'nama'    => $petugas->name,
                         'jabatan' => $jabatan,
@@ -434,18 +441,18 @@ class DashboardController extends Controller
                     ]);
                 }
             } else {
-                // TIDAK ADA record absensi hari ini
-                // ✅ LOGIKA BARU: Cek apakah sudah lewat jam 07:30
+                // Petugas BELUM absen sama sekali hari ini
                 if ($jamSekarang >= $batasAlpha) {
-                    // Sudah lewat 07:30 → otomatis Alpha
+                    // Sudah lewat 07:30 → Alpha
                     $alphaList->push([
                         'nama'    => $petugas->name,
                         'jabatan' => $jabatan,
                         'jam'     => null,
                         'status'  => 'alpha',
                     ]);
+                    \Log::info("Alpha: " . $petugas->name . " (belum absen, jam: " . $jamSekarang . ")");
                 } else {
-                    // Belum 07:30 → masuk daftar "Belum Absen" (bukan Alpha)
+                    // Belum 07:30 → Belum Absen
                     $belumAbsenList->push([
                         'nama'    => $petugas->name,
                         'jabatan' => $jabatan,
@@ -455,6 +462,12 @@ class DashboardController extends Controller
                 }
             }
         }
+
+        // Debug: Log hasil akhir
+        \Log::info("Hasir: " . $hadirList->count() . ", Belum Absen: " . $belumAbsenList->count() . ", Alpha: " . $alphaList->count());
+
+        // Gabungkan: Hadir + Belum Absen + Alpha
+        $absensiPetugas = $hadirList->merge($belumAbsenList)->merge($alphaList)->values();
 
         // Gabungkan: Hadir + Belum Absen + Alpha
         $absensiPetugas = $hadirList
