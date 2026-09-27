@@ -93,7 +93,7 @@
 </table>
 <div class="kop-garis"></div>
 
-<div class="judul">Laporan Piket </div>
+<div class="judul">Laporan Piket</div>
 
 {{-- ===== INFO BAR ===== --}}
 <table class="infobar">
@@ -106,47 +106,86 @@
 
 {{-- ===== TABEL 1: REKAP ABSENSI PETUGAS ===== --}}
 <div class="seksi">Tabel 1 — Rekap Absensi Petugas Piket</div>
-<table class="data">
-    <thead>
-        <tr>
-            <th style="width:28px">No</th>
-            <th>Nama Petugas / Jabatan</th>
-            <th style="width:80px">Tanggal</th>
-            <th style="width:75px">Waktu</th>
-            <th style="width:110px">Status</th>
-        </tr>
-    </thead>
-    <tbody>
-        @php
-            $badgeStatus = [
-                'tepat_waktu' => ['cls' => 'b-hadir',     'label' => 'TEPAT WAKTU'],
-                'terlambat'   => ['cls' => 'b-terlambat', 'label' => 'TERLAMBAT'],
-                'sakit'       => ['cls' => 'b-sakit',     'label' => 'SAKIT'],
-                'izin'        => ['cls' => 'b-izin',      'label' => 'IZIN'],
-                'dl'          => ['cls' => 'b-dl',        'label' => 'DINAS LUAR'],
-                'alpha'       => ['cls' => 'b-alpha',     'label' => 'ALPHA'],
-            ];
-        @endphp
-        @forelse($rekapPetugas as $i => $r)
-        <tr class="{{ $loop->odd ? '' : 'alt' }}">
-            <td class="tengah">{{ $i+1 }}</td>
-            <td>
-                <strong>{{ $r['nama'] }}</strong>
-                <span class="sub">{{ $r['jabatan'] }}@if($r['keterangan']) — “{{ $r['keterangan'] }}” @endif</span>
-            </td>
-            <td class="tengah">{{ $r['tanggal'] }}</td>
-            <td class="tengah" style="font-size: 7pt; white-space: nowrap;"><strong>{{ $r['jam'] !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
-            <td class="tengah">
-                <span class="badge {{ $badgeStatus[$r['status']]['cls'] ?? 'b-alpha' }}">
-                    {{ $badgeStatus[$r['status']]['label'] ?? strtoupper($r['status']) }}
-                </span>
-            </td>
-        </tr>
-        @empty
-        <tr><td colspan="5" class="tengah">Tidak ada data petugas.</td></tr>
-        @endforelse
-    </tbody>
-</table>
+
+@if(($periode ?? 'harian') === 'harian')
+    {{-- Format HARIAN: Tampilkan record individual --}}
+    <table class="data">
+        <thead>
+            <tr>
+                <th style="width:28px">No</th>
+                <th>Nama Petugas / Jabatan</th>
+                <th style="width:80px">Tanggal</th>
+                <th style="width:75px">Waktu</th>
+                <th style="width:110px">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php
+                $badgeStatus = [
+                    'tepat_waktu' => ['cls' => 'b-hadir',     'label' => 'TEPAT WAKTU'],
+                    'terlambat'   => ['cls' => 'b-terlambat', 'label' => 'TERLAMBAT'],
+                    'sakit'       => ['cls' => 'b-sakit',     'label' => 'SAKIT'],
+                    'izin'        => ['cls' => 'b-izin',      'label' => 'IZIN'],
+                    'dl'          => ['cls' => 'b-dl',        'label' => 'DINAS LUAR'],
+                    'alpha'       => ['cls' => 'b-alpha',     'label' => 'ALPHA'],
+                ];
+            @endphp
+            @forelse($rekapPetugas as $i => $r)
+            <tr class="{{ $loop->odd ? '' : 'alt' }}">
+                <td class="tengah">{{ $i+1 }}</td>
+                <td>
+                    <strong>{{ $r['nama'] }}</strong>
+                    <span class="sub">{{ $r['jabatan'] }}@if(isset($r['keterangan']) && $r['keterangan']) — “{{ $r['keterangan'] }}” @endif</span>
+                </td>
+                <td class="tengah">{{ $r['tanggal'] }}</td>
+                <td class="tengah" style="font-size: 7pt; white-space: nowrap;"><strong>{{ $r['jam'] !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
+                <td class="tengah">
+                    <span class="badge {{ $badgeStatus[$r['status']]['cls'] ?? 'b-alpha' }}">
+                        {{ $badgeStatus[$r['status']]['label'] ?? strtoupper($r['status']) }}
+                    </span>
+                </td>
+            </tr>
+            @empty
+            <tr><td colspan="5" class="tengah">Tidak ada data petugas.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+@else
+    {{-- Format MINGGUAN/BULANAN/SEMESTER: Tampilkan rekap akumulasi --}}
+    <table class="data">
+        <thead>
+            <tr>
+                <th style="width:28px">No</th>
+                <th>Nama Petugas / Jabatan</th>
+                <th style="width:40px" class="tengah">H</th>
+                <th style="width:40px" class="tengah">A</th>
+                <th style="width:40px" class="tengah">I</th>
+                <th style="width:40px" class="tengah">S</th>
+                <th style="width:40px" class="tengah">DL</th>
+                <th style="width:50px" class="tengah">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($rekapPetugas as $i => $r)
+            <tr class="{{ $loop->odd ? '' : 'alt' }}">
+                <td class="tengah">{{ $i+1 }}</td>
+                <td>
+                    <strong>{{ $r['nama'] }}</strong>
+                    <span class="sub">{{ $r['jabatan'] }}</span>
+                </td>
+                <td class="tengah" style="color: #2f855a; font-weight: bold;">{{ $r['h'] ?? 0 }}</td>
+                <td class="tengah" style="color: #b91c1c; font-weight: bold;">{{ $r['a'] ?? 0 }}</td>
+                <td class="tengah" style="color: #b7791f; font-weight: bold;">{{ $r['i'] ?? 0 }}</td>
+                <td class="tengah" style="color: #6b46c1; font-weight: bold;">{{ $r['s'] ?? 0 }}</td>
+                <td class="tengah" style="color: #4338ca; font-weight: bold;">{{ $r['dl'] ?? 0 }}</td>
+                <td class="tengah" style="font-weight: bold;">{{ $r['total'] ?? 0 }}</td>
+            </tr>
+            @empty
+            <tr><td colspan="8" class="tengah">Tidak ada data petugas pada periode ini.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+@endif
 
 {{-- ===== TABEL 2: RINGKASAN ===== --}}
 <div class="seksi">Tabel 2 — Ringkasan Piket</div>

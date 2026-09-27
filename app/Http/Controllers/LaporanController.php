@@ -77,7 +77,7 @@ class LaporanController extends Controller
         return Excel::download(new LaporanExport($data, $labelPeriode, $jenis), $namaFile);
     }
 
-    // ===== LAPORAN PIKET (PDF BERWARNA) =====
+        // ===== LAPORAN PIKET (PDF BERWARNA) =====
     public function pdf(Request $request)
     {
         try {
@@ -133,48 +133,78 @@ class LaporanController extends Controller
             $absensiPetugas = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
                 ->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
-            // ===== REKAP PETUGAS (Berdasarkan hari_piket ATAU absensi nyata) =====
-            $namaHariLaporan = $tanggalRef->isoFormat('dddd');
-            
-            $semuaPetugasPdf = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
-            $namaDenganAbsensiPdf = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
-                ->pluck('nama')
-                ->map(fn($n) => strtolower(trim($n)))
-                ->unique()
-                ->toArray();
+            // ===== REKAP PETUGAS - FORMAT BERBEDA BERDASARKAN PERIODE =====
+            $rekapPetugas = collect();
 
-            // Filter: Tampilkan jika jadwal cocok ATAU punya absensi di rentang ini (berlaku untuk semua, termasuk koordinator)
-            $petugasRelevanPdf = $semuaPetugasPdf->filter(function ($u) use ($namaHariLaporan, $namaDenganAbsensiPdf) {
-                $namaKey = strtolower(trim($u->name));
-                return $u->hari_piket === $namaHariLaporan || in_array($namaKey, $namaDenganAbsensiPdf);
-            });
+            if ($periode === 'harian') {
+                // Format HARIAN: Tampilkan record individual dengan status
+                $namaHariLaporan = $tanggalRef->isoFormat('dddd');
+                
+                $semuaPetugasPdf = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
+                $namaDenganAbsensiPdf = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
+                    ->pluck('nama')
+                    ->map(fn($n) => strtolower(trim($n)))
+                    ->unique()
+                    ->toArray();
 
-            $rekapPetugas = $petugasRelevanPdf->map(function ($u) use ($dariStr, $sampaiStr, $periode, $tanggalRef, $dari, $sampai) {
-                $r = AbsensiPetugas::where('nama', $u->name)
-                    ->whereBetween('tanggal', [$dariStr, $sampaiStr])
-                    ->orderBy('jam_masuk')
-                    ->first();
+                $petugasRelevanPdf = $semuaPetugasPdf->filter(function ($u) use ($namaHariLaporan, $namaDenganAbsensiPdf) {
+                    $namaKey = strtolower(trim($u->name));
+                    return $u->hari_piket === $namaHariLaporan || in_array($namaKey, $namaDenganAbsensiPdf);
+                });
 
-                return [
-                    'nama'       => $u->name,
-                    'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
-                    'jam'        => $r?->jam_masuk ?? '-',
-                    'status'     => $r?->status ?? 'alpha',
-                    'keterangan' => $r?->keterangan ?? '',
-                    'tanggal'    => $r?->tanggal
-                                        ? Carbon::parse($r->tanggal, 'Asia/Makassar')->isoFormat('D MMM Y')
-                                        : ($periode === 'harian'
-                                            ? $tanggalRef->isoFormat('D MMM Y')
-                                            : $dari->isoFormat('D MMM').' – '.$sampai->isoFormat('D MMM Y')),
-                ];
-            });
+                $rekapPetugas = $petugasRelevanPdf->map(function ($u) use ($dariStr, $sampaiStr, $tanggalRef) {
+                    $r = AbsensiPetugas::where('nama', $u->name)
+                        ->whereBetween('tanggal', [$dariStr, $sampaiStr])
+                        ->orderBy('jam_masuk')
+                        ->first();
+
+                    return [
+                        'nama'       => $u->name,
+                        'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                        'jam'        => $r?->jam_masuk ?? '-',
+                        'status'     => $r?->status ?? 'alpha',
+                        'keterangan' => $r?->keterangan ?? '',
+                        'tanggal'    => $r?->tanggal
+                                            ? Carbon::parse($r->tanggal, 'Asia/Makassar')->isoFormat('D MMM Y')
+                                            : $tanggalRef->isoFormat('D MMM Y'),
+                        'format'     => 'harian',
+                    ];
+                });
+            } else {
+                // Format MINGGUAN/BULANAN/SEMESTER: Tampilkan rekap akumulasi (H, A, I, S, DL)
+                $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
+                $absensiRentang = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])->get();
+
+                $rekapPetugas = $semuaPetugas->map(function ($u) use ($absensiRentang) {
+                    $absensiUser = $absensiRentang->filter(function ($a) use ($u) {
+                        return strtolower(trim($a->nama)) === strtolower(trim($u->name));
+                    });
+
+                    $h = $absensiUser->filter(fn($a) => in_array($a->status, ['tepat_waktu', 'terlambat']))->count();
+                    $a = $absensiUser->filter(fn($a) => $a->status === 'alpha')->count();
+                    $i = $absensiUser->filter(fn($a) => $a->status === 'izin')->count();
+                    $s = $absensiUser->filter(fn($a) => $a->status === 'sakit')->count();
+                    $dl = $absensiUser->filter(fn($a) => $a->status === 'dl')->count();
+
+                    return [
+                        'nama'       => $u->name,
+                        'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                        'h'          => $h,
+                        'a'          => $a,
+                        'i'          => $i,
+                        's'          => $s,
+                        'dl'         => $dl,
+                        'total'      => $h + $a + $i + $s + $dl,
+                        'format'     => 'rekap',
+                    ];
+                })->filter(fn($p) => $p['total'] > 0)->values();
+            }
 
             $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)
                 ->whereIn('status', ['tepat_waktu', 'terlambat'])->count();
             
-            // Hitung alpha hanya dari petugas yang relevan (dijadwalkan atau punya absensi)
-            $totalRelevan = $petugasRelevanPdf->count();
-            $alphaHariIni = max(0, $totalRelevan - $hadirHariIni);
+            $totalDijadwalkan = User::whereIn('role', ['petugas', 'koordinator'])->count();
+            $alphaHariIni = max(0, $totalDijadwalkan - $hadirHariIni);
 
             $keterlambatan = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
             $izinKeluar    = IzinKeluar::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
@@ -255,6 +285,7 @@ class LaporanController extends Controller
                 'waktuCetak'        => Carbon::now('Asia/Makassar')->format('d-m-Y H:i'),
                 'koordinator'       => $koordinator,
                 'tempatTanggal'     => $tempatTanggal,
+                'periode'           => $periode, // <-- PENTING: Dikirim ke view untuk kondisional
             ];
 
             $pdf = Pdf::loadView('laporan.pdf', $data)->setPaper('a4', 'portrait');
@@ -269,7 +300,6 @@ class LaporanController extends Controller
             ], 500);
         }
     }
-
     // ===== DAFTAR HADIR PIKET (CHECKLIST) =====
     public function daftarHadir(Request $request)
     {
