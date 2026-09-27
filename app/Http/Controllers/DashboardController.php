@@ -31,265 +31,116 @@ class DashboardController extends Controller
             abort(403, 'Akses ditolak. Tautan tidak valid.');
         }
 
-        // ===== PAKSA FILTER TAMPILAN =====
-        // Backend TIDAK membaca filter_hari dari request untuk tampilan.
-        // Tampilan HANYA menggunakan rentang tanggal dari Panel Ungu.
-        $filterHari = 'Semua Hari'; 
-        $periodeTampilan = 'harian'; // Default untuk logika kartu absensi
+        // ===== 1. FILTER RENTANG TANGGAL (PANEL UNGU - untuk data siswa/tamu) =====
+        $defaultDari = Carbon::now('Asia/Makassar')->startOfMonth()->toDateString();
+        $defaultSampai = Carbon::now('Asia/Makassar')->toDateString();
 
-        // ===== 1. FILTER RENTANG TANGGAL (DARI PANEL UNGU) =====
-        $dariTanggal = $request->input('dari_tanggal', Carbon::today('Asia/Makassar')->toDateString());
-        $sampaiTanggal = $request->input('sampai_tanggal', Carbon::today('Asia/Makassar')->toDateString());
+        $dariTanggal = $request->input('dari_tanggal', $defaultDari);
+        $sampaiTanggal = $request->input('sampai_tanggal', $defaultSampai);
         
         $rangeStart = Carbon::parse($dariTanggal, 'Asia/Makassar')->startOfDay();
         $rangeEnd   = Carbon::parse($sampaiTanggal, 'Asia/Makassar')->endOfDay();
 
         $withSiswa = 'siswa:id,nama,kelas,jurusan,nisn';
 
-        // ===== FUNGSI HELPER: FILTER BERDASARKAN HARI (DAYOFWEEK) =====
-        $applyDayFilter = function ($query, $columnName = 'tanggal') use ($filterHari) {
-            if ($filterHari !== 'Semua Hari') {
-                $dayMap = [
-                    'Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4, 
-                    'Kamis' => 5, 'Jumat' => 6, 'Sabtu' => 7
-                ];
-                $dayNum = $dayMap[$filterHari] ?? null;
-                if ($dayNum) {
-                    $query->whereRaw("DAYOFWEEK({$columnName}) = ?", [$dayNum]);
-                }
-            }
-            return $query;
-        };
-
-        // ===== 2. DATA LIST (Diterapkan Filter Hari) =====
-        $keterlambatanQuery = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($keterlambatanQuery, 'tanggal');
-        $keterlambatanList = $keterlambatanQuery->orderByDesc('tanggal')->orderByDesc('jam_datang')->limit(50)->get()
+        // ===== 2. DATA LIST SISWA/TAMU (Mengikuti Panel Ungu) =====
+        $keterlambatanList = Keterlambatan::with($withSiswa)
+            ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal')->orderByDesc('jam_datang')->limit(50)->get()
             ->map(fn ($k) => [
                 'id' => $k->id, 'nama' => $k->siswa?->nama, 'kelas' => $k->siswa?->kelas, 
                 'tanggal' => $k->tanggal->format('d/m/Y'), 'jam_datang' => $k->jam_datang, 
                 'menit_terlambat' => (int) $k->menit_terlambat, 'status' => $k->status,
             ]);
 
-        $izinQuery = IzinKeluar::with($withSiswa)->whereBetween('tanggal', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($izinQuery, 'tanggal');
-        $izinKeluarList = $izinQuery->orderByDesc('tanggal')->orderByDesc('jam_keluar')->limit(50)->get()
+        $izinKeluarList = IzinKeluar::with($withSiswa)
+            ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal')->orderByDesc('jam_keluar')->limit(50)->get()
             ->map(fn ($i) => [
                 'id' => $i->id, 'nama' => $i->siswa?->nama, 'kelas' => $i->siswa?->kelas, 
                 'tanggal' => $i->tanggal->format('d/m/Y'), 'jam_keluar' => $i->jam_keluar, 
                 'jam_kembali' => $i->jam_kembali, 'jenis' => $i->jenis, 'status' => $i->status,
             ]);
 
-        $pelanggaranQuery = Pelanggaran::with($withSiswa)->whereBetween('tanggal', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($pelanggaranQuery, 'tanggal');
-        $pelanggaranList = $pelanggaranQuery->orderByDesc('tanggal')->orderByDesc('created_at')->limit(50)->get()
+        $pelanggaranList = Pelanggaran::with($withSiswa)
+            ->whereBetween('tanggal', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal')->orderByDesc('created_at')->limit(50)->get()
             ->map(fn ($p) => [
                 'id' => $p->id, 'nama' => $p->siswa?->nama, 'kelas' => $p->siswa?->kelas, 
                 'tanggal' => $p->tanggal->format('d/m/Y'), 'jenis_pelanggaran' => $p->jenis_pelanggaran, 
                 'poin' => (int) $p->poin, 'status' => $p->status,
             ]);
 
-        $tamuQuery = BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($tamuQuery, 'tanggal_kunjungan');
-        $bukuTamuList = $tamuQuery->orderByDesc('tanggal_kunjungan')->orderByDesc('jam_masuk')->limit(50)->get()
+        $bukuTamuList = BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd])
+            ->orderByDesc('tanggal_kunjungan')->orderByDesc('jam_masuk')->limit(50)->get()
             ->map(fn ($t) => [
                 'id' => $t->id, 'nama' => $t->nama, 'instansi' => $t->instansi, 
                 'tanggal' => $t->tanggal_kunjungan->format('d/m/Y'), 'jam_masuk' => $t->jam_masuk, 
                 'jam_keluar' => $t->jam_keluar, 'status' => $t->jam_keluar ? 'sudah_keluar' : 'di_sekolah',
             ]);
 
-        // ===== 3. STATISTIK =====
-        $statsTerlambat = Keterlambatan::whereBetween('tanggal', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($statsTerlambat, 'tanggal');
-
-        $statsIzin = IzinKeluar::whereBetween('tanggal', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($statsIzin, 'tanggal');
-
-        $statsPelanggaran = Pelanggaran::whereBetween('tanggal', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($statsPelanggaran, 'tanggal');
-
-        $statsTamu = BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd]);
-        $applyDayFilter($statsTamu, 'tanggal_kunjungan');
-
+        // ===== 3. STATISTIK (Mengikuti Panel Ungu) =====
         $stats = [
             'total_siswa' => Siswa::where('aktif', true)->count(),
-            'terlambat'   => $statsTerlambat->count(),
-            'izin_keluar' => $statsIzin->count(),
-            'pelanggaran' => $statsPelanggaran->count(),
-            'tamu'        => $statsTamu->count(),
+            'terlambat'   => Keterlambatan::whereBetween('tanggal', [$rangeStart, $rangeEnd])->count(),
+            'izin_keluar' => IzinKeluar::whereBetween('tanggal', [$rangeStart, $rangeEnd])->count(),
+            'pelanggaran' => Pelanggaran::whereBetween('tanggal', [$rangeStart, $rangeEnd])->count(),
+            'tamu'        => BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd])->count(),
         ];
 
-        // ===== 4. ABSENSI PETUGAS =====
+        // ===== 4. ABSENSI PETUGAS (SELALU HARI INI - INDEPENDEN DARI FILTER) =====
         $hariIniStr = Carbon::today('Asia/Makassar')->toDateString();
-        $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
+        $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd'); // e.g., 'Senin'
         $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
         $batasAlpha = '07:30';
 
-        // Logika Libur Otomatis hanya untuk periode harian
+        // Cek apakah ada absensi sama sekali hari ini
         $totalAbsensiHariIni = AbsensiPetugas::whereDate('tanggal', $hariIniStr)->count();
-        $isLiburOtomatis = ($periodeTampilan === 'harian' && $filterHari === 'Semua Hari' && $jamSekarang >= $batasAlpha && $totalAbsensiHariIni === 0);
+
+        // Logika Libur: Jika lewat 07:30 DAN tidak ada yang absen sama sekali
+        $isLiburOtomatis = ($jamSekarang >= $batasAlpha) && ($totalAbsensiHariIni === 0);
 
         if ($isLiburOtomatis) {
+            // Tampilkan 1 card khusus libur
             $absensiPetugas = collect([
                 ['status' => 'libur_otomatis', 'pesan' => 'Tidak ada aktivitas piket hari ini (Dianggap Libur)']
             ]);
         } else {
+            // Ambil petugas yang jadwalnya HARI INI
             $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
             
-            // ===== PERBAIKAN: Ambil absensi yang sesuai filter hari =====
-            $absensiRentangQuery = AbsensiPetugas::whereBetween('tanggal', [$rangeStart, $rangeEnd]);
-            $applyDayFilter($absensiRentangQuery, 'tanggal');
-            $absensiRentang = $absensiRentangQuery->get();
-            
-            $namaDenganAbsensi = $absensiRentang->pluck('nama')
-                ->map(fn($n) => strtolower(trim($n)))
-                ->unique()
-                ->toArray();
-
-            // ===== PERBAIKAN: Filter petugas berdasarkan hari_piket =====
-            $petugasRelevan = $semuaPetugas->filter(function ($p) use ($filterHari, $namaDenganAbsensi, $namaHariIni) {
-                $namaKey = strtolower(trim($p->name));
-                
-                // Untuk "Semua Hari", tampilkan yang jadwalnya hari ini
-                // Untuk hari spesifik, tampilkan yang jadwalnya hari itu
-                if ($filterHari === 'Semua Hari') {
-                    return $p->hari_piket === $namaHariIni;
-                } else {
-                    return $p->hari_piket === $filterHari;
-                }
+            $petugasHariIni = $semuaPetugas->filter(function ($p) use ($namaHariIni) {
+                return $p->hari_piket === $namaHariIni;
             });
 
-            // ===== PERBAIKAN: Hitung absensi per petugas berdasarkan filter hari =====
+            // Ambil absensi hari ini
+            $absensiTercatat = AbsensiPetugas::whereDate('tanggal', $hariIniStr)->get();
             $absensiMap = [];
-            foreach ($absensiRentang as $a) {
-                $namaKey = strtolower(trim($a->nama));
-                if (!isset($absensiMap[$namaKey])) {
-                    $absensiMap[$namaKey] = [];
-                }
-                $absensiMap[$namaKey][] = $a;
+            foreach ($absensiTercatat as $a) {
+                $absensiMap[strtolower(trim($a->nama))] = $a;
             }
 
             $hadirList = collect();
             $alphaList = collect();
             $belumAbsenList = collect();
 
-            foreach ($petugasRelevan as $p) {
+            foreach ($petugasHariIni as $p) {
                 $namaKey = strtolower(trim($p->name));
                 $jabatan = $p->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket';
-                
-                $absensiPetugasIni = $absensiMap[$namaKey] ?? [];
 
-                // Untuk periode harian
-                if ($periodeTampilan === 'harian') {
-                    $absenHariIni = collect($absensiPetugasIni)->firstWhere('tanggal', $hariIniStr);
-                    
-                    if ($absenHariIni) {
-                        if ($absenHariIni->status === 'alpha') {
-                            $alphaList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
-                        } else {
-                            $hadirList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => $absenHariIni->jam_masuk ? substr($absenHariIni->jam_masuk, 0, 5) : null, 'status' => $absenHariIni->status]);
-                        }
+                if (isset($absensiMap[$namaKey])) {
+                    $absen = $absensiMap[$namaKey];
+                    if ($absen->status === 'alpha') {
+                        $alphaList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
                     } else {
-                        if ($jamSekarang >= $batasAlpha) {
-                            $alphaList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
-                        } else {
-                            $belumAbsenList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'belum_absen']);
-                        }
+                        $hadirList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => $absen->jam_masuk ? substr($absen->jam_masuk, 0, 5) : null, 'status' => $absen->status]);
                     }
-                } 
-                // Untuk periode mingguan/bulanan/semester
-                else {
-                    // Hitung jumlah kehadiran di hari yang difilter
-                    $jumlahHadir = collect($absensiPetugasIni)->filter(function ($a) {
-                        return in_array($a->status, ['tepat_waktu', 'terlambat']);
-                    })->count();
-                    
-                    $jumlahAlpha = collect($absensiPetugasIni)->filter(function ($a) {
-                        return $a->status === 'alpha';
-                    })->count();
-                    
-                    $jumlahIzin = collect($absensiPetugasIni)->filter(function ($a) {
-                        return $a->status === 'izin';
-                    })->count();
-                    
-                    $jumlahSakit = collect($absensiPetugasIni)->filter(function ($a) {
-                        return $a->status === 'sakit';
-                    })->count();
-                    
-                    $jumlahDL = collect($absensiPetugasIni)->filter(function ($a) {
-                        return $a->status === 'dl';
-                    })->count();
-
-                    // Hitung ekspektasi: jumlah hari yang sesuai filter dalam rentang
-                    $ekspektasi = 0;
-                    $cursor = $rangeStart->copy();
-                    $sekarang = Carbon::now('Asia/Makassar')->toDateString();
-                    
-                    while ($cursor->lte($rangeEnd)) {
-                        $hariCursor = $cursor->isoFormat('dddd');
-                        $cocokHari = ($filterHari === 'Semua Hari') ? ($hariCursor === $namaHariIni) : ($hariCursor === $filterHari);
-                        
-                        if ($cocokHari && $cursor->toDateString() <= $sekarang) {
-                            $ekspektasi++;
-                        }
-                        $cursor->addDay();
-                    }
-
-                    // Hitung alpha = ekspektasi - (hadir + izin + sakit + dl)
-                    $alphaDihitung = max(0, $ekspektasi - ($jumlahHadir + $jumlahIzin + $jumlahSakit + $jumlahDL));
-
-                    // Tampilkan sebagai rekap
-                    if ($jumlahHadir > 0 || $jumlahIzin > 0 || $jumlahSakit > 0 || $jumlahDL > 0 || $alphaDihitung > 0) {
-                        // Tampilkan di card yang sesuai dengan status terbanyak
-                        if ($alphaDihitung > 0 && $jumlahHadir === 0) {
-                            $alphaList->push([
-                                'nama' => $p->name, 
-                                'jabatan' => $jabatan, 
-                                'jam' => null, 
-                                'status' => 'alpha',
-                                'rekap' => [
-                                    'h' => $jumlahHadir,
-                                    'a' => $alphaDihitung,
-                                    'i' => $jumlahIzin,
-                                    's' => $jumlahSakit,
-                                    'dl' => $jumlahDL,
-                                    'ekspektasi' => $ekspektasi
-                                ]
-                            ]);
-                        } else {
-                            $hadirList->push([
-                                'nama' => $p->name, 
-                                'jabatan' => $jabatan, 
-                                'jam' => null, 
-                                'status' => 'tepat_waktu',
-                                'rekap' => [
-                                    'h' => $jumlahHadir,
-                                    'a' => $alphaDihitung,
-                                    'i' => $jumlahIzin,
-                                    's' => $jumlahSakit,
-                                    'dl' => $jumlahDL,
-                                    'ekspektasi' => $ekspektasi
-                                ]
-                            ]);
-                        }
+                } else {
+                    // Belum absen
+                    if ($jamSekarang >= $batasAlpha) {
+                        $alphaList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
                     } else {
-                        // Tidak ada absensi sama sekali
-                        if ($ekspektasi > 0) {
-                            $alphaList->push([
-                                'nama' => $p->name, 
-                                'jabatan' => $jabatan, 
-                                'jam' => null, 
-                                'status' => 'alpha',
-                                'rekap' => [
-                                    'h' => 0,
-                                    'a' => $ekspektasi,
-                                    'i' => 0,
-                                    's' => 0,
-                                    'dl' => 0,
-                                    'ekspektasi' => $ekspektasi
-                                ]
-                            ]);
-                        }
+                        $belumAbsenList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'belum_absen']);
                     }
                 }
             }
@@ -299,10 +150,10 @@ class DashboardController extends Controller
 
         // Debug Log
         logger("=== DEBUG TAMPIL ===");
-        logger("Periode: {$periodeTampilan} | Filter Hari: {$filterHari} | Jam: {$jamSekarang}");
-        logger("Status: " . ($isLiburOtomatis ? 'LIBUR OTOMATIS' : 'AKTIF'));
+        logger("Hari: {$namaHariIni} | Jam: {$jamSekarang} | Total Absen Hari Ini: {$totalAbsensiHariIni}");
+        logger("Status Card Petugas: " . ($isLiburOtomatis ? 'LIBUR OTOMATIS' : 'AKTIF'));
 
-        // ===== 5. GRAFIK & CHART =====
+        // ===== 5. GRAFIK & CHART (Mengikuti Panel Ungu) =====
         $chartData = Keterlambatan::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
             ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
             ->whereBetween('keterlambatan.tanggal', [$rangeStart, $rangeEnd])
@@ -339,7 +190,7 @@ class DashboardController extends Controller
             ->groupBy('siswa.jurusan')->orderByDesc('jumlah')->get()
             ->map(fn ($d) => ['label' => $d->label ?: 'Tanpa Jurusan', 'jumlah' => (int) $d->jumlah]);
 
-        // ===== 6. TABEL RANKING & AKTIVITAS =====
+        // ===== 6. TABEL RANKING & AKTIVITAS (Mengikuti Panel Ungu) =====
         $topTerlambat = Keterlambatan::select('siswa_id', DB::raw('COUNT(*) as jumlah'), DB::raw('AVG(menit_terlambat) as rata_menit'))
             ->with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$rangeStart, $rangeEnd])
             ->groupBy('siswa_id')->orderByDesc('jumlah')->limit(5)->get()
@@ -362,8 +213,6 @@ class DashboardController extends Controller
             'hariIni'             => Carbon::now('Asia/Makassar')->isoFormat('dddd, D MMMM Y'),
             'stats'               => $stats,
             'absensiPetugas'      => $absensiPetugas,
-            'periodeTampilan'     => $periodeTampilan,
-            'filter_hari'         => $filterHari,
             'displayKey'          => $key,
             'keterlambatanList'   => $keterlambatanList,
             'izinKeluarList'      => $izinKeluarList,
@@ -492,7 +341,7 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-        // ===== ABSENSI PETUGAS UNTUK DASHBOARD =====
+        // ===== ABSENSI PETUGAS UNTUK DASHBOARD (HARI INI) =====
         $hariIniStr = Carbon::today('Asia/Makassar')->toDateString();
         $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
         $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
