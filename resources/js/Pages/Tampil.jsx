@@ -21,13 +21,15 @@ export default function Tampil(props) {
 
     const pengaturan = usePage().props.pengaturan ?? {};
     const currentFilters = usePage().props.currentFilters ?? {};
-    const filterHariFromProps = usePage().props.filter_hari ?? "Semua Hari";
 
     const [now, setNow] = useState(new Date());
-    const [periode, setPeriode] = useState("harian");
-    const [filterHari, setFilterHari] = useState(filterHariFromProps);
 
-    // ✅ STATE UNTUK FILTER RENTANG TANGGAL
+    // ===== STATE KHUSUS UNTUK DOWNLOAD (HEADER) =====
+    // State ini TIDAK dikirim ke backend untuk tampilan, hanya untuk tombol download
+    const [downloadPeriode, setDownloadPeriode] = useState("harian");
+    const [downloadFilterHari, setDownloadFilterHari] = useState("Semua Hari");
+
+    // ===== STATE KHUSUS UNTUK TAMPILAN (PANEL UNGU) =====
     const [dariTanggal, setDariTanggal] = useState(
         currentFilters?.dari_tanggal ?? new Date().toISOString().split("T")[0],
     );
@@ -45,23 +47,11 @@ export default function Tampil(props) {
     const logoSrc =
         pengaturan.logo_url ??
         (pengaturan.logo ? `/storage/${pengaturan.logo}` : null);
-
     const today = new Date().toISOString().split("T")[0];
-
     const semesterOtomatis =
         new Date().getMonth() + 1 >= 7 ? "ganjil" : "genap";
 
-    const hariOptions = [
-        "Semua Hari",
-        "Senin",
-        "Selasa",
-        "Rabu",
-        "Kamis",
-        "Jumat",
-        "Sabtu",
-    ];
-
-    // ✅ FUNGSI UNTUK MENERAPKAN FILTER TANGGAL + HARI
+    // ===== FUNGSI PANEL UNGU: Hanya mengirim tanggal ke backend untuk tampilan =====
     const applyFilter = () => {
         router.get(
             route("tampil"),
@@ -69,15 +59,12 @@ export default function Tampil(props) {
                 k: props.displayKey,
                 dari_tanggal: dariTanggal,
                 sampai_tanggal: sampaiTanggal,
-                // TIDAK mengirim filter_hari dan periode_tampilan
-                // Backend akan pakai default: 'Semua Hari' dan 'harian'
+                // TIDAK mengirim filter_hari atau periode_tampilan
             },
             { preserveState: true, preserveScroll: true },
         );
     };
 
-
-    // ✅ FUNGSI UNTUK RESET FILTER KE HARI INI
     const resetFilter = () => {
         setDariTanggal(today);
         setSampaiTanggal(today);
@@ -87,53 +74,21 @@ export default function Tampil(props) {
                 k: props.displayKey,
                 dari_tanggal: today,
                 sampai_tanggal: today,
-                // TIDAK mengirim filter_hari dan periode_tampilan
             },
             { preserveState: true, preserveScroll: true },
         );
     };
 
-    // ✅ FUNGSI UNTUK MENGUBAH PERIODE
-    const handlePeriodeChange = (e) => {
-        const newPeriode = e.target.value;
-        setPeriode(newPeriode);
-        router.get(
-            route("tampil"),
-            {
-                k: props.displayKey,
-                dari_tanggal: dariTanggal,
-                sampai_tanggal: sampaiTanggal,
-                filter_hari: filterHari,
-                periode_tampilan: newPeriode,
-            },
-            { preserveState: true, preserveScroll: true },
-        );
-    };
-
-    // ✅ FUNGSI UNTUK MENGUBAH FILTER HARI
-    const handleFilterHariChange = (e) => {
-        const newFilterHari = e.target.value;
-        setFilterHari(newFilterHari);
-        router.get(
-            route("tampil"),
-            {
-                k: props.displayKey,
-                dari_tanggal: dariTanggal,
-                sampai_tanggal: sampaiTanggal,
-                filter_hari: newFilterHari,
-                periode_tampilan: periode,
-            },
-            { preserveState: true, preserveScroll: true },
-        );
-    };
-
+    // ===== FUNGSI DOWNLOAD: Menggabungkan state Header + Panel Ungu =====
     const downloadLaporan = () => {
         const params = new URLSearchParams({
             jenis: "gabungan",
-            periode,
+            periode: downloadPeriode, // Dari Header
+            filter_hari: downloadFilterHari, // Dari Header
             tanggal: today,
             semester: semesterOtomatis,
-            filter_hari: filterHari,
+            dari_tanggal: dariTanggal, // Dari Panel Ungu
+            sampai_tanggal: sampaiTanggal, // Dari Panel Ungu
         });
         if (props.displayKey) params.set("k", props.displayKey);
         window.location.href = `${route("tampil.laporan")}?${params.toString()}`;
@@ -143,7 +98,9 @@ export default function Tampil(props) {
         const params = new URLSearchParams({
             periode: "harian",
             tanggal: today,
-            filter_hari: filterHari,
+            filter_hari: downloadFilterHari, // Dari Header
+            dari_tanggal: dariTanggal, // Dari Panel Ungu
+            sampai_tanggal: sampaiTanggal, // Dari Panel Ungu
         });
         if (props.displayKey) params.set("k", props.displayKey);
         window.location.href = `${route("tampil.daftar-hadir")}?${params.toString()}`;
@@ -152,18 +109,6 @@ export default function Tampil(props) {
     return (
         <div className="min-h-screen bg-slate-900 p-4 sm:p-6">
             <Head title="Papan Informasi Piket" />
-
-            {/* Tombol Tentang Aplikasi */}
-            <a
-                href={route("papan.informasi")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition hover:bg-white/20 hover:scale-105"
-                title="Buka informasi lengkap tentang aplikasi"
-            >
-                <span className="text-base">ℹ️</span>
-                <span>Tentang Aplikasi</span>
-            </a>
 
             {/* Header */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -202,47 +147,47 @@ export default function Tampil(props) {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* Dropdown Periode */}
+                        {/* DROPDOWN HEADER: Hanya update state lokal, TIDAK reload halaman */}
                         <select
-                            value={periode}
-                            onChange={handlePeriodeChange}
+                            value={downloadPeriode}
+                            onChange={(e) => setDownloadPeriode(e.target.value)}
                             className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-red-500"
                         >
-                            <option value="harian">📅 Harian</option>
+                            <option value="harian"> Harian</option>
                             <option value="mingguan">🗓️ Mingguan</option>
                             <option value="bulanan">📆 Bulanan</option>
-                            <option value="semester"> Semester</option>
+                            <option value="semester">🎓 Semester</option>
                         </select>
 
-                        {/* ✅ BARU: Dropdown Filter Hari */}
                         <select
-                            value={filterHari}
-                            onChange={handleFilterHariChange}
+                            value={downloadFilterHari}
+                            onChange={(e) =>
+                                setDownloadFilterHari(e.target.value)
+                            }
                             className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-blue-500"
-                            title="Filter data berdasarkan hari kejadian"
                         >
-                            {hariOptions.map((hari) => (
-                                <option key={hari} value={hari}>
-                                    {hari === "Semua Hari"
-                                        ? "👥 Semua Hari"
-                                        : `📌 ${hari}`}
-                                </option>
-                            ))}
+                            <option value="Semua Hari">👥 Semua Hari</option>
+                            <option value="Senin">📌 Senin</option>
+                            <option value="Selasa"> Selasa</option>
+                            <option value="Rabu">📌 Rabu</option>
+                            <option value="Kamis">📌 Kamis</option>
+                            <option value="Jumat"> Jumat</option>
+                            <option value="Sabtu">📌 Sabtu</option>
                         </select>
 
                         <button
                             onClick={downloadLaporan}
                             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-red-700"
-                            title="Download PDF laporan sesuai periode & filter hari terpilih"
+                            title="Download PDF berdasarkan pilihan Header + Panel Ungu"
                         >
-                            Download Laporan {labelPeriode[periode]}
+                            Download Laporan {labelPeriode[downloadPeriode]}
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* ===== FILTER RENTANG TANGGAL ===== */}
-            <div className="mb-6 rounded-lg bg-slate-800 p-4 shadow-lg">
+            {/* ===== PANEL UNGU: Hanya memfilter tampilan ===== */}
+            <div className="mb-6 rounded-lg bg-indigo-900/40 border border-indigo-700/50 p-4 shadow-lg">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                         <button
@@ -259,7 +204,7 @@ export default function Tampil(props) {
 
                         {(currentFilters?.dari_tanggal ||
                             currentFilters?.sampai_tanggal) && (
-                            <span className="text-sm text-slate-400">
+                            <span className="text-sm text-slate-300">
                                 Aktif:{" "}
                                 <strong className="text-white">
                                     {currentFilters.dari_tanggal}
@@ -268,11 +213,6 @@ export default function Tampil(props) {
                                 <strong className="text-white">
                                     {currentFilters.sampai_tanggal}
                                 </strong>
-                                {filterHari !== "Semua Hari" && (
-                                    <span className="ml-2 text-blue-400">
-                                        • Filter: <strong>{filterHari}</strong>
-                                    </span>
-                                )}
                             </span>
                         )}
                     </div>
@@ -305,24 +245,6 @@ export default function Tampil(props) {
                                     className="rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-400 mb-1">
-                                    Filter Hari
-                                </label>
-                                <select
-                                    value={filterHari}
-                                    onChange={handleFilterHariChange}
-                                    className="rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    {hariOptions.map((hari) => (
-                                        <option key={hari} value={hari}>
-                                            {hari === "Semua Hari"
-                                                ? "👥 Semua Hari"
-                                                : ` ${hari}`}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
                             <button
                                 onClick={applyFilter}
                                 className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
@@ -333,24 +255,21 @@ export default function Tampil(props) {
                                 onClick={resetFilter}
                                 className="rounded-lg bg-slate-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
                             >
-                                Reset
+                                🔄 Reset
                             </button>
                         </div>
                     )}
                 </div>
             </div>
 
+            {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-6">
-                {/* Absensi Petugas */}
                 <KartuAbsensiPetugas
                     data={props.absensiPetugas ?? []}
                     displayKey={props.displayKey}
-                    onDownloadDaftarHadir={downloadDaftarHadir}
                 />
-
                 <KartuStatistik stats={props.stats} />
 
-                {/* 4 Panel Data Hari Ini */}
                 <DataHariIni
                     keterlambatanList={props.keterlambatanList ?? []}
                     izinKeluarList={props.izinKeluarList ?? []}
@@ -358,7 +277,6 @@ export default function Tampil(props) {
                     bukuTamuList={props.bukuTamuList ?? []}
                 />
 
-                {/* ===== GRAFIK 1: KETERLAMBATAN ===== */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
                         <GrafikKeterlambatan
@@ -368,41 +286,10 @@ export default function Tampil(props) {
                     </div>
                     <DonutChart
                         data={props.donutJurusan}
-                        judul=" Keterlambatan per Jurusan"
+                        judul="🎓 Keterlambatan per Jurusan"
                     />
                 </div>
 
-                {/* ===== GRAFIK 2: IZIN KELUAR ===== */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2">
-                        <GrafikKeterlambatan
-                            data={props.chartIzinKelas ?? []}
-                            judul="📊 Izin Keluar per Kelas"
-                            warna="blue"
-                        />
-                    </div>
-                    <DonutChart
-                        data={props.donutIzinJurusan ?? []}
-                        judul="🎓 Izin Keluar per Jurusan"
-                    />
-                </div>
-
-                {/* ===== GRAFIK 3: PELANGGARAN ===== */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2">
-                        <GrafikKeterlambatan
-                            data={props.chartPelanggaranKelas ?? []}
-                            judul="⚠️ Pelanggaran per Kelas"
-                            warna="orange"
-                        />
-                    </div>
-                    <DonutChart
-                        data={props.donutPelanggaranJurusan ?? []}
-                        judul="🎓 Pelanggaran per Jurusan"
-                    />
-                </div>
-
-                {/* Tabel Top & Aktivitas */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <TabelTerlambatTertinggi data={props.topTerlambat} />
                     <TabelPoinTertinggi data={props.topPelanggaran} />

@@ -31,11 +31,13 @@ class DashboardController extends Controller
             abort(403, 'Akses ditolak. Tautan tidak valid.');
         }
 
-        // ===== 0. PARAMETER FILTER =====
-        $periodeTampilan = $request->input('periode_tampilan', 'harian');
-        $filterHari = $request->input('filter_hari', 'Semua Hari');
+        // ===== PAKSA FILTER TAMPILAN =====
+        // Backend TIDAK membaca filter_hari dari request untuk tampilan.
+        // Tampilan HANYA menggunakan rentang tanggal dari Panel Ungu.
+        $filterHari = 'Semua Hari'; 
+        $periodeTampilan = 'harian'; // Default untuk logika kartu absensi
 
-        // ===== 1. FILTER RENTANG TANGGAL =====
+        // ===== 1. FILTER RENTANG TANGGAL (DARI PANEL UNGU) =====
         $dariTanggal = $request->input('dari_tanggal', Carbon::today('Asia/Makassar')->toDateString());
         $sampaiTanggal = $request->input('sampai_tanggal', Carbon::today('Asia/Makassar')->toDateString());
         
