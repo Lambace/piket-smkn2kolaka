@@ -135,19 +135,34 @@ class DashboardController extends Controller
         } else {
             $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
             
-            // Ambil nama yang punya absensi di rentang tanggal ini (untuk menangkap tugas khusus)
-            $namaDenganAbsensi = AbsensiPetugas::whereBetween('tanggal', [$rangeStart, $rangeEnd])
-                ->pluck('nama')
+            // ===== PERBAIKAN: Ambil nama yang punya absensi di rentang tanggal ini DAN sesuai filter hari =====
+            $namaDenganAbsensiQuery = AbsensiPetugas::whereBetween('tanggal', [$rangeStart, $rangeEnd]);
+            
+            // Terapkan filter hari ke absensi juga
+            if ($filterHari !== 'Semua Hari') {
+                $dayMap = ['Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4, 'Kamis' => 5, 'Jumat' => 6, 'Sabtu' => 7];
+                $dayNum = $dayMap[$filterHari] ?? null;
+                if ($dayNum) {
+                    $namaDenganAbsensiQuery->whereRaw("DAYOFWEEK(tanggal) = ?", [$dayNum]);
+                }
+            }
+            
+            $namaDenganAbsensi = $namaDenganAbsensiQuery->pluck('nama')
                 ->map(fn($n) => strtolower(trim($n)))
                 ->unique()
                 ->toArray();
 
-            // ===== PERBAIKAN DI SINI: Tambahkan $namaHariIni ke dalam use() =====
+            // Filter Petugas: Tampilkan jika jadwalnya cocok dengan filter_hari, ATAU punya absensi di hari tersebut
             $petugasRelevan = $semuaPetugas->filter(function ($p) use ($filterHari, $namaDenganAbsensi, $namaHariIni) {
                 $namaKey = strtolower(trim($p->name));
-                $cocokKelompok = ($filterHari === 'Semua Hari') ? ($p->hari_piket === $namaHariIni) : ($p->hari_piket === $filterHari);
                 
-                return $cocokKelompok || in_array($namaKey, $namaDenganAbsensi);
+                // Untuk "Semua Hari", tampilkan yang jadwalnya hari ini ATAU punya absensi hari ini
+                // Untuk hari spesifik, tampilkan yang jadwalnya hari itu ATAU punya absensi di hari itu
+                if ($filterHari === 'Semua Hari') {
+                    return $p->hari_piket === $namaHariIni || in_array($namaKey, $namaDenganAbsensi);
+                } else {
+                    return $p->hari_piket === $filterHari || in_array($namaKey, $namaDenganAbsensi);
+                }
             });
 
             $absensiTercatat = AbsensiPetugas::whereBetween('tanggal', [$rangeStart, $rangeEnd])->get();
@@ -194,7 +209,7 @@ class DashboardController extends Controller
         logger("Periode: {$periodeTampilan} | Filter Hari: {$filterHari} | Jam: {$jamSekarang}");
         logger("Status: " . ($isLiburOtomatis ? 'LIBUR OTOMATIS' : 'AKTIF'));
 
-        // ===== 5. GRAFIK & CHART (Tetap mengikuti rentang tanggal, opsional bisa difilter hari juga) =====
+        // ===== 5. GRAFIK & CHART =====
         $chartData = Keterlambatan::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
             ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
             ->whereBetween('keterlambatan.tanggal', [$rangeStart, $rangeEnd])
