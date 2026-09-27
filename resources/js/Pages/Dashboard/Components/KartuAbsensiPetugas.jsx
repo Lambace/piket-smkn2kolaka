@@ -14,10 +14,17 @@ export default function KartuAbsensiPetugas({ data }) {
     const [dari, setDari] = useState(firstOfMonth);
     const [sampai, setSampai] = useState(todayStr);
 
-    // ===== PERBAIKAN 1: Pisahkan menjadi 3 kategori =====
+    // ===== CEK APAKAH HARI INI LIBUR OTOMATIS =====
+    const isLiburOtomatis =
+        data?.length === 1 && data[0]?.status === "libur_otomatis";
+
+    // ===== Pisahkan menjadi 3 kategori (abaikan data libur_otomatis dari list) =====
     const hadirList =
         data?.filter(
-            (p) => p.status !== "alpha" && p.status !== "belum_absen",
+            (p) =>
+                p.status !== "alpha" &&
+                p.status !== "belum_absen" &&
+                p.status !== "libur_otomatis",
         ) ?? [];
     const belumAbsenList =
         data?.filter((p) => p.status === "belum_absen") ?? [];
@@ -89,7 +96,7 @@ export default function KartuAbsensiPetugas({ data }) {
                     icon: "🚗",
                     text: "DL",
                 };
-            case "belum_absen": // PERBAIKAN 2: Tambahkan status belum_absen
+            case "belum_absen":
                 return {
                     className:
                         "bg-slate-500/20 text-slate-400 border border-slate-500/30",
@@ -193,20 +200,22 @@ export default function KartuAbsensiPetugas({ data }) {
             </div>
 
             {/* ===== ISI KARTU ===== */}
-            {!data || data.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <span className="mb-2 text-4xl">📭</span>
-                    <p className="text-sm font-semibold text-slate-300">
-                        Belum ada data absensi hari ini
+
+            {/* TAMPILAN KHUSUS JIKA LIBUR OTOMATIS */}
+            {isLiburOtomatis ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <span className="mb-3 text-6xl">🏖️</span>
+                    <p className="text-xl font-bold text-slate-200">
+                        Tidak ada aktivitas piket hari ini
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                        Kartu akan terisi otomatis setelah petugas melakukan
-                        absen masuk.
+                    <p className="mt-2 text-sm text-slate-400 max-w-md">
+                        Sistem mendeteksi tidak ada kehadiran setelah jam 07:30
+                        WITA. Hari ini dianggap sebagai hari libur (Nasional
+                        atau Mendadak).
                     </p>
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {/* PERBAIKAN 3: Ubah grid menjadi 3 kolom untuk menampung "Belum Absen" */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         {/* KOLOM 1: HADIR */}
                         <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
@@ -262,7 +271,7 @@ export default function KartuAbsensiPetugas({ data }) {
                             )}
                         </div>
 
-                        {/* KOLOM 2: BELUM ABSEN (BARU) */}
+                        {/* KOLOM 2: BELUM ABSEN */}
                         <div className="rounded-lg border border-slate-600/50 bg-slate-800/50 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-slate-300">

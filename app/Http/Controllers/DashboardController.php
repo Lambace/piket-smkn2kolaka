@@ -85,57 +85,79 @@ class DashboardController extends Controller
             'tamu'        => BukuTamu::whereBetween('tanggal_kunjungan', [$rangeStart, $rangeEnd])->count(),
         ];
 
-        // ===== 4. ABSENSI PETUGAS DENGAN LOGIKA ALPHA 07:30 (PERBAIKAN UTAMA) =====
+            // ===== ABSENSI PETUGAS DENGAN LOGIKA LIBUR OTOMATIS =====
         $hariIniStr = Carbon::today('Asia/Makassar')->toDateString();
+        $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd'); // e.g., 'Minggu'
         $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
         $batasAlpha = '07:30';
 
-        // Ambil SEMUA petugas dari tabel users
-        $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
+        // 1. Cek apakah ada absensi sama sekali hari ini
+        $totalAbsensiHariIni = AbsensiPetugas::whereDate('tanggal', $hariIniStr)->count();
 
-        // Ambil absensi HARI INI
-        $absensiHariIni = AbsensiPetugas::whereDate('tanggal', $hariIniStr)->get();
+        // 2. Logika Libur Otomatis: Jika lewat 07:30 DAN tidak ada yang absen sama sekali
+        $isLiburOtomatis = ($jamSekarang >= $batasAlpha) && ($totalAbsensiHariIni === 0);
 
-        // Peta absensi berdasarkan nama (lowercase & trim)
-        $absensiMap = [];
-        foreach ($absensiHariIni as $absen) {
-            $namaKey = strtolower(trim($absen->nama));
-            $absensiMap[$namaKey] = $absen;
-        }
+        if ($isLiburOtomatis) {
+            // Kembalikan data khusus agar frontend tahu ini hari libur
+            $absensiPetugas = collect([
+                ['status' => 'libur_otomatis', 'pesan' => 'Tidak ada aktivitas piket hari ini (Dianggap Libur)']
+            ]);
+        } else {
+            // 3. Logika Normal: Tampilkan yang jadwalnya hari ini ATAU yang sudah absen
+            $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
+            $namaDenganAbsensiHariIni = AbsensiPetugas::whereDate('tanggal', $hariIniStr)
+                ->pluck('nama')
+                ->map(fn($n) => strtolower(trim($n)))
+                ->unique()
+                ->toArray();
 
-        $hadirList = collect();
-        $alphaList = collect();
-        $belumAbsenList = collect();
+            $petugasHariIni = $semuaPetugas->filter(function ($p) use ($namaHariIni, $namaDenganAbsensiHariIni) {
+                $namaKey = strtolower(trim($p->name));
+                return $p->hari_piket === $namaHariIni || in_array($namaKey, $namaDenganAbsensiHariIni);
+            });
 
-        foreach ($semuaPetugas as $petugas) {
-            $namaKey = strtolower(trim($petugas->name));
-            $jabatan = $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket';
+            // 4. Ambil absensi hari ini untuk dipetakan
+            $absensiTercatat = AbsensiPetugas::whereDate('tanggal', $hariIniStr)->get();
+            $absensiMap = [];
+            foreach ($absensiTercatat as $a) {
+                $absensiMap[strtolower(trim($a->nama))] = $a;
+            }
 
-            if (isset($absensiMap[$namaKey])) {
-                // SUDAH ABSEN
-                $absen = $absensiMap[$namaKey];
-                if ($absen->status === 'alpha') {
-                    $alphaList->push(['nama' => $petugas->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
+            $hadirList = collect();
+            $alphaList = collect();
+            $belumAbsenList = collect();
+
+            // 5. Cek setiap petugas yang relevan
+            foreach ($petugasHariIni as $p) {
+                $namaKey = strtolower(trim($p->name));
+                $jabatan = $p->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket';
+
+                if (isset($absensiMap[$namaKey])) {
+                    $absen = $absensiMap[$namaKey];
+                    if ($absen->status === 'alpha') {
+                        $alphaList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
+                    } else {
+                        $hadirList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => $absen->jam_masuk ? substr($absen->jam_masuk, 0, 5) : null, 'status' => $absen->status]);
+                    }
                 } else {
-                    $hadirList->push(['nama' => $petugas->name, 'jabatan' => $jabatan, 'jam' => $absen->jam_masuk ? substr($absen->jam_masuk, 0, 5) : null, 'status' => $absen->status]);
-                }
-            } else {
-                // BELUM ABSEN SAMA SEKALI
-                if ($jamSekarang >= $batasAlpha) {
-                    $alphaList->push(['nama' => $petugas->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
-                } else {
-                    $belumAbsenList->push(['nama' => $petugas->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'belum_absen']);
+                    // Belum absen
+                    if ($jamSekarang >= $batasAlpha) {
+                        $alphaList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'alpha']);
+                    } else {
+                        $belumAbsenList->push(['nama' => $p->name, 'jabatan' => $jabatan, 'jam' => null, 'status' => 'belum_absen']);
+                    }
                 }
             }
+
+            // Gabungkan: Hadir + Belum Absen + Alpha
+            $absensiPetugas = $hadirList->merge($belumAbsenList)->merge($alphaList)->values();
         }
 
-        // Gabungkan: Hadir + Belum Absen + Alpha
-        $absensiPetugas = $hadirList->merge($belumAbsenList)->merge($alphaList)->values();
-
-        // Debug Log untuk memastikan logika berjalan
+        // Debug Log
         logger("=== DEBUG TAMPIL ===");
-        logger("Jam: {$jamSekarang} | Batas: {$batasAlpha}");
-        logger("Total: {$semuaPetugas->count()} | Hadir: {$hadirList->count()} | Belum: {$belumAbsenList->count()} | Alpha: {$alphaList->count()}");
+        logger("Hari: {$namaHariIni} | Jam: {$jamSekarang} | Total Absen: {$totalAbsensiHariIni}");
+        logger("Status: " . ($isLiburOtomatis ? 'LIBUR OTOMATIS' : 'AKTIF'));
+
 
         // ===== 5. GRAFIK & CHART =====
         $chartData = Keterlambatan::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
@@ -325,14 +347,21 @@ class DashboardController extends Controller
         $key = config('services.display.key');
         $tampilUrl = route('tampil', $key ? ['k' => $key] : []);
 
-        // ===== ABSENSI PETUGAS UNTUK DASHBOARD =====
+        // ===== ABSENSI PETUGAS UNTUK DASHBOARD (BERDASARKAN HARI PIKET) =====
         $hariIniStr = Carbon::today('Asia/Makassar')->toDateString();
+        $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
         $jamSekarang = Carbon::now('Asia/Makassar')->format('H:i');
         $batasAlpha = '07:30';
 
-        $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
-        $absensiHariIni = AbsensiPetugas::whereDate('tanggal', $hariIniStr)->get();
+        $petugasHariIni = User::whereIn('role', ['petugas', 'koordinator'])
+            ->where(function ($q) use ($namaHariIni) {
+                $q->where('hari_piket', $namaHariIni)
+                  ->orWhere('role', 'koordinator');
+            })
+            ->orderBy('name')
+            ->get();
 
+        $absensiHariIni = AbsensiPetugas::whereDate('tanggal', $hariIniStr)->get();
         $absensiMap = [];
         foreach ($absensiHariIni as $absen) {
             $absensiMap[strtolower(trim($absen->nama))] = $absen;
@@ -342,7 +371,7 @@ class DashboardController extends Controller
         $alphaList = collect();
         $belumAbsenList = collect();
 
-        foreach ($semuaPetugas as $petugas) {
+        foreach ($petugasHariIni as $petugas) {
             $namaKey = strtolower(trim($petugas->name));
             $jabatan = $petugas->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket';
 

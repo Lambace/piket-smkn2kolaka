@@ -195,7 +195,7 @@ export default function UserPetugasIndex(props) {
                     <p className="mt-1">
                         Setiap petugas piket <b>1x seminggu</b>. Atur hari piket
                         agar rekapan otomatis menghitung alpha untuk yang tidak
-                        absen setelah pukul 08:30.
+                        absen setelah pukul 07:30.
                     </p>
                 </div>
 
