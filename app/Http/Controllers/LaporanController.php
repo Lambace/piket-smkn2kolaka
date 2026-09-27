@@ -28,12 +28,13 @@ class LaporanController extends Controller
         $periode = $request->input('periode', 'harian');
         $tanggal = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
         $semester = $request->input('semester', 'ganjil');
+        $filterHari = $request->input('filter_hari', 'Semua Hari');
 
         $page = max(1, (int) $request->input('page', 1));
         $perPage = 15;
 
         [$start, $end, $labelPeriode] = $this->hitungRentang($periode, $tanggal, $semester);
-        $dataLengkap = $this->ambilData($jenis, $start, $end);
+        $dataLengkap = $this->ambilData($jenis, $start, $end, $filterHari);
         $preview = $dataLengkap->forPage($page, $perPage)->values();
 
         return Inertia::render('Laporan/Index', [
@@ -41,6 +42,7 @@ class LaporanController extends Controller
             'periode' => $periode,
             'tanggal' => $tanggal,
             'semester' => $semester,
+            'filter_hari' => $filterHari,
             'labelPeriode' => $labelPeriode,
             'start' => $start->isoFormat('D MMMM Y'),
             'end' => $end->isoFormat('D MMMM Y'),
@@ -58,7 +60,7 @@ class LaporanController extends Controller
                 'per_page' => $perPage,
                 'total' => $dataLengkap->count(),
             ],
-            'params' => compact('jenis', 'periode', 'tanggal', 'semester'),
+            'params' => compact('jenis', 'periode', 'tanggal', 'semester', 'filter_hari'),
         ]);
     }
 
@@ -68,16 +70,17 @@ class LaporanController extends Controller
         $periode = $request->input('periode', 'harian');
         $tanggal = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
         $semester = $request->input('semester', 'ganjil');
+        $filterHari = $request->input('filter_hari', 'Semua Hari');
 
         [$start, $end, $labelPeriode] = $this->hitungRentang($periode, $tanggal, $semester);
-        $data = $this->ambilData($jenis, $start, $end);
+        $data = $this->ambilData($jenis, $start, $end, $filterHari);
 
         $namaFile = 'Laporan_' . ucfirst($jenis) . '_' . ucfirst($periode) . '_' . $start->isoFormat('D-MMM-Y') . '.xlsx';
 
         return Excel::download(new LaporanExport($data, $labelPeriode, $jenis), $namaFile);
     }
 
-        // ===== LAPORAN PIKET (PDF BERWARNA) =====
+    // ===== LAPORAN PIKET (PDF BERWARNA) =====
     public function pdf(Request $request)
     {
         try {
@@ -89,6 +92,7 @@ class LaporanController extends Controller
             }
 
             $periode  = $request->input('periode', 'harian');
+            $filterHari = $request->input('filter_hari', 'Semua Hari');
             $tanggal  = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
             $semester = $request->input('semester', 'ganjil');
 
@@ -130,15 +134,30 @@ class LaporanController extends Controller
 
             $pengaturan = Pengaturan::first();
 
-            $absensiPetugas = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
-                ->orderBy('tanggal')->orderBy('jam_masuk')->get();
+            // ===== FUNGSI HELPER: FILTER BERDASARKAN HARI =====
+            $applyDayFilter = function ($query, $columnName = 'tanggal') use ($filterHari) {
+                if ($filterHari !== 'Semua Hari') {
+                    $dayMap = [
+                        'Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4, 
+                        'Kamis' => 5, 'Jumat' => 6, 'Sabtu' => 7
+                    ];
+                    $dayNum = $dayMap[$filterHari] ?? null;
+                    if ($dayNum) {
+                        $query->whereRaw("DAYOFWEEK({$columnName}) = ?", [$dayNum]);
+                    }
+                }
+                return $query;
+            };
+
+            $absensiPetugasQuery = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr]);
+            $applyDayFilter($absensiPetugasQuery, 'tanggal');
+            $absensiPetugas = $absensiPetugasQuery->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
             // ===== REKAP PETUGAS - FORMAT BERBEDA BERDASARKAN PERIODE =====
             $rekapPetugas = collect();
 
             if ($periode === 'harian') {
-                // Format HARIAN: Tampilkan record individual dengan status
-                $namaHariLaporan = $tanggalRef->isoFormat('dddd');
+                $namaHariLaporan = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
                 
                 $semuaPetugasPdf = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
                 $namaDenganAbsensiPdf = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
@@ -147,9 +166,10 @@ class LaporanController extends Controller
                     ->unique()
                     ->toArray();
 
-                $petugasRelevanPdf = $semuaPetugasPdf->filter(function ($u) use ($namaHariLaporan, $namaDenganAbsensiPdf) {
+                $petugasRelevanPdf = $semuaPetugasPdf->filter(function ($u) use ($namaHariLaporan, $namaDenganAbsensiPdf, $filterHari) {
                     $namaKey = strtolower(trim($u->name));
-                    return $u->hari_piket === $namaHariLaporan || in_array($namaKey, $namaDenganAbsensiPdf);
+                    $cocokKelompok = ($filterHari === 'Semua Hari') ? ($u->hari_piket === $namaHariLaporan) : ($u->hari_piket === $namaHariLaporan);
+                    return $cocokKelompok || in_array($namaKey, $namaDenganAbsensiPdf);
                 });
 
                 $rekapPetugas = $petugasRelevanPdf->map(function ($u) use ($dariStr, $sampaiStr, $tanggalRef) {
@@ -171,11 +191,21 @@ class LaporanController extends Controller
                     ];
                 });
             } else {
-                // Format MINGGUAN/BULANAN/SEMESTER: Tampilkan rekap akumulasi (H, A, I, S, DL)
                 $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
-                $absensiRentang = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])->get();
+                
+                $absensiRentangQuery = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr]);
+                $applyDayFilter($absensiRentangQuery, 'tanggal');
+                $absensiRentang = $absensiRentangQuery->get();
 
-                $rekapPetugas = $semuaPetugas->map(function ($u) use ($absensiRentang) {
+                $rekapPetugas = $semuaPetugas->filter(function ($u) use ($filterHari, $absensiRentang) {
+                    $namaKey = strtolower(trim($u->name));
+                    $punyaAbsensi = $absensiRentang->contains(function ($a) use ($namaKey) {
+                        return strtolower(trim($a->nama)) === $namaKey;
+                    });
+                    
+                    $cocokKelompok = ($filterHari === 'Semua Hari') ? true : ($u->hari_piket === $filterHari);
+                    return $cocokKelompok || $punyaAbsensi;
+                })->map(function ($u) use ($absensiRentang) {
                     $absensiUser = $absensiRentang->filter(function ($a) use ($u) {
                         return strtolower(trim($a->nama)) === strtolower(trim($u->name));
                     });
@@ -206,10 +236,22 @@ class LaporanController extends Controller
             $totalDijadwalkan = User::whereIn('role', ['petugas', 'koordinator'])->count();
             $alphaHariIni = max(0, $totalDijadwalkan - $hadirHariIni);
 
-            $keterlambatan = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
-            $izinKeluar    = IzinKeluar::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
-            $pelanggaran   = Pelanggaran::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
-            $tamu          = BukuTamu::whereBetween('tanggal_kunjungan', [$dariStr, $sampaiStr])->orderBy('tanggal_kunjungan')->get();
+            // ===== DATA SISWA & TAMU (Diterapkan Filter Hari) =====
+            $keterlambatanQuery = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr]);
+            $applyDayFilter($keterlambatanQuery, 'tanggal');
+            $keterlambatan = $keterlambatanQuery->orderBy('tanggal')->get();
+
+            $izinQuery = IzinKeluar::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr]);
+            $applyDayFilter($izinQuery, 'tanggal');
+            $izinKeluar = $izinQuery->orderBy('tanggal')->get();
+
+            $pelanggaranQuery = Pelanggaran::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr]);
+            $applyDayFilter($pelanggaranQuery, 'tanggal');
+            $pelanggaran = $pelanggaranQuery->orderBy('tanggal')->get();
+
+            $tamuQuery = BukuTamu::whereBetween('tanggal_kunjungan', [$dariStr, $sampaiStr]);
+            $applyDayFilter($tamuQuery, 'tanggal_kunjungan');
+            $tamu = $tamuQuery->orderBy('tanggal_kunjungan')->get();
 
             $perKelas = Keterlambatan::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
                 ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
@@ -285,7 +327,8 @@ class LaporanController extends Controller
                 'waktuCetak'        => Carbon::now('Asia/Makassar')->format('d-m-Y H:i'),
                 'koordinator'       => $koordinator,
                 'tempatTanggal'     => $tempatTanggal,
-                'periode'           => $periode, // <-- PENTING: Dikirim ke view untuk kondisional
+                'periode'           => $periode,
+                'filter_hari'       => $filterHari,
             ];
 
             $pdf = Pdf::loadView('laporan.pdf', $data)->setPaper('a4', 'portrait');
@@ -300,6 +343,7 @@ class LaporanController extends Controller
             ], 500);
         }
     }
+
     // ===== DAFTAR HADIR PIKET (CHECKLIST) =====
     public function daftarHadir(Request $request)
     {
@@ -309,6 +353,7 @@ class LaporanController extends Controller
         }
 
         $periode     = $request->input('periode', 'harian');
+        $filterHari  = $request->input('filter_hari', 'Semua Hari');
         $tanggal     = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
         $semester    = $request->input('semester', 'ganjil');
         $mode        = $request->input('mode', 'hadir');
@@ -349,34 +394,34 @@ class LaporanController extends Controller
         $dariStr   = $dari->toDateString();
         $sampaiStr = min($sampai->toDateString(), Carbon::now('Asia/Makassar')->toDateString());
 
-        // ===== LOGIKA BARU: Berdasarkan hari_piket ATAU memiliki absensi =====
-        $namaHariTanggal = $tanggalRef->isoFormat('dddd'); // e.g., 'Minggu'
+        $namaHariTanggal = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
 
-        // 1. Ambil SEMUA petugas
         $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
-
-        // 2. Ambil nama-nama yang PUNYA record absensi di rentang tanggal ini (lowercase)
         $namaDenganAbsensi = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
             ->pluck('nama')
             ->map(fn($n) => strtolower(trim($n)))
             ->unique()
             ->toArray();
 
-        // 3. Filter: Tampilkan jika jadwalnya cocok ATAU punya absensi di rentang ini
-        //    (Berlaku untuk SEMUA, termasuk koordinator)
-        $petugasRelevan = $semuaPetugas->filter(function ($u) use ($namaHariTanggal, $namaDenganAbsensi) {
+        $petugasRelevan = $semuaPetugas->filter(function ($u) use ($namaHariTanggal, $namaDenganAbsensi, $filterHari) {
             $namaKey = strtolower(trim($u->name));
             $punyaAbsensiDiRentang = in_array($namaKey, $namaDenganAbsensi);
-
-            return $u->hari_piket === $namaHariTanggal || $punyaAbsensiDiRentang;
+            $cocokKelompok = ($filterHari === 'Semua Hari') ? ($u->hari_piket === $namaHariTanggal) : ($u->hari_piket === $namaHariTanggal);
+            
+            return $cocokKelompok || $punyaAbsensiDiRentang;
         })->values();
 
-        $rows = $petugasRelevan->map(function ($u) use ($dari, $sampaiStr, $dariStr, $periode) {
-            $absensiUser = AbsensiPetugas::where('nama', $u->name)
-                ->whereBetween('tanggal', [$dariStr, $sampaiStr])
-                ->get();
+        $rows = $petugasRelevan->map(function ($u) use ($dari, $sampaiStr, $dariStr, $periode, $filterHari) {
+            $absensiUserQuery = AbsensiPetugas::where('nama', $u->name)->whereBetween('tanggal', [$dariStr, $sampaiStr]);
+            if ($filterHari !== 'Semua Hari') {
+                $dayMap = ['Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4, 'Kamis' => 5, 'Jumat' => 6, 'Sabtu' => 7];
+                $dayNum = $dayMap[$filterHari] ?? null;
+                if ($dayNum) {
+                    $absensiUserQuery->whereRaw("DAYOFWEEK(tanggal) = ?", [$dayNum]);
+                }
+            }
+            $absensiUser = $absensiUserQuery->get();
 
-            // Untuk laporan HARIAN: Logika sederhana & pasti
             if ($periode === 'harian') {
                 $absen = $absensiUser->first();
                 if ($absen) {
@@ -386,18 +431,18 @@ class LaporanController extends Controller
                     $s  = $absen->status === 'sakit' ? 1 : 0;
                     $dl = $absen->status === 'dl' ? 1 : 0;
                 } else {
-                    // Tidak ada record absensi = Alpha (karena jadwalnya cocok)
                     $h = 0; $a = 1; $i = 0; $s = 0; $dl = 0;
                 }
-            } 
-            // Untuk laporan MINGGUAN/BULANAN/SEMESTER: Hitung ekspektasi berdasarkan hari_piket
-            else {
+            } else {
                 $ekspektasi = 0;
                 $cursor = $dari->copy();
                 $sekarang = Carbon::now('Asia/Makassar')->toDateString();
                 
                 while ($cursor->toDateString() <= $sampaiStr) {
-                    if ($u->hari_piket === $cursor->isoFormat('dddd')) {
+                    $hariIniCursor = $cursor->isoFormat('dddd');
+                    $cocokHari = ($filterHari === 'Semua Hari') ? ($u->hari_piket === $hariIniCursor) : ($filterHari === $hariIniCursor);
+                    
+                    if ($cocokHari) {
                         if ($cursor->toDateString() <= $sekarang) {
                             $ekspektasi++;
                         }
@@ -455,6 +500,7 @@ class LaporanController extends Controller
             'tempatTanggal' => $tempatTanggal,
             'mode'          => $mode,
             'periode'       => $periode,
+            'filter_hari'   => $filterHari,
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('Daftar-Hadir-Piket-'.$periode.'-'.$dariStr.'.pdf');
@@ -498,87 +544,91 @@ class LaporanController extends Controller
         return [$start, $end, $label];
     }
 
-    private function ambilData(string $jenis, Carbon $start, Carbon $end)
+    private function ambilData(string $jenis, Carbon $start, Carbon $end, string $filterHari = 'Semua Hari')
     {
         $data = collect();
 
+        $applyDayFilter = function ($query, $columnName = 'tanggal') use ($filterHari) {
+            if ($filterHari !== 'Semua Hari') {
+                $dayMap = ['Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4, 'Kamis' => 5, 'Jumat' => 6, 'Sabtu' => 7];
+                $dayNum = $dayMap[$filterHari] ?? null;
+                if ($dayNum) {
+                    $query->whereRaw("DAYOFWEEK({$columnName}) = ?", [$dayNum]);
+                }
+            }
+            return $query;
+        };
+
         if (in_array($jenis, ['gabungan', 'keterlambatan'])) {
-            Keterlambatan::with('siswa:id,nisn,nama,kelas')
-                ->whereBetween('tanggal', [$start, $end])
-                ->orderByDesc('tanggal')
-                ->get()
-                ->each(function ($k) use ($data) {
-                    $data->push([
-                        'jenis_aktivitas' => 'Keterlambatan',
-                        'tanggal' => $k->tanggal->isoFormat('D MMM Y'),
-                        'jam' => $k->jam_datang,
-                        'siswa' => $k->siswa?->nama ?? '-',
-                        'kelas' => $k->siswa?->kelas ?? '-',
-                        'nisn' => $k->siswa?->nisn ?? '-',
-                        'detail' => $k->menit_terlambat . ' menit',
-                        'keterangan' => $k->keterangan ?? '-',
-                        'status' => $k->status,
-                    ]);
-                });
+            $query = Keterlambatan::with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$start, $end]);
+            $applyDayFilter($query, 'tanggal');
+            $query->orderByDesc('tanggal')->get()->each(function ($k) use ($data) {
+                $data->push([
+                    'jenis_aktivitas' => 'Keterlambatan',
+                    'tanggal' => $k->tanggal->isoFormat('D MMM Y'),
+                    'jam' => $k->jam_datang,
+                    'siswa' => $k->siswa?->nama ?? '-',
+                    'kelas' => $k->siswa?->kelas ?? '-',
+                    'nisn' => $k->siswa?->nisn ?? '-',
+                    'detail' => $k->menit_terlambat . ' menit',
+                    'keterangan' => $k->keterangan ?? '-',
+                    'status' => $k->status,
+                ]);
+            });
         }
 
         if (in_array($jenis, ['gabungan', 'izin_keluar'])) {
-            IzinKeluar::with('siswa:id,nisn,nama,kelas')
-                ->whereBetween('tanggal', [$start, $end])
-                ->orderByDesc('tanggal')
-                ->get()
-                ->each(function ($i) use ($data) {
-                    $data->push([
-                        'jenis_aktivitas' => 'Izin Keluar',
-                        'tanggal' => $i->tanggal->isoFormat('D MMM Y'),
-                        'jam' => $i->jam_keluar,
-                        'siswa' => $i->siswa?->nama ?? '-',
-                        'kelas' => $i->siswa?->kelas ?? '-',
-                        'nisn' => $i->siswa?->nisn ?? '-',
-                        'detail' => $i->jenis . ($i->jam_kembali ? ' (kembali ' . $i->jam_kembali . ')' : ''),
-                        'keterangan' => $i->keterangan ?? '-',
-                        'status' => $i->status,
-                    ]);
-                });
+            $query = IzinKeluar::with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$start, $end]);
+            $applyDayFilter($query, 'tanggal');
+            $query->orderByDesc('tanggal')->get()->each(function ($i) use ($data) {
+                $data->push([
+                    'jenis_aktivitas' => 'Izin Keluar',
+                    'tanggal' => $i->tanggal->isoFormat('D MMM Y'),
+                    'jam' => $i->jam_keluar,
+                    'siswa' => $i->siswa?->nama ?? '-',
+                    'kelas' => $i->siswa?->kelas ?? '-',
+                    'nisn' => $i->siswa?->nisn ?? '-',
+                    'detail' => $i->jenis . ($i->jam_kembali ? ' (kembali ' . $i->jam_kembali . ')' : ''),
+                    'keterangan' => $i->keterangan ?? '-',
+                    'status' => $i->status,
+                ]);
+            });
         }
 
         if (in_array($jenis, ['gabungan', 'pelanggaran'])) {
-            Pelanggaran::with('siswa:id,nisn,nama,kelas')
-                ->whereBetween('tanggal', [$start, $end])
-                ->orderByDesc('tanggal')
-                ->get()
-                ->each(function ($p) use ($data) {
-                    $data->push([
-                        'jenis_aktivitas' => 'Pelanggaran',
-                        'tanggal' => $p->tanggal->isoFormat('D MMM Y'),
-                        'jam' => '-',
-                        'siswa' => $p->siswa?->nama ?? '-',
-                        'kelas' => $p->siswa?->kelas ?? '-',
-                        'nisn' => $p->siswa?->nisn ?? '-',
-                        'detail' => $p->jenis_pelanggaran . ' (' . $p->poin . ' poin)',
-                        'keterangan' => $p->keterangan ?? '-',
-                        'status' => $p->status,
-                    ]);
-                });
+            $query = Pelanggaran::with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$start, $end]);
+            $applyDayFilter($query, 'tanggal');
+            $query->orderByDesc('tanggal')->get()->each(function ($p) use ($data) {
+                $data->push([
+                    'jenis_aktivitas' => 'Pelanggaran',
+                    'tanggal' => $p->tanggal->isoFormat('D MMM Y'),
+                    'jam' => '-',
+                    'siswa' => $p->siswa?->nama ?? '-',
+                    'kelas' => $p->siswa?->kelas ?? '-',
+                    'nisn' => $p->siswa?->nisn ?? '-',
+                    'detail' => $p->jenis_pelanggaran . ' (' . $p->poin . ' poin)',
+                    'keterangan' => $p->keterangan ?? '-',
+                    'status' => $p->status,
+                ]);
+            });
         }
 
         if (in_array($jenis, ['gabungan', 'tamu'])) {
-            BukuTamu::whereBetween('tanggal_kunjungan', [$start, $end])
-                ->orderByDesc('tanggal_kunjungan')
-                ->get()
-                ->each(function ($t) use ($data) {
-                    $data->push([
-                        'jenis_aktivitas' => 'Tamu',
-                        'tanggal' => $t->tanggal_kunjungan->isoFormat('D MMM Y'),
-                        'jam' => $t->jam_masuk,
-                        'siswa' => $t->nama,
-                        'kelas' => $t->instansi ?? '-',
-                        'nisn' => $t->telepon ?? '-',
-                        'detail' => 'Bertemu: ' . ($t->bertemu_dengan ?? '-') . ' | ' . $t->keperluan,
-                        'keterangan' => $t->catatan ?? '-',
-                        'status' => $t->jam_keluar ? 'Sudah keluar' : 'Masih di sekolah',
-                    ]);
-                });
+            $query = BukuTamu::whereBetween('tanggal_kunjungan', [$start, $end]);
+            $applyDayFilter($query, 'tanggal_kunjungan');
+            $query->orderByDesc('tanggal_kunjungan')->get()->each(function ($t) use ($data) {
+                $data->push([
+                    'jenis_aktivitas' => 'Tamu',
+                    'tanggal' => $t->tanggal_kunjungan->isoFormat('D MMM Y'),
+                    'jam' => $t->jam_masuk,
+                    'siswa' => $t->nama,
+                    'kelas' => $t->instansi ?? '-',
+                    'nisn' => $t->telepon ?? '-',
+                    'detail' => 'Bertemu: ' . ($t->bertemu_dengan ?? '-') . ' | ' . $t->keperluan,
+                    'keterangan' => $t->catatan ?? '-',
+                    'status' => $t->jam_keluar ? 'Sudah keluar' : 'Masih di sekolah',
+                ]);
+            });
         }
 
         return $data->sortByDesc('tanggal')->values();
