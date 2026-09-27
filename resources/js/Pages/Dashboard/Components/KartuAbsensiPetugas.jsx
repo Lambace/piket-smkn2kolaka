@@ -209,9 +209,7 @@ export default function KartuAbsensiPetugas({ data }) {
                         Tidak ada aktivitas piket hari ini
                     </p>
                     <p className="mt-2 text-sm text-slate-400 max-w-md">
-                        Sistem mendeteksi tidak ada kehadiran setelah jam 07:30
-                        WITA. Hari ini dianggap sebagai hari libur (Nasional
-                        atau Mendadak).
+                        Hari ini Sekolah Libur/di Liburkan !!
                     </p>
                 </div>
             ) : (
