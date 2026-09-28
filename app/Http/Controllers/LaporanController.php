@@ -593,8 +593,7 @@ class LaporanController extends Controller
             });
         }
 
-        if (in_array($jenis, ['gabungan', 'izin_keluar'))) {
-            // CATATAN: ganti baris di atas menjadi: if (in_array($jenis, ['gabungan', 'izin_keluar'])) {
+        if (in_array($jenis, ['gabungan', 'izin_keluar'])) {
             $query = IzinKeluar::with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$start, $end]);
             $applyDayFilter($query, 'tanggal');
             $query->orderByDesc('tanggal')->get()->each(function ($i) use ($data) {
