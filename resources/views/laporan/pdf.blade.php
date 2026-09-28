@@ -6,9 +6,6 @@
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #1a202c; padding: 10mm 12mm; }
-    table.meta { width: 100%; font-size: 7.5pt; color: #718096; margin-bottom: 8px; }
-    table.meta td { border: none; padding: 0; }
-    table.meta td.right { text-align: right; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; color: #4a5568; }
     table.kop-table { width: 100%; border-collapse: collapse; }
     table.kop-table td { border: none; padding: 0; vertical-align: middle; }
     table.kop-table td.kop-logo { width: 95px; text-align: center; }
@@ -23,7 +20,7 @@
     table.infobar { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 12px; }
     table.infobar td { border: 1px solid #cbd5e0; background: #f7fafc; padding: 6px 8px; }
     table.infobar b { color: #2d3748; }
-    .seksi { margin: 40px 0 10px 0; padding: 6px 10px; background: #e8ecfb; border-left: 4px solid #5b6ee1; font-weight: bold; font-size: 9.5pt; text-transform: uppercase; color: #2d3748; page-break-after: avoid; }
+    .seksi { margin: 30px 0 10px 0; padding: 6px 10px; background: #e8ecfb; border-left: 4px solid #5b6ee1; font-weight: bold; font-size: 9.5pt; text-transform: uppercase; color: #2d3748; page-break-after: avoid; }
     table.data { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 6px; }
     table.data th { background: #dfe8f7; color: #2d3748; text-transform: uppercase; font-size: 7.5pt; letter-spacing: 0.5px; padding: 7px 10px; border: 1px solid #cbd5e0; text-align: center; }
     table.data td { border: 1px solid #e2e8f0; padding: 7px 10px; vertical-align: top; }
@@ -59,9 +56,6 @@
             <div class="kop-nama">{{ strtoupper($pengaturan->kop_nama_sekolah ?: ($pengaturan->nama_sekolah ?? 'SMKN 2 KOLAKA')) }}</div>
             <div class="kop-alamat">{{ $pengaturan->alamat ?? 'Jln. Poros Kolaka - Pomalaa KM. 16 Kec. Baula Kab. Kolaka Provinsi SULTRA' }}</div>
             <div class="kop-alamat">E-mail <span class="kop-link">{{ $pengaturan->email ?? 'smknsatubaula@yahoo.co.id' }}</span> &nbsp; Telp: {{ $pengaturan->telepon ?? '082346999111' }}</div>
-            @if(($pengaturan->website ?? null) || ($pengaturan->server ?? null))
-            <div class="kop-alamat">Website: <span class="kop-link">{{ $pengaturan->website ?? '-' }}</span> &nbsp; Server: <span class="kop-link">{{ $pengaturan->server ?? '-' }}</span></div>
-            @endif
         </td>
         <td class="kop-logo">@if($logo ?? null)<img src="{{ $logo }}" alt="Logo Sekolah">@endif</td>
     </tr>
@@ -83,17 +77,11 @@
 
 @if(($tidakAdaJadwal ?? false))
     <div style="padding: 40px; text-align: center; border: 2px dashed #cbd5e0; border-radius: 8px; margin: 20px 0; background: #f8fafc;">
-        <p style="font-size: 48px; margin: 0 0 10px 0;">📭</p>
-        <p style="font-size: 14pt; font-weight: bold; color: #475569; margin: 0 0 5px 0;">
-            {{ $pesanLibur ?? 'Tidak ada jadwal piket' }}
-        </p>
-        <p style="font-size: 10pt; color: #64748b; margin: 0;">
-            Tidak ada petugas yang dijadwalkan atau memiliki absensi untuk periode dan filter hari ini.
-        </p>
+        <p style="font-size: 40px; margin: 0 0 10px 0;">📭</p>
+        <p style="font-size: 13pt; font-weight: bold; color: #475569; margin: 0 0 5px 0;">{{ $pesanLibur ?? 'Tidak ada jadwal piket' }}</p>
+        <p style="font-size: 9pt; color: #64748b; margin: 0;">Tidak ada petugas yang dijadwalkan atau memiliki absensi untuk periode dan filter hari ini.</p>
     </div>
-
 @elseif(($periode ?? 'harian') === 'harian')
-    {{-- Format HARIAN: Tampilkan record individual --}}
     <table class="data">
         <thead>
             <tr>
@@ -113,26 +101,17 @@
                     <span class="sub">{{ $r['jabatan'] }}@if(isset($r['keterangan']) && $r['keterangan']) — “{{ $r['keterangan'] }}” @endif</span>
                 </td>
                 <td class="tengah">{{ $r['tanggal'] ?? '-' }}</td>
-                <td class="tengah" style="font-size: 7pt; white-space: nowrap;"><strong>{{ $r['jam'] !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
+                <td class="tengah" style="font-size:7pt; white-space:nowrap;"><strong>{{ ($r['jam'] ?? '-') !== '-' ? $r['jam'].' WITA' : '-' }}</strong></td>
                 <td class="tengah">
                     @php
                         $statusLabel = match($r['status']) {
-                            'tepat_waktu' => 'TEPAT WAKTU',
-                            'terlambat' => 'TERLAMBAT',
-                            'alpha' => 'ALPHA',
-                            'sakit' => 'SAKIT',
-                            'izin' => 'IZIN',
-                            'dl' => 'DINAS LUAR',
+                            'tepat_waktu' => 'TEPAT WAKTU', 'terlambat' => 'TERLAMBAT', 'alpha' => 'ALPHA',
+                            'sakit' => 'SAKIT', 'izin' => 'IZIN', 'dl' => 'DINAS LUAR',
                             default => strtoupper($r['status']),
                         };
                         $badgeClass = match($r['status']) {
-                            'tepat_waktu' => 'b-hadir',
-                            'terlambat' => 'b-terlambat',
-                            'alpha' => 'b-alpha',
-                            'sakit' => 'b-sakit',
-                            'izin' => 'b-izin',
-                            'dl' => 'b-dl',
-                            default => 'b-alpha',
+                            'tepat_waktu' => 'b-hadir', 'terlambat' => 'b-terlambat', 'alpha' => 'b-alpha',
+                            'sakit' => 'b-sakit', 'izin' => 'b-izin', 'dl' => 'b-dl', default => 'b-alpha',
                         };
                     @endphp
                     <span class="badge {{ $badgeClass }}">{{ $statusLabel }}</span>
@@ -143,36 +122,31 @@
             @endforelse
         </tbody>
     </table>
-
 @else
-    {{-- Format REKAP (MINGGUAN / BULANAN / SEMESTER) --}}
     <table class="data">
         <thead>
             <tr>
                 <th style="width:28px">No</th>
                 <th>Nama Petugas / Jabatan</th>
-                <th style="width:40px" class="tengah">H</th>
-                <th style="width:40px" class="tengah">A</th>
-                <th style="width:40px" class="tengah">I</th>
-                <th style="width:40px" class="tengah">S</th>
-                <th style="width:40px" class="tengah">DL</th>
-                <th style="width:50px" class="tengah">Total</th>
+                <th style="width:40px">H</th>
+                <th style="width:40px">A</th>
+                <th style="width:40px">I</th>
+                <th style="width:40px">S</th>
+                <th style="width:40px">DL</th>
+                <th style="width:50px">Total</th>
             </tr>
         </thead>
         <tbody>
             @forelse($rekapPetugas as $i => $r)
             <tr>
                 <td class="tengah">{{ $i+1 }}</td>
-                <td>
-                    <strong>{{ $r['nama'] }}</strong>
-                    <span class="sub">{{ $r['jabatan'] }}</span>
-                </td>
-                <td class="tengah" style="color: #2f855a; font-weight: bold;">{{ $r['h'] ?? 0 }}</td>
-                <td class="tengah" style="color: #b91c1c; font-weight: bold;">{{ $r['a'] ?? 0 }}</td>
-                <td class="tengah" style="color: #b7791f; font-weight: bold;">{{ $r['i'] ?? 0 }}</td>
-                <td class="tengah" style="color: #6b46c1; font-weight: bold;">{{ $r['s'] ?? 0 }}</td>
-                <td class="tengah" style="color: #4338ca; font-weight: bold;">{{ $r['dl'] ?? 0 }}</td>
-                <td class="tengah" style="font-weight: bold;">{{ $r['total'] ?? 0 }}</td>
+                <td><strong>{{ $r['nama'] }}</strong><span class="sub">{{ $r['jabatan'] }}</span></td>
+                <td class="tengah" style="color:#2f855a; font-weight:bold;">{{ $r['h'] ?? 0 }}</td>
+                <td class="tengah" style="color:#b91c1c; font-weight:bold;">{{ $r['a'] ?? 0 }}</td>
+                <td class="tengah" style="color:#b7791f; font-weight:bold;">{{ $r['i'] ?? 0 }}</td>
+                <td class="tengah" style="color:#6b46c1; font-weight:bold;">{{ $r['s'] ?? 0 }}</td>
+                <td class="tengah" style="color:#4338ca; font-weight:bold;">{{ $r['dl'] ?? 0 }}</td>
+                <td class="tengah" style="font-weight:bold;">{{ $r['total'] ?? 0 }}</td>
             </tr>
             @empty
             <tr><td colspan="8" class="tengah">Tidak ada data rekap petugas pada periode ini.</td></tr>
@@ -185,10 +159,7 @@
 <div class="seksi">Tabel 2 — Ringkasan Piket</div>
 <table class="data">
     <thead>
-        <tr>
-            <th style="width:50%">Indikator</th>
-            <th style="width:50%">Nilai</th>
-        </tr>
+        <tr><th style="width:50%">Indikator</th><th style="width:50%">Nilai</th></tr>
     </thead>
     <tbody>
         @foreach($ringkasan as $r)
@@ -200,10 +171,154 @@
     </tbody>
 </table>
 
-{{-- (Tabel 3-7 tetap sama seperti kode Anda sebelumnya, tidak perlu diubah) --}}
-{{-- ... (Silakan salin bagian Tabel 3 s/d Tabel 7 dari file pdf.blade.php Anda yang lama) ... --}}
+{{-- ===== TABEL 3: KETERLAMBATAN (sesuai card Keterlambatan) ===== --}}
+<div class="seksi">Tabel 3 — Data Keterlambatan Siswa ({{ $keterlambatan->count() }})</div>
+<table class="data">
+    <thead>
+        <tr>
+            <th style="width:28px">No</th>
+            <th style="width:75px">Tanggal</th>
+            <th>Nama Siswa</th>
+            <th style="width:60px">Kelas</th>
+            <th style="width:55px">Menit</th>
+            <th style="width:130px">Keterangan</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse($keterlambatan as $i => $k)
+        <tr>
+            <td class="tengah">{{ $i+1 }}</td>
+            <td class="tengah">{{ $k->tanggal?->isoFormat('D MMM Y') }}</td>
+            <td><strong>{{ $k->siswa?->nama ?? '-' }}</strong><span class="sub">NISN: {{ $k->siswa?->nisn ?? '-' }}</span></td>
+            <td class="tengah">{{ $k->siswa?->kelas ?? '-' }}</td>
+            <td class="tengah"><span class="badge b-mnt">{{ $k->menit_terlambat }} MNT</span></td>
+            <td>{{ $k->keterangan ?? '-' }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="6" class="tengah">Tidak ada keterlambatan.</td></tr>
+        @endforelse
+    </tbody>
+</table>
 
-{{-- ===== BLOK TANDA TANGAN ===== --}}
+{{-- ===== TABEL 4: IZIN KELUAR (sesuai card Izin Keluar) ===== --}}
+<div class="seksi">Tabel 4 — Data Izin Keluar ({{ $izinKeluar->count() }})</div>
+<table class="data">
+    <thead>
+        <tr>
+            <th style="width:28px">No</th>
+            <th style="width:75px">Tanggal</th>
+            <th>Nama Siswa</th>
+            <th style="width:60px">Kelas</th>
+            <th style="width:90px">Jenis</th>
+            <th style="width:65px">Kembali</th>
+            <th>Keterangan</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse($izinKeluar as $i => $k)
+        <tr>
+            <td class="tengah">{{ $i+1 }}</td>
+            <td class="tengah">{{ $k->tanggal?->isoFormat('D MMM Y') }}</td>
+            <td><strong>{{ $k->siswa?->nama ?? '-' }}</strong><span class="sub">NISN: {{ $k->siswa?->nisn ?? '-' }}</span></td>
+            <td class="tengah">{{ $k->siswa?->kelas ?? '-' }}</td>
+            <td>{{ $k->jenis }}</td>
+            <td class="tengah">{{ $k->jam_kembali ?? '-' }}</td>
+            <td>{{ $k->keterangan ?? '-' }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="7" class="tengah">Tidak ada izin keluar.</td></tr>
+        @endforelse
+    </tbody>
+</table>
+
+{{-- ===== TABEL 5: PELANGGARAN (sesuai card Pelanggaran) ===== --}}
+<div class="seksi">Tabel 5 — Data Pelanggaran ({{ $pelanggaran->count() }} / {{ $pelanggaran->sum('poin') }} Poin)</div>
+<table class="data">
+    <thead>
+        <tr>
+            <th style="width:28px">No</th>
+            <th style="width:75px">Tanggal</th>
+            <th>Nama Siswa</th>
+            <th style="width:60px">Kelas</th>
+            <th>Jenis Pelanggaran</th>
+            <th style="width:45px">Poin</th>
+            <th style="width:70px">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse($pelanggaran as $i => $k)
+        <tr>
+            <td class="tengah">{{ $i+1 }}</td>
+            <td class="tengah">{{ $k->tanggal?->isoFormat('D MMM Y') }}</td>
+            <td><strong>{{ $k->siswa?->nama ?? '-' }}</strong><span class="sub">NISN: {{ $k->siswa?->nisn ?? '-' }}</span></td>
+            <td class="tengah">{{ $k->siswa?->kelas ?? '-' }}</td>
+            <td>{{ $k->jenis_pelanggaran }}</td>
+            <td class="tengah"><span class="badge b-poin">{{ $k->poin }}</span></td>
+            <td class="tengah">{{ $k->status }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="7" class="tengah">Tidak ada pelanggaran.</td></tr>
+        @endforelse
+    </tbody>
+</table>
+
+{{-- ===== TABEL 6: BUKU TAMU (sesuai card Buku Tamu) ===== --}}
+<div class="seksi">Tabel 6 — Kunjungan Tamu ({{ $tamu->count() }})</div>
+<table class="data">
+    <thead>
+        <tr>
+            <th style="width:28px">No</th>
+            <th style="width:75px">Tanggal</th>
+            <th>Nama Tamu</th>
+            <th style="width:90px">Instansi</th>
+            <th style="width:100px">Bertemu Dengan</th>
+            <th>Keperluan</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse($tamu as $i => $k)
+        <tr>
+            <td class="tengah">{{ $i+1 }}</td>
+            <td class="tengah">{{ $k->tanggal_kunjungan?->isoFormat('D MMM Y') }}</td>
+            <td><strong>{{ $k->nama }}</strong></td>
+            <td>{{ $k->instansi ?? '-' }}</td>
+            <td>{{ $k->bertemu_dengan ?? '-' }}</td>
+            <td>{{ $k->keperluan }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="6" class="tengah">Tidak ada kunjungan tamu.</td></tr>
+        @endforelse
+    </tbody>
+</table>
+
+{{-- ===== TABEL 7: STATISTIK ===== --}}
+<div class="seksi">Tabel 7 — Statistik Keterlambatan &amp; Poin Tertinggi</div>
+<table class="data">
+    <tr>
+        <th style="width:50%">Per Kelas</th>
+        <th style="width:50%">Per Jurusan</th>
+    </tr>
+    <tr>
+        <td style="border:1px solid #e2e8f0; padding:7px 10px;">
+            @forelse($perKelas as $p){{ $p->label }}: <strong>{{ $p->jumlah }}</strong>@if(!$loop->last) &nbsp;•&nbsp; @endif @empty - @endforelse
+        </td>
+        <td style="border:1px solid #e2e8f0; padding:7px 10px;">
+            @forelse($perJurusan as $p){{ $p->label }}: <strong>{{ $p->jumlah }}</strong>@if(!$loop->last) &nbsp;•&nbsp; @endif @empty - @endforelse
+        </td>
+    </tr>
+    <tr>
+        <th colspan="2">Poin Pelanggaran Tertinggi</th>
+    </tr>
+    <tr>
+        <td colspan="2" style="border:1px solid #e2e8f0; padding:7px 10px;">
+            @forelse($topPoin as $p)
+                {{ $p->siswa?->nama ?? '-' }} ({{ $p->siswa?->kelas ?? '-' }}): <span class="badge b-poin">{{ $p->total_poin }} POIN</span>@if(!$loop->last) &nbsp;•&nbsp; @endif
+            @empty - @endforelse
+        </td>
+    </tr>
+</table>
+
+{{-- ===== TANDA TANGAN ===== --}}
 <table class="ttd">
     <tr>
         <td>
