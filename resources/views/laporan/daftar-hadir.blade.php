@@ -33,6 +33,17 @@
     .tengah { text-align: center; }
     .cek { font-size: 11pt; font-weight: bold; }
 
+    /* Style untuk pesan libur / tidak ada jadwal */
+    .pesan-libur {
+        text-align: center;
+        padding: 30px 10px;
+        font-size: 11pt;
+        font-weight: bold;
+        color: #4a5568;
+        background-color: #f7fafc;
+    }
+    .pesan-libur .ikon { font-size: 20pt; display: block; margin-bottom: 6px; }
+
     table.ttd { width: 100%; margin-top: 24px; border-collapse: collapse; }
     table.ttd td { width: 50%; text-align: center; vertical-align: top; font-size: 10pt; border: none; padding: 0; }
     .ttd-tanggal { height: 16px; margin-bottom: 2px; }
@@ -52,6 +63,8 @@
         'semester' => 'SEMESTER',
         'rentang'  => 'PERIODE KHUSUS',
     ][$periode ?? 'harian'] ?? strtoupper($periode ?? 'harian');
+    
+    $isLibur = !empty($pesanLibur);
 @endphp
 
 <table class="kop-table">
@@ -116,7 +129,8 @@
         </tr>
     </thead>
     <tbody>
-        @foreach($rows as $i => $r)
+        {{-- ===== PERBAIKAN: @forelse untuk menangani kondisi libur/tidak ada jadwal ===== --}}
+        @forelse($rows as $i => $r)
         <tr>
             <td class="tengah">{{ $i+1 }}</td>
             <td><strong>{{ $r['nama'] }}</strong></td>
@@ -132,14 +146,26 @@
             <td class="tengah cek">{{ $rekap ? ($r['dl'] > 0 ? $r['dl'] : '') : ($r['dl'] > 0 ? '✓' : '') }}</td>
             <td>{{ $r['ket'] }}</td>
         </tr>
-        @endforeach
-        @for($i = 0; $i < 2; $i++)
+        @empty
+        {{-- TAMPILKAN PESAN LIBUR / TIDAK ADA JADWAL --}}
         <tr>
-            <td class="tengah">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
-            <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
-            <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            <td colspan="12" class="pesan-libur">
+                <span class="ikon">📭</span>
+                {{ $pesanLibur ?? 'Tidak ada data petugas piket pada periode ini.' }}
+            </td>
         </tr>
-        @endfor
+        @endforelse
+
+        {{-- Baris kosong tambahan: hanya ditampilkan jika ADA data (bukan saat libur) --}}
+        @if(!$isLibur)
+            @for($i = 0; $i < 2; $i++)
+            <tr>
+                <td class="tengah">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            @endfor
+        @endif
     </tbody>
 </table>
 
