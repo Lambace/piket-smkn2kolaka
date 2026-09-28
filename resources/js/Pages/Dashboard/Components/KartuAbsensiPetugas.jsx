@@ -5,7 +5,6 @@ export default function KartuAbsensiPetugas({ data }) {
     const displayKey = usePage().props.displayKey ?? null;
     const [rekapOpen, setRekapOpen] = useState(false);
 
-    // ===== Default rentang: awal bulan s.d. hari ini =====
     const pad = (n) => String(n).padStart(2, "0");
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -14,23 +13,22 @@ export default function KartuAbsensiPetugas({ data }) {
     const [dari, setDari] = useState(firstOfMonth);
     const [sampai, setSampai] = useState(todayStr);
 
-    // ===== CEK APAKAH HARI INI LIBUR OTOMATIS =====
+    // Cek apakah hari ini libur otomatis
     const isLiburOtomatis =
-        data?.length === 1 && data[0]?.status === "libur_otomatis";
+        (data?.length === 1 && data[0]?.status === "libur_otomatis") ||
+        (data?.length === 1 && data[0]?.status === "tidak_ada_jadwal");
 
-    // ===== Pisahkan menjadi 3 kategori (abaikan data libur_otomatis dari list) =====
+    // Pisahkan menjadi 2 kategori utama (Hadir dan Alpha)
     const hadirList =
         data?.filter(
             (p) =>
                 p.status !== "alpha" &&
                 p.status !== "belum_absen" &&
-                p.status !== "libur_otomatis",
+                p.status !== "libur_otomatis" &&
+                p.status !== "tidak_ada_jadwal",
         ) ?? [];
-    const belumAbsenList =
-        data?.filter((p) => p.status === "belum_absen") ?? [];
     const alphaList = data?.filter((p) => p.status === "alpha") ?? [];
 
-    // ===== Download Daftar Hadir (checklist harian) =====
     const downloadDaftarHadir = () => {
         const params = new URLSearchParams({
             periode: "harian",
@@ -43,7 +41,6 @@ export default function KartuAbsensiPetugas({ data }) {
         window.location.href = `${url}?${params.toString()}`;
     };
 
-    // ===== Download REKAPAN rentang bebas (datepicker) =====
     const downloadRekap = () => {
         setRekapOpen(false);
         const params = new URLSearchParams({
@@ -96,13 +93,6 @@ export default function KartuAbsensiPetugas({ data }) {
                     icon: "🚗",
                     text: "DL",
                 };
-            case "belum_absen":
-                return {
-                    className:
-                        "bg-slate-500/20 text-slate-400 border border-slate-500/30",
-                    icon: "⏳",
-                    text: "Menunggu",
-                };
             case "lainnya":
                 return {
                     className:
@@ -134,21 +124,18 @@ export default function KartuAbsensiPetugas({ data }) {
                     <button
                         onClick={downloadDaftarHadir}
                         className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-blue-700"
-                        title="Download daftar hadir harian (checklist ✓)"
+                        title="Download daftar hadir harian"
                     >
                         📋 Daftar Hadir
                     </button>
-
-                    {/* ===== Datepicker Rentang ===== */}
                     <div className="relative">
                         <button
                             onClick={() => setRekapOpen(!rekapOpen)}
                             className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-700"
-                            title="Download rekapan dengan rentang tanggal bebas"
+                            title="Download rekapan"
                         >
                             📥 Rekap
                         </button>
-
                         {rekapOpen && (
                             <>
                                 <div
@@ -159,7 +146,6 @@ export default function KartuAbsensiPetugas({ data }) {
                                     <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                         Pilih Rentang Tanggal
                                     </p>
-
                                     <label className="mb-1 block text-xs font-semibold text-gray-700">
                                         Dari
                                     </label>
@@ -172,7 +158,6 @@ export default function KartuAbsensiPetugas({ data }) {
                                         }
                                         className="mb-2 block w-full rounded-md border-gray-300 text-xs"
                                     />
-
                                     <label className="mb-1 block text-xs font-semibold text-gray-700">
                                         Sampai
                                     </label>
@@ -185,7 +170,6 @@ export default function KartuAbsensiPetugas({ data }) {
                                         }
                                         className="mb-3 block w-full rounded-md border-gray-300 text-xs"
                                     />
-
                                     <button
                                         onClick={downloadRekap}
                                         className="w-full rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
@@ -200,21 +184,17 @@ export default function KartuAbsensiPetugas({ data }) {
             </div>
 
             {/* ===== ISI KARTU ===== */}
-
-            {/* TAMPILAN KHUSUS JIKA LIBUR OTOMATIS */}
             {isLiburOtomatis ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                     <span className="mb-3 text-6xl">🏖️</span>
                     <p className="text-xl font-bold text-slate-200">
-                        Tidak ada aktivitas piket hari ini
-                    </p>
-                    <p className="mt-2 text-sm text-slate-400 max-w-md">
-                        Hari ini Sekolah Libur/di Liburkan !!
+                        {data[0]?.pesan || "Tidak ada aktivitas piket hari ini"}
                     </p>
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {/* PERBAIKAN: Grid diubah menjadi 2 kolom (Hadir & Alpha) */}
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {/* KOLOM 1: HADIR */}
                         <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
                             <div className="mb-3 flex items-center justify-between">
@@ -251,8 +231,8 @@ export default function KartuAbsensiPetugas({ data }) {
                                                         {p.jabatan}
                                                         {p.keterangan && (
                                                             <span className="ml-1 italic text-slate-500">
-                                                                — “
-                                                                {p.keterangan}”
+                                                                — "
+                                                                {p.keterangan}"
                                                             </span>
                                                         )}
                                                     </p>
@@ -269,52 +249,7 @@ export default function KartuAbsensiPetugas({ data }) {
                             )}
                         </div>
 
-                        {/* KOLOM 2: BELUM ABSEN */}
-                        <div className="rounded-lg border border-slate-600/50 bg-slate-800/50 p-4">
-                            <div className="mb-3 flex items-center justify-between">
-                                <h4 className="flex items-center gap-2 text-sm font-bold text-slate-300">
-                                    <span>⏳</span>
-                                    <span>Belum Absen</span>
-                                </h4>
-                                <span className="rounded-full bg-slate-500/20 px-2.5 py-0.5 text-xs font-bold text-slate-300">
-                                    {belumAbsenList.length} orang
-                                </span>
-                            </div>
-                            {belumAbsenList.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-6 text-center">
-                                    <span className="mb-2 text-3xl">✨</span>
-                                    <p className="text-sm font-semibold text-slate-400">
-                                        Semua sudah absen
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                                    {belumAbsenList.map((p, i) => (
-                                        <div
-                                            key={i}
-                                            className="flex items-center justify-between rounded-lg bg-slate-700/60 px-3 py-2.5"
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-semibold text-white">
-                                                    {p.nama}
-                                                </p>
-                                                <p className="truncate text-xs text-slate-400">
-                                                    {p.jabatan}
-                                                </p>
-                                            </div>
-                                            <span className="ml-2 shrink-0 rounded-full border border-slate-500/30 bg-slate-500/20 px-2.5 py-1 text-xs font-bold text-slate-300">
-                                                ⏳ Menunggu
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <p className="mt-3 text-center text-[10px] italic text-slate-500">
-                                *Otomatis Alpha setelah 07:30 WITA
-                            </p>
-                        </div>
-
-                        {/* KOLOM 3: ALPHA */}
+                        {/* KOLOM 2: ALPHA */}
                         <div className="rounded-lg border border-red-900/50 bg-red-950/30 p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-red-400">

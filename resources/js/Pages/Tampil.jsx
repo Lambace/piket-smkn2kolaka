@@ -1,5 +1,5 @@
 import { Head, usePoll, usePage, router } from "@inertiajs/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import KartuAbsensiPetugas from "./Dashboard/Components/KartuAbsensiPetugas";
 import KartuStatistik from "./Dashboard/Components/KartuStatistik";
 import DataHariIni from "./Dashboard/Components/DataHariIni";
@@ -9,7 +9,6 @@ import TabelTerlambatTertinggi from "./Dashboard/Components/TabelTerlambatTertin
 import TabelPoinTertinggi from "./Dashboard/Components/TabelPoinTertinggi";
 import AktivitasTerbaru from "./Dashboard/Components/AktivitasTerbaru";
 
-// ===== PERBAIKAN: Opsi "mingguan" dihapus =====
 const labelPeriode = {
     harian: "Harian",
     bulanan: "Bulanan",
@@ -17,18 +16,15 @@ const labelPeriode = {
 };
 
 export default function Tampil(props) {
+    // usePoll tetap dipertahankan agar data tetap update di background tanpa perlu refresh manual
     usePoll(60000);
 
     const pengaturan = usePage().props.pengaturan ?? {};
     const currentFilters = usePage().props.currentFilters ?? {};
 
-    const [now, setNow] = useState(new Date());
-
-    // ===== STATE KHUSUS UNTUK DOWNLOAD (HEADER) =====
     const [downloadPeriode, setDownloadPeriode] = useState("harian");
     const [downloadFilterHari, setDownloadFilterHari] = useState("Semua Hari");
 
-    // ===== STATE KHUSUS UNTUK TAMPILAN (PANEL UNGU) =====
     const [dariTanggal, setDariTanggal] = useState(
         currentFilters?.dari_tanggal ?? new Date().toISOString().split("T")[0],
     );
@@ -38,11 +34,6 @@ export default function Tampil(props) {
     );
     const [showFilter, setShowFilter] = useState(false);
 
-    useEffect(() => {
-        const t = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(t);
-    }, []);
-
     const logoSrc =
         pengaturan.logo_url ??
         (pengaturan.logo ? `/storage/${pengaturan.logo}` : null);
@@ -50,7 +41,6 @@ export default function Tampil(props) {
     const semesterOtomatis =
         new Date().getMonth() + 1 >= 7 ? "ganjil" : "genap";
 
-    // ===== FUNGSI PANEL UNGU: Hanya mengirim tanggal ke backend untuk tampilan =====
     const applyFilter = () => {
         router.get(
             route("tampil"),
@@ -77,7 +67,6 @@ export default function Tampil(props) {
         );
     };
 
-    // ===== FUNGSI DOWNLOAD: Menggabungkan state Header + Panel Ungu =====
     const downloadLaporan = () => {
         const params = new URLSearchParams({
             jenis: "gabungan",
@@ -131,21 +120,9 @@ export default function Tampil(props) {
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
-                    <div className="text-right">
-                        <div className="font-mono text-4xl font-bold text-white">
-                            {now.toLocaleTimeString("id-ID", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                second: "2-digit",
-                            })}
-                        </div>
-                        <p className="text-xs text-slate-500">
-                            Memperbarui otomatis tiap 60 detik
-                        </p>
-                    </div>
+                    {/* JAM DAN TEKS PEMBARUAN DIHAPUS DI SINI */}
 
                     <div className="flex items-center gap-2">
-                        {/* DROPDOWN HEADER: Opsi Mingguan DIHAPUS */}
                         <select
                             value={downloadPeriode}
                             onChange={(e) => setDownloadPeriode(e.target.value)}
@@ -153,7 +130,7 @@ export default function Tampil(props) {
                         >
                             <option value="harian">📅 Harian</option>
                             <option value="bulanan">📆 Bulanan</option>
-                            <option value="semester"> Semester</option>
+                            <option value="semester">🎓 Semester</option>
                         </select>
 
                         <select
@@ -164,11 +141,11 @@ export default function Tampil(props) {
                             className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="Semua Hari">👥 Semua Hari</option>
-                            <option value="Senin"> Senin</option>
+                            <option value="Senin">📌 Senin</option>
                             <option value="Selasa">📌 Selasa</option>
                             <option value="Rabu">📌 Rabu</option>
                             <option value="Kamis">📌 Kamis</option>
-                            <option value="Jumat"> Jumat</option>
+                            <option value="Jumat">📌 Jumat</option>
                             <option value="Sabtu">📌 Sabtu</option>
                         </select>
 
