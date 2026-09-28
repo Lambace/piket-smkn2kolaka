@@ -15,7 +15,7 @@ const labelPeriode = {
     semester: "Semester",
 };
 
-// ===== DROPDOWN CUSTOM: menu terkunci di dalam card (tidak keluar layar) =====
+// ===== DROPDOWN CUSTOM (menu terkunci dalam wadah) =====
 function SelectCustom({
     value,
     onChange,
@@ -26,7 +26,7 @@ function SelectCustom({
     const current = options.find((o) => o.value === value);
 
     return (
-        <div className="relative w-full sm:flex-1">
+        <div className="relative w-full">
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
@@ -42,12 +42,10 @@ function SelectCustom({
 
             {open && (
                 <>
-                    {/* Klik di luar menu untuk menutup */}
                     <div
                         className="fixed inset-0 z-40"
                         onClick={() => setOpen(false)}
                     />
-                    {/* left-0 right-0 = lebar menu persis sama dengan tombol → tidak keluar card */}
                     <ul className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-auto rounded-lg border border-slate-600 bg-slate-800 py-1 shadow-2xl">
                         {options.map((o) => (
                             <li key={o.value}>
@@ -74,17 +72,48 @@ function SelectCustom({
     );
 }
 
+// ===== KOMPONEN MODAL =====
+function Modal({ open, onClose, title, icon, children }) {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop gelap */}
+            <div
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                onClick={onClose}
+            />
+            {/* Panel modal */}
+            <div className="relative w-full max-w-md rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-2xl">
+                <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3">
+                    <h3 className="text-base font-bold text-white">
+                        {icon} {title}
+                    </h3>
+                    <button
+                        onClick={onClose}
+                        className="rounded-lg bg-slate-700 px-2.5 py-1 text-sm text-slate-300 transition hover:bg-slate-600"
+                        title="Tutup"
+                    >
+                        ✕
+                    </button>
+                </div>
+                {children}
+            </div>
+        </div>
+    );
+}
+
 export default function Tampil(props) {
     usePoll(60000);
 
     const pengaturan = usePage().props.pengaturan ?? {};
     const currentFilters = usePage().props.currentFilters ?? {};
 
-    // ===== STATE KHUSUS DOWNLOAD (tidak mempengaruhi tampilan) =====
+    // ===== STATE KHUSUS DOWNLOAD =====
     const [downloadPeriode, setDownloadPeriode] = useState("harian");
     const [downloadFilterHari, setDownloadFilterHari] = useState("Semua Hari");
+    const [modalDownload, setModalDownload] = useState(false);
 
-    // ===== STATE KHUSUS TAMPILAN (tidak mempengaruhi download) =====
+    // ===== STATE KHUSUS TAMPILAN =====
     const [dariTanggal, setDariTanggal] = useState(
         currentFilters?.dari_tanggal ?? new Date().toISOString().split("T")[0],
     );
@@ -92,7 +121,7 @@ export default function Tampil(props) {
         currentFilters?.sampai_tanggal ??
             new Date().toISOString().split("T")[0],
     );
-    const [showFilter, setShowFilter] = useState(false);
+    const [modalFilter, setModalFilter] = useState(false);
 
     const logoSrc =
         pengaturan.logo_url ??
@@ -157,7 +186,7 @@ export default function Tampil(props) {
         <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-900 p-2 sm:p-4 md:p-6">
             <Head title="Papan Informasi Piket" />
 
-            {/* ===== HEADER: Logo & Judul Saja ===== */}
+            {/* ===== HEADER ===== */}
             <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3">
                 {logoSrc ? (
                     <img
@@ -180,15 +209,49 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== SATU CARD KONTROL GABUNGAN ===== */}
+            {/* ===== BAR KONTROL: 2 TOMBOL PEMBUKA MODAL ===== */}
             <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-3 shadow-lg sm:mb-6 sm:p-4">
-                {/* --- BAGIAN A: KONTROL DOWNLOAD LAPORAN --- */}
-                <div>
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">
-                        📄 Unduh Laporan PDF
-                    </p>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        {/* PERBAIKAN: select native diganti SelectCustom */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    {/* TOMBOL 1: UNDUH LAPORAN */}
+                    <button
+                        onClick={() => setModalDownload(true)}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:w-auto sm:text-sm"
+                    >
+                        <span>📄</span>
+                        <span>Unduh Laporan PDF</span>
+                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                            {labelPeriode[downloadPeriode]} •{" "}
+                            {downloadFilterHari}
+                        </span>
+                    </button>
+
+                    {/* TOMBOL 2: FILTER TAMPILAN */}
+                    <button
+                        onClick={() => setModalFilter(true)}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-indigo-700 sm:w-auto sm:text-sm"
+                    >
+                        <span>🖥️</span>
+                        <span>Filter Tampilan Data</span>
+                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                            {currentFilters?.dari_tanggal ?? today} s/d{" "}
+                            {currentFilters?.sampai_tanggal ?? today}
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            {/* ===== MODAL 1: UNDUH LAPORAN PDF ===== */}
+            <Modal
+                open={modalDownload}
+                onClose={() => setModalDownload(false)}
+                title="Unduh Laporan PDF"
+                icon="📄"
+            >
+                <div className="space-y-3">
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-400">
+                            Periode Laporan
+                        </label>
                         <SelectCustom
                             value={downloadPeriode}
                             onChange={setDownloadPeriode}
@@ -199,7 +262,12 @@ export default function Tampil(props) {
                                 { value: "semester", label: "🎓 Semester" },
                             ]}
                         />
+                    </div>
 
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-400">
+                            Filter Hari
+                        </label>
                         <SelectCustom
                             value={downloadFilterHari}
                             onChange={setDownloadFilterHari}
@@ -214,97 +282,75 @@ export default function Tampil(props) {
                                 { value: "Sabtu", label: "📌 Sabtu" },
                             ]}
                         />
+                    </div>
 
+                    <button
+                        onClick={() => {
+                            downloadLaporan();
+                            setModalDownload(false);
+                        }}
+                        className="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-red-700"
+                    >
+                        📄 Download Laporan {labelPeriode[downloadPeriode]}
+                    </button>
+                </div>
+            </Modal>
+
+            {/* ===== MODAL 2: FILTER TAMPILAN DATA ===== */}
+            <Modal
+                open={modalFilter}
+                onClose={() => setModalFilter(false)}
+                title="Filter Tampilan Data"
+                icon="🖥️"
+            >
+                <div className="space-y-3">
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-400">
+                            Dari Tanggal
+                        </label>
+                        <input
+                            type="date"
+                            value={dariTanggal}
+                            max={sampaiTanggal}
+                            onChange={(e) => setDariTanggal(e.target.value)}
+                            className="w-full rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-400">
+                            Sampai Tanggal
+                        </label>
+                        <input
+                            type="date"
+                            value={sampaiTanggal}
+                            min={dariTanggal}
+                            onChange={(e) => setSampaiTanggal(e.target.value)}
+                            className="w-full rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                         <button
-                            onClick={downloadLaporan}
-                            className="flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:w-auto sm:px-4 sm:text-sm"
-                            title="Download PDF sesuai pilihan periode & hari"
+                            onClick={() => {
+                                applyFilter();
+                                setModalFilter(false);
+                            }}
+                            className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-green-700"
                         >
-                            📄 Download Pdf
+                            ✅ Terapkan
+                        </button>
+                        <button
+                            onClick={() => {
+                                resetFilter();
+                                setModalFilter(false);
+                            }}
+                            className="rounded-lg bg-slate-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-slate-700"
+                        >
+                            🔄 Reset
                         </button>
                     </div>
                 </div>
-
-                {/* --- GARIS PEMISAH --- */}
-                <div className="my-3 border-t border-slate-700" />
-
-                {/* --- BAGIAN B: FILTER TAMPILAN DATA --- */}
-                <div>
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">
-                        🖥️ Filter Tampilan Data
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            onClick={() => setShowFilter(!showFilter)}
-                            className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700 sm:px-4 sm:text-sm"
-                        >
-                            <span>📅</span>
-                            <span>
-                                {showFilter
-                                    ? "Sembunyikan Filter"
-                                    : "Tampilkan Filter Tanggal"}
-                            </span>
-                        </button>
-
-                        {(currentFilters?.dari_tanggal ||
-                            currentFilters?.sampai_tanggal) && (
-                            <span className="truncate text-[10px] text-slate-300 sm:text-xs">
-                                Aktif:{" "}
-                                <strong className="text-white">
-                                    {currentFilters.dari_tanggal}
-                                </strong>{" "}
-                                s/d{" "}
-                                <strong className="text-white">
-                                    {currentFilters.sampai_tanggal}
-                                </strong>
-                            </span>
-                        )}
-                    </div>
-
-                    {showFilter && (
-                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                            <div>
-                                <label className="mb-1 block text-[10px] font-medium text-slate-400 sm:text-xs">
-                                    Dari Tanggal
-                                </label>
-                                <input
-                                    type="date"
-                                    value={dariTanggal}
-                                    onChange={(e) =>
-                                        setDariTanggal(e.target.value)
-                                    }
-                                    className="w-full rounded-lg border-0 bg-slate-700 px-2 py-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 sm:px-3 sm:text-sm"
-                                />
-                            </div>
-                            <div>
-                                <label className="mb-1 block text-[10px] font-medium text-slate-400 sm:text-xs">
-                                    Sampai Tanggal
-                                </label>
-                                <input
-                                    type="date"
-                                    value={sampaiTanggal}
-                                    onChange={(e) =>
-                                        setSampaiTanggal(e.target.value)
-                                    }
-                                    className="w-full rounded-lg border-0 bg-slate-700 px-2 py-2 text-xs text-white focus:ring-2 focus:ring-indigo-500 sm:px-3 sm:text-sm"
-                                />
-                            </div>
-                            <button
-                                onClick={applyFilter}
-                                className="flex w-full items-center justify-center whitespace-nowrap rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-green-700 sm:text-sm lg:mt-[22px]"
-                            >
-                                ✅ Terapkan
-                            </button>
-                            <button
-                                onClick={resetFilter}
-                                className="flex w-full items-center justify-center whitespace-nowrap rounded-lg bg-slate-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700 sm:text-sm lg:mt-[22px]"
-                            >
-                                🔄 Reset
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
+            </Modal>
 
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
