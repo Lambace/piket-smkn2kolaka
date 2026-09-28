@@ -207,31 +207,42 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== DUA TOMBOL KONTROL: BERTUMPUK DI KANAN ATAS (sesuai mockup) ===== */}
-            <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:items-end">
-                <button
-                    onClick={() => setModalDownload(true)}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:justify-start sm:text-sm"
-                >
-                    <span>📄</span>
-                    <span>Unduh Laporan PDF</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-                        {labelPeriode[downloadPeriode]} • {downloadFilterHari}
-                    </span>
-                </button>
+            {/* ===== DUA TOMBOL KONTROL + PANEL DEKORATIF MIRING (KANAN ATAS) ===== */}
+<div className="mb-4 flex justify-end sm:mb-5">
+    <div className="relative">
+        {/* Lapisan dekor 1: kertas putih miring (paling belakang) */}
+        <div className="pointer-events-none absolute -inset-x-5 -inset-y-3 -rotate-6 rounded-2xl bg-white shadow-2xl" />
 
-                <button
-                    onClick={() => setModalFilter(true)}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-indigo-700 sm:justify-start sm:text-sm"
-                >
-                    <span>🖥️</span>
-                    <span>Filter Tampilan Data</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-                        {currentFilters?.dari_tanggal ?? today} s/d{" "}
-                        {currentFilters?.sampai_tanggal ?? today}
-                    </span>
-                </button>
-            </div>
+        {/* Lapisan dekor 2: panel abu-abu miring (tengah) */}
+        <div className="pointer-events-none absolute -inset-x-2.5 -inset-y-1.5 -rotate-3 rounded-xl bg-slate-400 shadow-xl" />
+
+        {/* Lapisan 3: tombol-tombol (lurus, paling atas) */}
+        <div className="relative flex flex-col gap-2">
+            <button
+                onClick={() => setModalDownload(true)}
+                className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-red-700 sm:justify-start sm:text-sm"
+            >
+                <span>📄</span>
+                <span>Unduh Laporan PDF</span>
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                    {labelPeriode[downloadPeriode]} • {downloadFilterHari}
+                </span>
+            </button>
+
+            <button
+                onClick={() => setModalFilter(true)}
+                className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:justify-start sm:text-sm"
+            >
+                <span>🖥️</span>
+                <span>Filter Tampilan Data</span>
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                    {currentFilters?.dari_tanggal ?? today} s/d{" "}
+                    {currentFilters?.sampai_tanggal ?? today}
+                </span>
+            </button>
+        </div>
+    </div>
+</div>
 
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
