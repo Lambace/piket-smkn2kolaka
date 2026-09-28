@@ -207,41 +207,26 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== TOMBOL KONTROL + TRAPESIUM DEKORATIF (KANAN ATAS) ===== */}
-            <div className="mb-6 flex justify-end sm:mb-8">
-                <div className="relative w-full sm:w-[360px]">
-                    {/* Lapisan 1: TRAPESIUM PUTIH (paling belakang)
-            polygon(12% 0 = kiri-atas masuk ke dalam,
-                     100% 0 = kanan-atas,
-                     100% 100% = kanan-bawah,
-                     0 100% = kiri-bawah penuh)
-            → hasil: atas & bawah horizontal, kanan tegak, kiri miring */}
-                    <div
-                        className="pointer-events-none absolute -top-6 -bottom-1 -left-6 right-0 bg-white sm:-top-[30px] sm:-bottom-[5px] sm:-left-[72px]"
-                        style={{
-                            clipPath:
-                                "polygon(12% 0, 100% 0, 100% 100%, 0 100%)",
-                        }}
-                    />
+            {/* ===== TOMBOL KONTROL + TRAPESIUM MEMBULAT (RESPONSIF) ===== */}
+            <div className="mb-6 flex justify-center sm:mb-8 sm:justify-end">
+                <div className="relative w-full max-w-[340px] sm:w-auto sm:max-w-none">
+                    {/* Lapisan 1: putih miring bersudut membulat (belakang) */}
+                    <div className="pointer-events-none absolute -inset-y-4 -left-6 right-2 rounded-2xl bg-white shadow-xl [transform:skewX(-20deg)] sm:-inset-y-5 sm:-left-12 sm:right-5" />
 
-                    {/* Lapisan 2: TRAPESIUM ABU-ABU (tengah) */}
-                    <div
-                        className="pointer-events-none absolute -top-3 -bottom-0 -left-3 -right-4 bg-slate-400 sm:-top-[15px] sm:-bottom-[5px] sm:-left-12 sm:-right-9"
-                        style={{
-                            clipPath:
-                                "polygon(9% 0, 100% 0, 100% 100%, 0 100%)",
-                        }}
-                    />
+                    {/* Lapisan 2: abu-abu miring bersudut membulat (tengah) */}
+                    <div className="pointer-events-none absolute -inset-y-2 -left-3 -right-3 rounded-xl bg-slate-400 shadow-lg [transform:skewX(-16deg)] sm:-left-7 sm:-right-7" />
 
-                    {/* Lapisan 3: TOMBOL (lurus, paling depan) */}
+                    {/* Lapisan 3: tombol (lurus, depan, lebar ringkas) */}
                     <div className="relative flex flex-col gap-2">
                         <button
                             onClick={() => setModalDownload(true)}
-                            className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-red-700 sm:justify-start sm:text-sm"
+                            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-[11px] font-semibold text-white shadow-lg transition hover:bg-red-700 sm:w-auto sm:justify-start sm:gap-2 sm:px-4 sm:text-sm"
                         >
                             <span>📄</span>
-                            <span>Unduh Laporan PDF</span>
-                            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                            <span className="whitespace-nowrap">
+                                Unduh Laporan PDF
+                            </span>
+                            <span className="whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold sm:text-[10px]">
                                 {labelPeriode[downloadPeriode]} •{" "}
                                 {downloadFilterHari}
                             </span>
@@ -249,11 +234,13 @@ export default function Tampil(props) {
 
                         <button
                             onClick={() => setModalFilter(true)}
-                            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:justify-start sm:text-sm"
+                            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-[11px] font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:w-auto sm:justify-start sm:gap-2 sm:px-4 sm:text-sm"
                         >
                             <span>🖥️</span>
-                            <span>Filter Tampilan Data</span>
-                            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                            <span className="whitespace-nowrap">
+                                Filter Tampilan Data
+                            </span>
+                            <span className="whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold sm:text-[10px]">
                                 {currentFilters?.dari_tanggal ?? today} s/d{" "}
                                 {currentFilters?.sampai_tanggal ?? today}
                             </span>
@@ -261,7 +248,6 @@ export default function Tampil(props) {
                     </div>
                 </div>
             </div>
-
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
                 {/* Card Petugas Piket (langsung di bawah tombol) */}
