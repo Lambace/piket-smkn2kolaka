@@ -96,9 +96,10 @@ export default function Tampil(props) {
         <div className="min-h-screen bg-slate-900 p-2 sm:p-4 md:p-6">
             <Head title="Papan Informasi Piket" />
 
-            {/* Header - Responsive */}
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            {/* Header - Fully Responsive */}
+            <div className="mb-4 sm:mb-6 flex flex-col gap-3">
+                {/* Logo & Title */}
+                <div className="flex items-center gap-2 sm:gap-3">
                     {logoSrc ? (
                         <img
                             src={logoSrc}
@@ -111,21 +112,22 @@ export default function Tampil(props) {
                         </span>
                     )}
                     <div className="min-w-0 flex-1">
-                        <h1 className="text-lg sm:text-2xl font-extrabold text-white truncate">
+                        <h1 className="text-base sm:text-2xl font-extrabold text-white truncate">
                             {pengaturan.nama_sekolah ?? "SMKN 2 Kolaka"}
                         </h1>
-                        <p className="text-xs sm:text-sm text-slate-400 truncate">
+                        <p className="text-[10px] sm:text-sm text-slate-400 truncate">
                             Papan Informasi Piket — {props.hariIni}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
-                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full">
+                {/* Controls - Stacked on mobile */}
+                <div className="flex flex-col gap-2 w-full">
+                    <div className="grid grid-cols-2 gap-2">
                         <select
                             value={downloadPeriode}
                             onChange={(e) => setDownloadPeriode(e.target.value)}
-                            className="rounded-lg border-0 bg-slate-800 px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-red-500 flex-1 sm:flex-none"
+                            className="w-full rounded-lg border-0 bg-slate-800 px-2 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-red-500"
                         >
                             <option value="harian">📅 Harian</option>
                             <option value="bulanan">📆 Bulanan</option>
@@ -137,35 +139,35 @@ export default function Tampil(props) {
                             onChange={(e) =>
                                 setDownloadFilterHari(e.target.value)
                             }
-                            className="rounded-lg border-0 bg-slate-800 px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none"
+                            className="w-full rounded-lg border-0 bg-slate-800 px-2 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-blue-500"
                         >
-                            <option value="Semua Hari">👥 Semua Hari</option>
+                            <option value="Semua Hari"> Semua Hari</option>
                             <option value="Senin">📌 Senin</option>
                             <option value="Selasa">📌 Selasa</option>
                             <option value="Rabu">📌 Rabu</option>
                             <option value="Kamis">📌 Kamis</option>
                             <option value="Jumat">📌 Jumat</option>
-                            <option value="Sabtu"> Sabtu</option>
+                            <option value="Sabtu">📌 Sabtu</option>
                         </select>
                     </div>
 
                     <button
                         onClick={downloadLaporan}
-                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-red-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition hover:bg-red-700"
+                        className="w-full flex items-center justify-center gap-2 rounded-lg bg-red-600 px-3 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg transition hover:bg-red-700"
                         title="Download PDF berdasarkan pilihan Header + Panel Ungu"
                     >
-                        📄 {labelPeriode[downloadPeriode]}
+                        📄 Download Laporan {labelPeriode[downloadPeriode]}
                     </button>
                 </div>
             </div>
 
-            {/* Panel Ungu - Responsive */}
+            {/* Panel Ungu - Fully Responsive */}
             <div className="mb-4 sm:mb-6 rounded-lg bg-indigo-900/40 border border-indigo-700/50 p-3 sm:p-4 shadow-lg">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-2">
                         <button
                             onClick={() => setShowFilter(!showFilter)}
-                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-indigo-700 whitespace-nowrap"
+                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-indigo-700 whitespace-nowrap flex-shrink-0"
                         >
                             <span>📅</span>
                             <span className="hidden sm:inline">
@@ -178,7 +180,7 @@ export default function Tampil(props) {
 
                         {(currentFilters?.dari_tanggal ||
                             currentFilters?.sampai_tanggal) && (
-                            <span className="text-xs sm:text-sm text-slate-300 break-all sm:break-normal">
+                            <span className="text-[10px] sm:text-xs text-slate-300 truncate">
                                 Aktif:{" "}
                                 <strong className="text-white">
                                     {currentFilters.dari_tanggal}
@@ -192,43 +194,45 @@ export default function Tampil(props) {
                     </div>
 
                     {showFilter && (
-                        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-2 sm:gap-3 w-full sm:w-auto">
-                            <div className="flex-1 sm:flex-none">
-                                <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">
-                                    Dari Tanggal
-                                </label>
-                                <input
-                                    type="date"
-                                    value={dariTanggal}
-                                    onChange={(e) =>
-                                        setDariTanggal(e.target.value)
-                                    }
-                                    className="w-full rounded-lg border-0 bg-slate-700 px-2 sm:px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500"
-                                />
+                        <div className="flex flex-col gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">
+                                        Dari Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={dariTanggal}
+                                        onChange={(e) =>
+                                            setDariTanggal(e.target.value)
+                                        }
+                                        className="w-full rounded-lg border-0 bg-slate-700 px-2 sm:px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">
+                                        Sampai Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={sampaiTanggal}
+                                        onChange={(e) =>
+                                            setSampaiTanggal(e.target.value)
+                                        }
+                                        className="w-full rounded-lg border-0 bg-slate-700 px-2 sm:px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
                             </div>
-                            <div className="flex-1 sm:flex-none">
-                                <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">
-                                    Sampai Tanggal
-                                </label>
-                                <input
-                                    type="date"
-                                    value={sampaiTanggal}
-                                    onChange={(e) =>
-                                        setSampaiTanggal(e.target.value)
-                                    }
-                                    className="w-full rounded-lg border-0 bg-slate-700 px-2 sm:px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
-                            <div className="flex gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                                 <button
                                     onClick={applyFilter}
-                                    className="flex-1 sm:flex-none rounded-lg bg-green-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-green-700 whitespace-nowrap"
+                                    className="rounded-lg bg-green-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-green-700 whitespace-nowrap"
                                 >
                                     ✅ Terapkan
                                 </button>
                                 <button
                                     onClick={resetFilter}
-                                    className="flex-1 sm:flex-none rounded-lg bg-slate-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-700 whitespace-nowrap"
+                                    className="rounded-lg bg-slate-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-700 whitespace-nowrap"
                                 >
                                     🔄 Reset
                                 </button>
