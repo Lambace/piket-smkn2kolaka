@@ -214,13 +214,12 @@ export default function Tampil(props) {
             mobile: w-6(24px) h-12(48px) | desktop: w-11(44px) h-24(96px)
             posisi dipilih agar ada celah ±12px ke lapisan putih mockup */}
                     <div className="pointer-events-none absolute -left-10 -top-3 h-12 w-6 rounded-md bg-slate-400 shadow-md [transform:skewX(-14deg)] sm:-left-[104px] sm:-top-8 sm:h-24 sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
-
                     {/* AKSEN PUTIH/TERANG (gray-300) — depan, kiri-bawah
             offset = -(50% lebar) & +(50% tinggi) dari aksen abu-abu
             mobile: -52px = -40px - 12px ; top 12px = -12px + 24px
             desktop: -126px = -104px - 22px ; top 16px = -32px + 48px
             → menutup tepat 50% lebar & 50% tinggi aksen abu-abu */}
-                    <div className="pointer-events-none absolute -left-[52px] top-3 h-12 w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:-left-[126px] sm:top-4 sm:h-24 sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
+                    <div className="pointer-events-none absolute -left-[52px] -top-1 h-12 w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:-left-[126px] sm:-top-[17px] sm:h-24 sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
 
                     {/* Lapisan 1: putih miring membulat (TEPIS -12/-2 → tidak menyentuh aksen) */}
                     <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-6 rounded-lg bg-white shadow-lg [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:-right-14 sm:rounded-2xl sm:shadow-xl sm:[transform:skewX(-20deg)]" />
