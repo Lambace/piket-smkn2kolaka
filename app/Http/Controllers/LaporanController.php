@@ -155,12 +155,14 @@ class LaporanController extends Controller
 
             // ===== REKAP PETUGAS - FORMAT BERBEDA BERDASARKAN PERIODE =====
             $rekapPetugas = collect();
+            $tidakAdaJadwal = false;
+            $pesanLibur = '';
 
             if ($periode === 'harian') {
                 $namaHariLaporan = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
                 
                 $semuaPetugasPdf = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
-                $namaDenganAbsensiPdf = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
+                $namaDenganAbsensiPdf = AbsensiPetugas::whereDate('tanggal', $dariStr)
                     ->pluck('nama')
                     ->map(fn($n) => strtolower(trim($n)))
                     ->unique()
@@ -172,9 +174,14 @@ class LaporanController extends Controller
                     return $cocokKelompok || in_array($namaKey, $namaDenganAbsensiPdf);
                 });
 
-                $rekapPetugas = $petugasRelevanPdf->map(function ($u) use ($dariStr, $sampaiStr, $tanggalRef) {
+                if ($petugasRelevanPdf->isEmpty()) {
+                    $tidakAdaJadwal = true;
+                    $pesanLibur = "Tidak ada petugas yang dijadwalkan atau absen untuk hari {$namaHariLaporan}.";
+                }
+
+                $rekapPetugas = $petugasRelevanPdf->map(function ($u) use ($dariStr, $tanggalRef) {
                     $r = AbsensiPetugas::where('nama', $u->name)
-                        ->whereBetween('tanggal', [$dariStr, $sampaiStr])
+                        ->whereDate('tanggal', $dariStr)
                         ->orderBy('jam_masuk')
                         ->first();
 
@@ -228,6 +235,11 @@ class LaporanController extends Controller
                         'format'     => 'rekap',
                     ];
                 })->filter(fn($p) => $p['total'] > 0)->values();
+
+                if ($rekapPetugas->isEmpty()) {
+                    $tidakAdaJadwal = true;
+                    $pesanLibur = "Tidak ada data rekap absensi petugas untuk periode dan filter hari ini.";
+                }
             }
 
             $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)
@@ -329,6 +341,8 @@ class LaporanController extends Controller
                 'tempatTanggal'     => $tempatTanggal,
                 'periode'           => $periode,
                 'filter_hari'       => $filterHari,
+                'tidakAdaJadwal'    => $tidakAdaJadwal,
+                'pesanLibur'        => $pesanLibur,
             ];
 
             $pdf = Pdf::loadView('laporan.pdf', $data)->setPaper('a4', 'portrait');
