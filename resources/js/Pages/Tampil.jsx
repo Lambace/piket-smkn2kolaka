@@ -207,42 +207,60 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== DUA TOMBOL KONTROL + PANEL DEKORATIF MIRING (KANAN ATAS) ===== */}
-<div className="mb-4 flex justify-end sm:mb-5">
-    <div className="relative">
-        {/* Lapisan dekor 1: kertas putih miring (paling belakang) */}
-        <div className="pointer-events-none absolute -inset-x-5 -inset-y-3 -rotate-6 rounded-2xl bg-white shadow-2xl" />
+            {/* ===== TOMBOL KONTROL + TRAPESIUM DEKORATIF (KANAN ATAS) ===== */}
+            <div className="mb-6 flex justify-end sm:mb-8">
+                <div className="relative w-full sm:w-[360px]">
+                    {/* Lapisan 1: TRAPESIUM PUTIH (paling belakang)
+            polygon(12% 0 = kiri-atas masuk ke dalam,
+                     100% 0 = kanan-atas,
+                     100% 100% = kanan-bawah,
+                     0 100% = kiri-bawah penuh)
+            → hasil: atas & bawah horizontal, kanan tegak, kiri miring */}
+                    <div
+                        className="pointer-events-none absolute -top-6 -bottom-1 -left-6 right-0 bg-white sm:-top-[30px] sm:-bottom-[5px] sm:-left-[72px]"
+                        style={{
+                            clipPath:
+                                "polygon(12% 0, 100% 0, 100% 100%, 0 100%)",
+                        }}
+                    />
 
-        {/* Lapisan dekor 2: panel abu-abu miring (tengah) */}
-        <div className="pointer-events-none absolute -inset-x-2.5 -inset-y-1.5 -rotate-3 rounded-xl bg-slate-400 shadow-xl" />
+                    {/* Lapisan 2: TRAPESIUM ABU-ABU (tengah) */}
+                    <div
+                        className="pointer-events-none absolute -top-3 -bottom-0 -left-3 -right-4 bg-slate-400 sm:-top-[15px] sm:-bottom-[5px] sm:-left-12 sm:-right-9"
+                        style={{
+                            clipPath:
+                                "polygon(9% 0, 100% 0, 100% 100%, 0 100%)",
+                        }}
+                    />
 
-        {/* Lapisan 3: tombol-tombol (lurus, paling atas) */}
-        <div className="relative flex flex-col gap-2">
-            <button
-                onClick={() => setModalDownload(true)}
-                className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-red-700 sm:justify-start sm:text-sm"
-            >
-                <span>📄</span>
-                <span>Unduh Laporan PDF</span>
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-                    {labelPeriode[downloadPeriode]} • {downloadFilterHari}
-                </span>
-            </button>
+                    {/* Lapisan 3: TOMBOL (lurus, paling depan) */}
+                    <div className="relative flex flex-col gap-2">
+                        <button
+                            onClick={() => setModalDownload(true)}
+                            className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-red-700 sm:justify-start sm:text-sm"
+                        >
+                            <span>📄</span>
+                            <span>Unduh Laporan PDF</span>
+                            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                                {labelPeriode[downloadPeriode]} •{" "}
+                                {downloadFilterHari}
+                            </span>
+                        </button>
 
-            <button
-                onClick={() => setModalFilter(true)}
-                className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:justify-start sm:text-sm"
-            >
-                <span>🖥️</span>
-                <span>Filter Tampilan Data</span>
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-                    {currentFilters?.dari_tanggal ?? today} s/d{" "}
-                    {currentFilters?.sampai_tanggal ?? today}
-                </span>
-            </button>
-        </div>
-    </div>
-</div>
+                        <button
+                            onClick={() => setModalFilter(true)}
+                            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:justify-start sm:text-sm"
+                        >
+                            <span>🖥️</span>
+                            <span>Filter Tampilan Data</span>
+                            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                                {currentFilters?.dari_tanggal ?? today} s/d{" "}
+                                {currentFilters?.sampai_tanggal ?? today}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
