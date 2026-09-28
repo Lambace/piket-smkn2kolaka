@@ -27,45 +27,49 @@ class HandleInertiaRequests extends Middleware
                     'id'    => $user->id,
                     'name'  => $user->name,
                     'email' => $user->email,
-                    'role'  => $user->role ?? 'koordinator', // ← BARU: role untuk RBAC
+                    'role'  => $user->role ?? 'koordinator', // role untuk RBAC
                 ] : null,
             ],
+            // ===== BARU: KEY LIVE VIEW =====
+            // Hanya dibagikan jika user login, agar key tidak bocor ke halaman publik.
+            // Dipakai oleh tautan "Laporan" di sidebar untuk membuka halaman Live View.
+            'displayKey' => $user ? config('services.display.key') : null,
             'flash' => [
                 'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
+                'error'   => $request->session()->get('error'),
             ],
             'pengaturan' => fn () => $this->pengaturan(),
         ];
     }
 
-private function pengaturan(): ?array
-{
-    try {
-        $p = \App\Models\Pengaturan::first();
-        if (!$p) return null;
+    private function pengaturan(): ?array
+    {
+        try {
+            $p = Pengaturan::first();
+            if (!$p) return null;
 
-        return [
-            'nama_sekolah'      => $p->nama_sekolah ?? config('app.name'),
-            'nama_instansi'     => $p->nama_instansi ?? null,
-            'warna_tema'        => $p->warna_tema ?? '#4f46e5',
-            'logo'              => $p->logo,
-            'logo_url'          => $p->logo ? Storage::disk('public')->url($p->logo) : null,
+            return [
+                'nama_sekolah'      => $p->nama_sekolah ?? config('app.name'),
+                'nama_instansi'     => $p->nama_instansi ?? null,
+                'warna_tema'        => $p->warna_tema ?? '#4f46e5',
+                'logo'              => $p->logo,
+                'logo_url'          => $p->logo ? $this->fileUrl($p->logo) : null,
 
-            'logo_instansi'     => $p->logo_instansi,
-            'logo_instansi_url' => $p->logo_instansi ? Storage::disk('public')->url($p->logo_instansi) : null,
-            'kop_baris1'        => $p->kop_baris1 ?? null,
-            'kop_baris2'        => $p->kop_baris2 ?? null,
-            'kop_nama_sekolah'  => $p->kop_nama_sekolah ?? null,
-            'alamat'            => $p->alamat ?? null,
-            'telepon'           => $p->telepon ?? null,
-            'email'             => $p->email ?? null,
-            'website'           => $p->website ?? null,
-            'server'            => $p->server ?? null,
-        ];
-    } catch (\Throwable $e) {
-        return null;
+                'logo_instansi'     => $p->logo_instansi,
+                'logo_instansi_url' => $p->logo_instansi ? $this->fileUrl($p->logo_instansi) : null,
+                'kop_baris1'        => $p->kop_baris1 ?? null,
+                'kop_baris2'        => $p->kop_baris2 ?? null,
+                'kop_nama_sekolah'  => $p->kop_nama_sekolah ?? null,
+                'alamat'            => $p->alamat ?? null,
+                'telepon'           => $p->telepon ?? null,
+                'email'             => $p->email ?? null,
+                'website'           => $p->website ?? null,
+                'server'            => $p->server ?? null,
+            ];
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
-}
 
     private function fileUrl(string $path): string
     {

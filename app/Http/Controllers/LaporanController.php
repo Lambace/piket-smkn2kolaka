@@ -91,23 +91,23 @@ class LaporanController extends Controller
                 }
             }
 
-            $periode  = $request->input('periode', 'harian');
+            $periode    = $request->input('periode', 'harian');
             $filterHari = $request->input('filter_hari', 'Semua Hari');
-            $tanggal  = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
-            $semester = $request->input('semester', 'ganjil');
+            $tanggal    = $request->input('tanggal', Carbon::now('Asia/Makassar')->toDateString());
+            $semester   = $request->input('semester', 'ganjil');
 
             $tanggalRef = Carbon::parse($tanggal, 'Asia/Makassar');
 
-                       switch ($periode) {
+            switch ($periode) {
                 case 'mingguan':
                     $dari = $tanggalRef->copy()->startOfWeek();
                     $sampai = $tanggalRef->copy()->endOfWeek();
-                    $labelPeriode = 'Mingguan — '.$dari->isoFormat('D MMM').' s/d '.$sampai->isoFormat('D MMM Y');
+                    $labelPeriode = 'Mingguan — ' . $dari->isoFormat('D MMM') . ' s/d ' . $sampai->isoFormat('D MMM Y');
                     break;
                 case 'bulanan':
                     $dari = $tanggalRef->copy()->startOfMonth();
                     $sampai = $tanggalRef->copy()->endOfMonth();
-                    $labelPeriode = 'Bulanan — '.$tanggalRef->isoFormat('MMMM Y');
+                    $labelPeriode = 'Bulanan — ' . $tanggalRef->isoFormat('MMMM Y');
                     break;
                 case 'semester':
                     $bulan = $tanggalRef->month;
@@ -120,16 +120,15 @@ class LaporanController extends Controller
                         $sampai = Carbon::create($tanggalRef->year, 12, 31)->endOfDay();
                         $labelSemester = 'Ganjil';
                     }
-                    $labelPeriode = 'Semester '.$labelSemester.' — '.$tanggalRef->year;
+                    $labelPeriode = 'Semester ' . $labelSemester . ' — ' . $tanggalRef->year;
                     break;
                 default:
                     $dari = $tanggalRef->copy()->startOfDay();
                     $sampai = $tanggalRef->copy()->endOfDay();
-                    // ===== DIPERBAIKI: Hilangkan nama hari & tanggal agar tidak bentrok dengan filter =====
                     $labelPeriode = 'Harian';
                     break;
             }
-                
+
             $dariStr   = $dari->toDateString();
             $sampaiStr = $sampai->toDateString();
             $withSiswa = 'siswa:id,nisn,nis,nama,kelas,jurusan';
@@ -140,7 +139,7 @@ class LaporanController extends Controller
             $applyDayFilter = function ($query, $columnName = 'tanggal') use ($filterHari) {
                 if ($filterHari !== 'Semua Hari') {
                     $dayMap = [
-                        'Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4, 
+                        'Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4,
                         'Kamis' => 5, 'Jumat' => 6, 'Sabtu' => 7
                     ];
                     $dayNum = $dayMap[$filterHari] ?? null;
@@ -159,10 +158,11 @@ class LaporanController extends Controller
             $rekapPetugas = collect();
             $tidakAdaJadwal = false;
             $pesanLibur = '';
+            $isLiburOtomatis = false;
 
             if ($periode === 'harian') {
                 $namaHariLaporan = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
-                
+
                 $semuaPetugasPdf = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
                 $namaDenganAbsensiPdf = AbsensiPetugas::whereDate('tanggal', $dariStr)
                     ->pluck('nama')
@@ -181,27 +181,42 @@ class LaporanController extends Controller
                     $pesanLibur = "Tidak ada petugas yang dijadwalkan atau absen untuk hari {$namaHariLaporan}.";
                 }
 
-                $rekapPetugas = $petugasRelevanPdf->map(function ($u) use ($dariStr, $tanggalRef) {
-                    $r = AbsensiPetugas::where('nama', $u->name)
-                        ->whereDate('tanggal', $dariStr)
-                        ->orderBy('jam_masuk')
-                        ->first();
+                // ===== SINKRONISASI: LIBUR OTOMATIS (sama dengan card piket) =====
+                $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
+                $totalAbsensiTanggal = AbsensiPetugas::whereDate('tanggal', $dariStr)->count();
 
-                    return [
-                        'nama'       => $u->name,
-                        'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
-                        'jam'        => $r?->jam_masuk ?? '-',
-                        'status'     => $r?->status ?? 'alpha',
-                        'keterangan' => $r?->keterangan ?? '',
-                        'tanggal'    => $r?->tanggal
-                                            ? Carbon::parse($r->tanggal, 'Asia/Makassar')->isoFormat('D MMM Y')
-                                            : $tanggalRef->isoFormat('D MMM Y'),
-                        'format'     => 'harian',
-                    ];
-                });
+                $isLiburOtomatis = ($namaHariLaporan === 'Minggu')
+                    || ($namaHariLaporan === $namaHariIni
+                        && $tanggalRef->isToday()
+                        && $totalAbsensiTanggal === 0);
+
+                if ($isLiburOtomatis) {
+                    $rekapPetugas = collect();
+                    $tidakAdaJadwal = true;
+                    $pesanLibur = 'Tidak ada Petugas Piket yang dijadwalkan Hari ini';
+                } else {
+                    $rekapPetugas = $petugasRelevanPdf->map(function ($u) use ($dariStr, $tanggalRef) {
+                        $r = AbsensiPetugas::where('nama', $u->name)
+                            ->whereDate('tanggal', $dariStr)
+                            ->orderBy('jam_masuk')
+                            ->first();
+
+                        return [
+                            'nama'       => $u->name,
+                            'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                            'jam'        => $r?->jam_masuk ?? '-',
+                            'status'     => $r?->status ?? 'alpha',
+                            'keterangan' => $r?->keterangan ?? '',
+                            'tanggal'    => $r?->tanggal
+                                ? Carbon::parse($r->tanggal, 'Asia/Makassar')->isoFormat('D MMM Y')
+                                : $tanggalRef->isoFormat('D MMM Y'),
+                            'format'     => 'harian',
+                        ];
+                    });
+                }
             } else {
                 $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
-                
+
                 $absensiRentangQuery = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr]);
                 $applyDayFilter($absensiRentangQuery, 'tanggal');
                 $absensiRentang = $absensiRentangQuery->get();
@@ -211,7 +226,7 @@ class LaporanController extends Controller
                     $punyaAbsensi = $absensiRentang->contains(function ($a) use ($namaKey) {
                         return strtolower(trim($a->nama)) === $namaKey;
                     });
-                    
+
                     $cocokKelompok = ($filterHari === 'Semua Hari') ? true : ($u->hari_piket === $filterHari);
                     return $cocokKelompok || $punyaAbsensi;
                 })->map(function ($u) use ($absensiRentang) {
@@ -246,7 +261,7 @@ class LaporanController extends Controller
 
             $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)
                 ->whereIn('status', ['tepat_waktu', 'terlambat'])->count();
-            
+
             $totalDijadwalkan = User::whereIn('role', ['petugas', 'koordinator'])->count();
             $alphaHariIni = max(0, $totalDijadwalkan - $hadirHariIni);
 
@@ -290,70 +305,75 @@ class LaporanController extends Controller
                 ->groupBy('siswa_id')->orderByDesc('jumlah')->limit(10)->get();
 
             $ringkasan = [
-                ['label' => 'Total Siswa Aktif', 'nilai' => Siswa::where('aktif', true)->count().' siswa'],
-                ['label' => 'Petugas Piket Hadir', 'nilai' => $hadirHariIni.' orang'],
-                ['label' => 'Petugas Alpha', 'nilai' => $alphaHariIni.' orang'],
-                ['label' => 'Keterlambatan Siswa', 'nilai' => $keterlambatan->count().' kejadian'],
-                ['label' => 'Izin Keluar', 'nilai' => $izinKeluar->count().' kejadian'],
-                ['label' => 'Pelanggaran', 'nilai' => $pelanggaran->count().' kejadian ('.$pelanggaran->sum('poin').' poin)'],
-                ['label' => 'Kunjungan Tamu', 'nilai' => $tamu->count().' kunjungan'],
+                ['label' => 'Total Siswa Aktif', 'nilai' => Siswa::where('aktif', true)->count() . ' siswa'],
+                ['label' => 'Petugas Piket Hadir', 'nilai' => $hadirHariIni . ' orang'],
+                ['label' => 'Petugas Alpha', 'nilai' => $alphaHariIni . ' orang'],
+                ['label' => 'Keterlambatan Siswa', 'nilai' => $keterlambatan->count() . ' kejadian'],
+                ['label' => 'Izin Keluar', 'nilai' => $izinKeluar->count() . ' kejadian'],
+                ['label' => 'Pelanggaran', 'nilai' => $pelanggaran->count() . ' kejadian (' . $pelanggaran->sum('poin') . ' poin)'],
+                ['label' => 'Kunjungan Tamu', 'nilai' => $tamu->count() . ' kunjungan'],
             ];
+
+            // ===== NETRALKAN RINGKASAN PETUGAS SAAT LIBUR OTOMATIS =====
+            if ($periode === 'harian' && $isLiburOtomatis) {
+                $ringkasan[1]['nilai'] = '0 orang (Libur)';
+                $ringkasan[2]['nilai'] = '0 orang (Libur)';
+            }
 
             $logo = null;
             if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
                 $mime = Storage::disk('public')->mimeType($pengaturan->logo) ?: 'image/png';
-                $logo = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo));
+                $logo = 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($pengaturan->logo));
             }
 
             $logoInstansi = null;
             if ($pengaturan?->logo_instansi && Storage::disk('public')->exists($pengaturan->logo_instansi)) {
                 $mime = Storage::disk('public')->mimeType($pengaturan->logo_instansi) ?: 'image/png';
-                $logoInstansi = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
+                $logoInstansi = 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
             }
 
             $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
-            $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.Carbon::now('Asia/Makassar')->isoFormat('D MMMM Y');
+            $tempatTanggal = ($pengaturan->kota ?? 'Kolaka') . ', ' . Carbon::now('Asia/Makassar')->isoFormat('D MMMM Y');
 
             $totalData = $absensiPetugas->count()
-                       + $keterlambatan->count()
-                       + $izinKeluar->count()
-                       + $pelanggaran->count()
-                       + $tamu->count();
+                + $keterlambatan->count()
+                + $izinKeluar->count()
+                + $pelanggaran->count()
+                + $tamu->count();
 
             $data = [
-                'pengaturan'        => $pengaturan,
-                'logo'              => $logo,
-                'logoInstansi'      => $logoInstansi,
-                'labelPeriode'      => $labelPeriode,
-                'rekapPetugas'      => $rekapPetugas,
-                'ringkasan'         => $ringkasan,
-                'keterlambatan'     => $keterlambatan,
-                'izinKeluar'        => $izinKeluar,
-                'pelanggaran'       => $pelanggaran,
-                'tamu'              => $tamu,
-                'perKelas'          => $perKelas,
-                'perJurusan'        => $perJurusan,
-                'jenisPelanggaran'  => $jenisPelanggaran,
-                'topPoin'           => $topPoin,
-                'topTerlambat'      => $topTerlambat,
-                'totalData'         => $totalData,
-                'dicetakOleh'       => auth()->user()?->name ?? 'Sistem Otomatis',
-                'waktuCetak'        => Carbon::now('Asia/Makassar')->format('d-m-Y H:i'),
-                'koordinator'       => $koordinator,
-                'tempatTanggal'     => $tempatTanggal,
-                'periode'           => $periode,
-                'filter_hari'       => $filterHari,
-                'tidakAdaJadwal'    => $tidakAdaJadwal,
-                'pesanLibur'        => $pesanLibur,
+                'pengaturan'       => $pengaturan,
+                'logo'             => $logo,
+                'logoInstansi'     => $logoInstansi,
+                'labelPeriode'     => $labelPeriode,
+                'rekapPetugas'     => $rekapPetugas,
+                'ringkasan'        => $ringkasan,
+                'keterlambatan'    => $keterlambatan,
+                'izinKeluar'       => $izinKeluar,
+                'pelanggaran'      => $pelanggaran,
+                'tamu'             => $tamu,
+                'perKelas'         => $perKelas,
+                'perJurusan'       => $perJurusan,
+                'jenisPelanggaran' => $jenisPelanggaran,
+                'topPoin'          => $topPoin,
+                'topTerlambat'     => $topTerlambat,
+                'totalData'        => $totalData,
+                'dicetakOleh'      => auth()->user()?->name ?? 'Sistem Otomatis',
+                'waktuCetak'       => Carbon::now('Asia/Makassar')->format('d-m-Y H:i'),
+                'koordinator'      => $koordinator,
+                'tempatTanggal'    => $tempatTanggal,
+                'periode'          => $periode,
+                'filter_hari'      => $filterHari,
+                'tidakAdaJadwal'   => $tidakAdaJadwal,
+                'pesanLibur'       => $pesanLibur,
             ];
 
             $pdf = Pdf::loadView('laporan.pdf', $data)->setPaper('a4', 'portrait');
-            return $pdf->download('Laporan-Piket-'.$periode.'-'.$dariStr.'.pdf');
-
+            return $pdf->download('Laporan-Piket-' . $periode . '-' . $dariStr . '.pdf');
         } catch (\Throwable $e) {
-            Log::error('PDF Error: '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine());
+            Log::error('PDF Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return response()->json([
-                'error' => 'Gagal generate PDF: '.$e->getMessage(),
+                'error' => 'Gagal generate PDF: ' . $e->getMessage(),
                 'file'  => basename($e->getFile()),
                 'line'  => $e->getLine(),
             ], 500);
@@ -423,7 +443,7 @@ class LaporanController extends Controller
             $namaKey = strtolower(trim($u->name));
             $punyaAbsensiDiRentang = in_array($namaKey, $namaDenganAbsensi);
             $cocokKelompok = ($filterHari === 'Semua Hari') ? ($u->hari_piket === $namaHariTanggal) : ($u->hari_piket === $namaHariTanggal);
-            
+
             return $cocokKelompok || $punyaAbsensiDiRentang;
         })->values();
 
@@ -447,17 +467,21 @@ class LaporanController extends Controller
                     $s  = $absen->status === 'sakit' ? 1 : 0;
                     $dl = $absen->status === 'dl' ? 1 : 0;
                 } else {
-                    $h = 0; $a = 1; $i = 0; $s = 0; $dl = 0;
+                    $h = 0;
+                    $a = 1;
+                    $i = 0;
+                    $s = 0;
+                    $dl = 0;
                 }
             } else {
                 $ekspektasi = 0;
                 $cursor = $dari->copy();
                 $sekarang = Carbon::now('Asia/Makassar')->toDateString();
-                
+
                 while ($cursor->toDateString() <= $sampaiStr) {
                     $hariIniCursor = $cursor->isoFormat('dddd');
                     $cocokHari = ($filterHari === 'Semua Hari') ? ($u->hari_piket === $hariIniCursor) : ($filterHari === $hariIniCursor);
-                    
+
                     if ($cocokHari) {
                         if ($cursor->toDateString() <= $sekarang) {
                             $ekspektasi++;
@@ -467,13 +491,13 @@ class LaporanController extends Controller
                 }
 
                 $statuses = $absensiUser->groupBy(fn($r) => \Carbon\Carbon::parse($r->tanggal)->toDateString())
-                                        ->map(fn($grup) => $grup->first()->status)->values();
-                
+                    ->map(fn($grup) => $grup->first()->status)->values();
+
                 $h  = $statuses->filter(fn($st) => in_array($st, ['tepat_waktu', 'terlambat']))->count();
                 $i  = $statuses->filter(fn($st) => $st === 'izin')->count();
                 $s  = $statuses->filter(fn($st) => $st === 'sakit')->count();
                 $dl = $statuses->filter(fn($st) => $st === 'dl')->count();
-                $a  = max(0, $ekspektasi - ($h + $i + $s + $dl)); 
+                $a  = max(0, $ekspektasi - ($h + $i + $s + $dl));
             }
 
             return [
@@ -487,24 +511,39 @@ class LaporanController extends Controller
             ];
         });
 
+        // ===== SINKRONISASI: LIBUR OTOMATIS (sama dengan card piket) =====
+        $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
+        $totalAbsensiTanggal = AbsensiPetugas::whereDate('tanggal', $dariStr)->count();
+
+        $isLibur = ($periode === 'harian') && (
+            ($namaHariTanggal === 'Minggu') ||
+            ($namaHariTanggal === $namaHariIni && $tanggalRef->isToday() && $totalAbsensiTanggal === 0)
+        );
+
+        $pesanLibur = null;
+        if ($isLibur) {
+            $rows = collect(); // kosongkan agar tidak tampil 13 alpha
+            $pesanLibur = 'Tidak ada Petugas Piket yang dijadwalkan Hari ini';
+        }
+
         $pengaturan = Pengaturan::first();
         $logo = null;
         if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
             $mime = Storage::disk('public')->mimeType($pengaturan->logo) ?: 'image/png';
-            $logo = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo));
+            $logo = 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($pengaturan->logo));
         }
         $logoInstansi = null;
         if ($pengaturan?->logo_instansi && Storage::disk('public')->exists($pengaturan->logo_instansi)) {
             $mime = Storage::disk('public')->mimeType($pengaturan->logo_instansi) ?: 'image/png';
-            $logoInstansi = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
+            $logoInstansi = 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
         }
 
         $hariTanggal = $periode === 'harian'
             ? $tanggalRef->isoFormat('dddd, D MMMM Y')
-            : $dari->isoFormat('D MMMM Y').' s/d '.Carbon::parse($sampaiStr, 'Asia/Makassar')->isoFormat('D MMMM Y');
+            : $dari->isoFormat('D MMMM Y') . ' s/d ' . Carbon::parse($sampaiStr, 'Asia/Makassar')->isoFormat('D MMMM Y');
 
         $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
-        $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.Carbon::now('Asia/Makassar')->isoFormat('D MMMM Y');
+        $tempatTanggal = ($pengaturan->kota ?? 'Kolaka') . ', ' . Carbon::now('Asia/Makassar')->isoFormat('D MMMM Y');
 
         $pdf = Pdf::loadView('laporan.daftar-hadir', [
             'pengaturan'    => $pengaturan,
@@ -517,9 +556,10 @@ class LaporanController extends Controller
             'mode'          => $mode,
             'periode'       => $periode,
             'filter_hari'   => $filterHari,
+            'pesanLibur'    => $pesanLibur,
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->download('Daftar-Hadir-Piket-'.$periode.'-'.$dariStr.'.pdf');
+        return $pdf->download('Daftar-Hadir-Piket-' . $periode . '-' . $dariStr . '.pdf');
     }
 
     private function hitungRentang(string $periode, string $tanggal, string $semester): array
@@ -560,7 +600,7 @@ class LaporanController extends Controller
         return [$start, $end, $label];
     }
 
-        private function ambilData(string $jenis, Carbon $start, Carbon $end, string $filterHari = 'Semua Hari')
+    private function ambilData(string $jenis, Carbon $start, Carbon $end, string $filterHari = 'Semua Hari')
     {
         $data = collect();
 
@@ -586,7 +626,7 @@ class LaporanController extends Controller
                     'siswa' => $k->siswa?->nama ?? '-',
                     'kelas' => $k->siswa?->kelas ?? '-',
                     'nisn' => $k->siswa?->nisn ?? '-',
-                    'detail' => ($k->menit_terlambat ?? 0).' menit',
+                    'detail' => ($k->menit_terlambat ?? 0) . ' menit',
                     'keterangan' => $k->keterangan ?? '-',
                     'status' => $k->status ?? '-',
                 ]);
@@ -604,7 +644,7 @@ class LaporanController extends Controller
                     'siswa' => $i->siswa?->nama ?? '-',
                     'kelas' => $i->siswa?->kelas ?? '-',
                     'nisn' => $i->siswa?->nisn ?? '-',
-                    'detail' => ($i->jenis ?? '-').($i->jam_kembali ? ' (kembali '.$i->jam_kembali.')' : ''),
+                    'detail' => ($i->jenis ?? '-') . ($i->jam_kembali ? ' (kembali ' . $i->jam_kembali . ')' : ''),
                     'keterangan' => $i->keterangan ?? '-',
                     'status' => $i->status ?? '-',
                 ]);
@@ -622,7 +662,7 @@ class LaporanController extends Controller
                     'siswa' => $p->siswa?->nama ?? '-',
                     'kelas' => $p->siswa?->kelas ?? '-',
                     'nisn' => $p->siswa?->nisn ?? '-',
-                    'detail' => ($p->jenis_pelanggaran ?? '-').' ('.($p->poin ?? 0).' poin)',
+                    'detail' => ($p->jenis_pelanggaran ?? '-') . ' (' . ($p->poin ?? 0) . ' poin)',
                     'keterangan' => $p->keterangan ?? '-',
                     'status' => $p->status ?? '-',
                 ]);
@@ -640,7 +680,7 @@ class LaporanController extends Controller
                     'siswa' => $t->nama ?? '-',
                     'kelas' => $t->instansi ?? '-',
                     'nisn' => $t->telepon ?? '-',
-                    'detail' => 'Bertemu: '.($t->bertemu_dengan ?? '-').' | '.($t->keperluan ?? '-'),
+                    'detail' => 'Bertemu: ' . ($t->bertemu_dengan ?? '-') . ' | ' . ($t->keperluan ?? '-'),
                     'keterangan' => $t->catatan ?? '-',
                     'status' => $t->jam_keluar ? 'Sudah keluar' : 'Masih di sekolah',
                 ]);
