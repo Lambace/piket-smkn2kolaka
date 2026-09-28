@@ -207,26 +207,24 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== TOMBOL KONTROL + TRAPESIUM (MINI DI MOBILE, CHIP DISEMBUNYIKAN) ===== */}
-            <div className="mb-5 flex justify-end sm:mb-8">
-                <div className="relative w-[70%] max-w-[240px] sm:w-auto sm:max-w-none">
-                    {/* Lapisan 1: putih miring membulat (mobile: lebih tipis/mini) */}
-                    <div className="pointer-events-none absolute -inset-y-2 -left-3 -right-10 rounded-xl bg-white shadow-xl [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:-right-14 sm:rounded-2xl sm:[transform:skewX(-20deg)]" />
+            {/* ===== TOMBOL KONTROL + TRAPESIUM (25% LAYAR DI MOBILE) ===== */}
+            <div className="mb-5 mt-8 flex justify-end sm:mb-8 sm:mt-12">
+                <div className="relative w-1/4 sm:w-auto sm:max-w-none">
+                    {/* Lapisan 1: putih miring (mobile: sangat tipis agar muat di 25% layar) */}
+                    <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-6 rounded-lg bg-white shadow-lg [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:-right-14 sm:rounded-2xl sm:shadow-xl sm:[transform:skewX(-20deg)]" />
 
-                    {/* Lapisan 2: abu-abu miring membulat (mobile: lebih tipis/mini) */}
-                    <div className="pointer-events-none absolute -inset-y-1 -left-1.5 -right-7 rounded-lg bg-slate-400 shadow-lg [transform:skewX(-12deg)] sm:-inset-y-1.5 sm:-left-7 sm:-right-10 sm:rounded-xl sm:[transform:skewX(-16deg)]" />
+                    {/* Lapisan 2: abu-abu miring */}
+                    <div className="pointer-events-none absolute -inset-y-0.5 -left-1 -right-4 rounded-md bg-slate-400 shadow-md [transform:skewX(-12deg)] sm:-inset-y-1.5 sm:-left-7 sm:-right-10 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-16deg)]" />
 
-                    {/* Lapisan 3: tombol (mobile: kecil & ringkas tanpa chip) */}
-                    <div className="relative flex flex-col gap-1.5 sm:gap-2">
+                    {/* Lapisan 3: tombol (mobile: sangat kecil & ringkas) */}
+                    <div className="relative flex flex-col gap-1 sm:gap-2">
                         <button
                             onClick={() => setModalDownload(true)}
-                            className="flex w-full items-center justify-center gap-1 rounded-lg bg-red-600 px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition hover:bg-red-700 sm:w-auto sm:justify-start sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm"
+                            className="flex w-full items-center justify-center gap-0.5 rounded-md bg-red-600 px-1.5 py-1 text-[8px] font-semibold text-white shadow-md transition hover:bg-red-700 sm:w-auto sm:justify-start sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm"
+                            title="Unduh Laporan PDF"
                         >
-                            <span>📄</span>
-                            <span className="whitespace-nowrap">
-                                Unduh Laporan PDF
-                            </span>
-                            {/* CHIP: hilang di layar kecil, muncul di desktop */}
+                            <span className="text-[9px] sm:text-base">📄</span>
+                            <span className="truncate">Laporan</span>
                             <span className="hidden whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold sm:inline-block">
                                 {labelPeriode[downloadPeriode]} •{" "}
                                 {downloadFilterHari}
@@ -235,13 +233,11 @@ export default function Tampil(props) {
 
                         <button
                             onClick={() => setModalFilter(true)}
-                            className="flex w-full items-center justify-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:w-auto sm:justify-start sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm"
+                            className="flex w-full items-center justify-center gap-0.5 rounded-md bg-indigo-600 px-1.5 py-1 text-[8px] font-semibold text-white shadow-md transition hover:bg-indigo-700 sm:w-auto sm:justify-start sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2 sm:text-sm"
+                            title="Filter Tampilan Data"
                         >
-                            <span>🖥️</span>
-                            <span className="whitespace-nowrap">
-                                Filter Tampilan Data
-                            </span>
-                            {/* CHIP: hilang di layar kecil, muncul di desktop */}
+                            <span className="text-[9px] sm:text-base">🖥️</span>
+                            <span className="truncate">Filter</span>
                             <span className="hidden whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold sm:inline-block">
                                 {currentFilters?.dari_tanggal ?? today} s/d{" "}
                                 {currentFilters?.sampai_tanggal ?? today}
