@@ -207,28 +207,28 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== TOMBOL KONTROL + TRAPESIUM MEMBULAT (RESPONSIF PENUH) ===== */}
-            <div className="mb-6 flex justify-center px-8 sm:mb-8 sm:justify-end sm:px-12">
-                <div className="relative w-full max-w-[300px] sm:w-auto sm:max-w-none">
-                    {/* Lapisan 1: putih miring membulat (belakang)
-            mobile: inset kanan POSITIF (right-0) + skew kecil → tidak keluar layar
-            desktop: skew lebih tegas sesuai mockup */}
-                    <div className="pointer-events-none absolute -inset-y-3 -left-4 right-0 rounded-2xl bg-white shadow-xl [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:right-0 sm:[transform:skewX(-20deg)]" />
+            {/* ===== TOMBOL KONTROL + TRAPESIUM (RAPAT KANAN + BLEED DI SEMUA UKURAN LAYAR) ===== */}
+            <div className="mb-6 flex justify-end sm:mb-8">
+                <div className="relative w-[80%] max-w-[300px] sm:w-auto sm:max-w-none">
+                    {/* Lapisan 1: putih miring membulat
+            tepi kanan SELALU keluar layar (mobile & desktop) */}
+                    <div className="pointer-events-none absolute -inset-y-3 -left-4 -right-14 rounded-2xl bg-white shadow-xl [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:[transform:skewX(-20deg)]" />
 
-                    {/* Lapisan 2: abu-abu miring membulat (tengah) */}
-                    <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-3 rounded-xl bg-slate-400 shadow-lg [transform:skewX(-12deg)] sm:-left-7 sm:-right-7 sm:[transform:skewX(-16deg)]" />
+                    {/* Lapisan 2: abu-abu miring membulat
+            tepi kanan SELALU keluar layar (mobile & desktop) */}
+                    <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-10 rounded-xl bg-slate-400 shadow-lg [transform:skewX(-12deg)] sm:-left-7 sm:[transform:skewX(-16deg)]" />
 
-                    {/* Lapisan 3: tombol (lurus, depan, ramping, bisa melipat di layar sempit) */}
+                    {/* Lapisan 3: tombol (lurus, depan, proporsional) */}
                     <div className="relative flex flex-col gap-2">
                         <button
                             onClick={() => setModalDownload(true)}
-                            className="flex w-full flex-wrap items-center justify-center gap-x-1.5 gap-y-1 rounded-xl bg-red-600 px-3 py-2 text-[11px] font-semibold text-white shadow-lg transition hover:bg-red-700 sm:w-auto sm:flex-nowrap sm:justify-start sm:gap-2 sm:px-4 sm:text-sm"
+                            className="flex w-full flex-wrap items-center justify-center gap-x-1.5 gap-y-1 rounded-xl bg-red-600 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg transition hover:bg-red-700 sm:w-auto sm:flex-nowrap sm:justify-start sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                         >
                             <span>📄</span>
                             <span className="whitespace-nowrap">
                                 Unduh Laporan PDF
                             </span>
-                            <span className="whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold sm:text-[10px]">
+                            <span className="whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[8px] font-bold sm:text-[10px]">
                                 {labelPeriode[downloadPeriode]} •{" "}
                                 {downloadFilterHari}
                             </span>
@@ -236,13 +236,13 @@ export default function Tampil(props) {
 
                         <button
                             onClick={() => setModalFilter(true)}
-                            className="flex w-full flex-wrap items-center justify-center gap-x-1.5 gap-y-1 rounded-xl bg-indigo-600 px-3 py-2 text-[11px] font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:w-auto sm:flex-nowrap sm:justify-start sm:gap-2 sm:px-4 sm:text-sm"
+                            className="flex w-full flex-wrap items-center justify-center gap-x-1.5 gap-y-1 rounded-xl bg-indigo-600 px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg transition hover:bg-indigo-700 sm:w-auto sm:flex-nowrap sm:justify-start sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                         >
                             <span>🖥️</span>
                             <span className="whitespace-nowrap">
                                 Filter Tampilan Data
                             </span>
-                            <span className="whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold sm:text-[10px]">
+                            <span className="whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[8px] font-bold sm:text-[10px]">
                                 {currentFilters?.dari_tanggal ?? today} s/d{" "}
                                 {currentFilters?.sampai_tanggal ?? today}
                             </span>
