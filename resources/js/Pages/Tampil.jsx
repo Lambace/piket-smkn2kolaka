@@ -207,16 +207,22 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== TOMBOL KONTROL + TRAPESIUM (25% LAYAR DI MOBILE) ===== */}
+            {/* ===== TOMBOL KONTROL + TRAPESIUM + AKSEN KIRI ===== */}
             <div className="mb-5 mt-8 flex justify-end sm:mb-8 sm:mt-12">
                 <div className="relative w-1/4 sm:w-auto sm:max-w-none">
-                    {/* Lapisan 1: putih miring (mobile: sangat tipis agar muat di 25% layar) */}
+                    {/* AKSEN 1: jajaran genjang slate (belakang, posisi kiri-atas) */}
+                    <div className="pointer-events-none absolute -left-8 -top-2 h-12 w-6 rounded-md bg-slate-400 shadow-md [transform:skewX(-14deg)] sm:-left-16 sm:-top-4 sm:h-24 sm:w-11 sm:rounded-xl sm:[transform:skewX(-20deg)]" />
+
+                    {/* AKSEN 2: jajaran genjang abu terang (depan aksen 1, posisi kiri-bawah) */}
+                    <div className="pointer-events-none absolute -left-14 top-3 h-12 w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:-left-28 sm:top-4 sm:h-24 sm:w-11 sm:rounded-xl sm:[transform:skewX(-20deg)]" />
+
+                    {/* Lapisan 1: putih miring membulat (menutup sebagian aksen → efek bertumpuk) */}
                     <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-6 rounded-lg bg-white shadow-lg [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:-right-14 sm:rounded-2xl sm:shadow-xl sm:[transform:skewX(-20deg)]" />
 
-                    {/* Lapisan 2: abu-abu miring */}
+                    {/* Lapisan 2: abu-abu miring membulat */}
                     <div className="pointer-events-none absolute -inset-y-0.5 -left-1 -right-4 rounded-md bg-slate-400 shadow-md [transform:skewX(-12deg)] sm:-inset-y-1.5 sm:-left-7 sm:-right-10 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-16deg)]" />
 
-                    {/* Lapisan 3: tombol (mobile: sangat kecil & ringkas) */}
+                    {/* Lapisan 3: tombol (lurus, depan) */}
                     <div className="relative flex flex-col gap-1 sm:gap-2">
                         <button
                             onClick={() => setModalDownload(true)}
@@ -246,6 +252,8 @@ export default function Tampil(props) {
                     </div>
                 </div>
             </div>
+
+            
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
                 {/* Card Petugas Piket (langsung di bawah tombol) */}
