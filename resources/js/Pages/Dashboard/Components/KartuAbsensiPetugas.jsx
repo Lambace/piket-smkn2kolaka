@@ -13,20 +13,23 @@ export default function KartuAbsensiPetugas({ data }) {
     const [dari, setDari] = useState(firstOfMonth);
     const [sampai, setSampai] = useState(todayStr);
 
-    // Cek apakah hari ini libur otomatis
-    const isLiburOtomatis =
-        (data?.length === 1 && data[0]?.status === "libur_otomatis") ||
-        (data?.length === 1 && data[0]?.status === "tidak_ada_jadwal");
+    // ===== DAFTAR STATUS KHUSUS (bukan data petugas) =====
+    // Status ini adalah pesan sistem, BUKAN data kehadiran petugas
+    const STATUS_KHUSUS = ["libur", "libur_otomatis", "tidak_ada_jadwal"];
 
-    // Pisahkan menjadi 2 kategori utama (Hadir dan Alpha)
+    // Cek apakah data berisi pesan libur/tidak ada jadwal
+    const isLiburOtomatis =
+        (data?.length ?? 0) === 1 && STATUS_KHUSUS.includes(data[0]?.status);
+
+    // Pisahkan menjadi 2 kategori (item pesan DIBUANG dari daftar)
     const hadirList =
         data?.filter(
             (p) =>
+                !STATUS_KHUSUS.includes(p.status) &&
                 p.status !== "alpha" &&
-                p.status !== "belum_absen" &&
-                p.status !== "libur_otomatis" &&
-                p.status !== "tidak_ada_jadwal",
+                p.status !== "belum_absen",
         ) ?? [];
+
     const alphaList = data?.filter((p) => p.status === "alpha") ?? [];
 
     const downloadDaftarHadir = () => {
@@ -190,10 +193,13 @@ export default function KartuAbsensiPetugas({ data }) {
                     <p className="text-xl font-bold text-slate-200">
                         {data[0]?.pesan || "Tidak ada aktivitas piket hari ini"}
                     </p>
+                    <p className="mt-2 text-sm text-slate-400">
+                        Silakan coba lagi besok atau periksa jadwal piket.
+                    </p>
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {/* PERBAIKAN: Grid diubah menjadi 2 kolom (Hadir & Alpha) */}
+                    {/* Grid 2 kolom (Hadir & Alpha) */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {/* KOLOM 1: HADIR */}
                         <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4">
