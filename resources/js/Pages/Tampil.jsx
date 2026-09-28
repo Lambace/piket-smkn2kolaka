@@ -207,16 +207,22 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== TOMBOL KONTROL + TRAPESIUM + AKSEN KIRI ===== */}
+            {/* ===== TOMBOL KONTROL + TRAPESIUM + AKSEN KIRI (BERJARAK & TUMPUKAN 50%) ===== */}
             <div className="mb-5 mt-8 flex justify-end sm:mb-8 sm:mt-12">
                 <div className="relative w-1/4 sm:w-auto sm:max-w-none">
-                    {/* AKSEN 1: jajaran genjang slate (belakang, posisi kiri-atas) */}
-                    <div className="pointer-events-none absolute -left-8 -top-2 h-12 w-6 rounded-md bg-slate-400 shadow-md [transform:skewX(-14deg)] sm:-left-16 sm:-top-4 sm:h-24 sm:w-11 sm:rounded-xl sm:[transform:skewX(-20deg)]" />
+                    {/* AKSEN ABU-ABU (slate) — belakang, kanan-atas kelompok aksen
+            mobile: w-6(24px) h-12(48px) | desktop: w-11(44px) h-24(96px)
+            posisi dipilih agar ada celah ±12px ke lapisan putih mockup */}
+                    <div className="pointer-events-none absolute -left-10 -top-3 h-12 w-6 rounded-md bg-slate-400 shadow-md [transform:skewX(-14deg)] sm:-left-[104px] sm:-top-8 sm:h-24 sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
 
-                    {/* AKSEN 2: jajaran genjang abu terang (depan aksen 1, posisi kiri-bawah) */}
-                    <div className="pointer-events-none absolute -left-14 top-3 h-12 w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:-left-28 sm:top-4 sm:h-24 sm:w-11 sm:rounded-xl sm:[transform:skewX(-20deg)]" />
+                    {/* AKSEN PUTIH/TERANG (gray-300) — depan, kiri-bawah
+            offset = -(50% lebar) & +(50% tinggi) dari aksen abu-abu
+            mobile: -52px = -40px - 12px ; top 12px = -12px + 24px
+            desktop: -126px = -104px - 22px ; top 16px = -32px + 48px
+            → menutup tepat 50% lebar & 50% tinggi aksen abu-abu */}
+                    <div className="pointer-events-none absolute -left-[52px] top-3 h-12 w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:-left-[126px] sm:top-4 sm:h-24 sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
 
-                    {/* Lapisan 1: putih miring membulat (menutup sebagian aksen → efek bertumpuk) */}
+                    {/* Lapisan 1: putih miring membulat (TEPIS -12/-2 → tidak menyentuh aksen) */}
                     <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-6 rounded-lg bg-white shadow-lg [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:-right-14 sm:rounded-2xl sm:shadow-xl sm:[transform:skewX(-20deg)]" />
 
                     {/* Lapisan 2: abu-abu miring membulat */}
@@ -253,7 +259,6 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
                 {/* Card Petugas Piket (langsung di bawah tombol) */}
