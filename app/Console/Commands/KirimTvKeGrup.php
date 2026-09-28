@@ -147,7 +147,7 @@ class KirimTvKeGrup extends Command
             '📄 *Download Laporan* — unduh PDF laporan harian:',
             $urlPdf,
             '',
-            '_© Sistem Informasi Piket - Si Piket_',
+            '_© Sistem Informasi Si_Piket',
         ]);
 
         // ===== 5. Kirim ke Fonnte =====

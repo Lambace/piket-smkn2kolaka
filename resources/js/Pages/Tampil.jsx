@@ -9,9 +9,9 @@ import TabelTerlambatTertinggi from "./Dashboard/Components/TabelTerlambatTertin
 import TabelPoinTertinggi from "./Dashboard/Components/TabelPoinTertinggi";
 import AktivitasTerbaru from "./Dashboard/Components/AktivitasTerbaru";
 
+// ===== PERBAIKAN: Opsi "mingguan" dihapus =====
 const labelPeriode = {
     harian: "Harian",
-    mingguan: "Mingguan",
     bulanan: "Bulanan",
     semester: "Semester",
 };
@@ -25,7 +25,6 @@ export default function Tampil(props) {
     const [now, setNow] = useState(new Date());
 
     // ===== STATE KHUSUS UNTUK DOWNLOAD (HEADER) =====
-    // State ini TIDAK dikirim ke backend untuk tampilan, hanya untuk tombol download
     const [downloadPeriode, setDownloadPeriode] = useState("harian");
     const [downloadFilterHari, setDownloadFilterHari] = useState("Semua Hari");
 
@@ -59,7 +58,6 @@ export default function Tampil(props) {
                 k: props.displayKey,
                 dari_tanggal: dariTanggal,
                 sampai_tanggal: sampaiTanggal,
-                // TIDAK mengirim filter_hari atau periode_tampilan
             },
             { preserveState: true, preserveScroll: true },
         );
@@ -83,12 +81,12 @@ export default function Tampil(props) {
     const downloadLaporan = () => {
         const params = new URLSearchParams({
             jenis: "gabungan",
-            periode: downloadPeriode, // Dari Header
-            filter_hari: downloadFilterHari, // Dari Header
+            periode: downloadPeriode,
+            filter_hari: downloadFilterHari,
             tanggal: today,
             semester: semesterOtomatis,
-            dari_tanggal: dariTanggal, // Dari Panel Ungu
-            sampai_tanggal: sampaiTanggal, // Dari Panel Ungu
+            dari_tanggal: dariTanggal,
+            sampai_tanggal: sampaiTanggal,
         });
         if (props.displayKey) params.set("k", props.displayKey);
         window.location.href = `${route("tampil.laporan")}?${params.toString()}`;
@@ -98,9 +96,9 @@ export default function Tampil(props) {
         const params = new URLSearchParams({
             periode: "harian",
             tanggal: today,
-            filter_hari: downloadFilterHari, // Dari Header
-            dari_tanggal: dariTanggal, // Dari Panel Ungu
-            sampai_tanggal: sampaiTanggal, // Dari Panel Ungu
+            filter_hari: downloadFilterHari,
+            dari_tanggal: dariTanggal,
+            sampai_tanggal: sampaiTanggal,
         });
         if (props.displayKey) params.set("k", props.displayKey);
         window.location.href = `${route("tampil.daftar-hadir")}?${params.toString()}`;
@@ -147,16 +145,15 @@ export default function Tampil(props) {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* DROPDOWN HEADER: Hanya update state lokal, TIDAK reload halaman */}
+                        {/* DROPDOWN HEADER: Opsi Mingguan DIHAPUS */}
                         <select
                             value={downloadPeriode}
                             onChange={(e) => setDownloadPeriode(e.target.value)}
                             className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-red-500"
                         >
-                            <option value="harian"> Harian</option>
-                            <option value="mingguan">🗓️ Mingguan</option>
+                            <option value="harian">📅 Harian</option>
                             <option value="bulanan">📆 Bulanan</option>
-                            <option value="semester">🎓 Semester</option>
+                            <option value="semester"> Semester</option>
                         </select>
 
                         <select
@@ -167,8 +164,8 @@ export default function Tampil(props) {
                             className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="Semua Hari">👥 Semua Hari</option>
-                            <option value="Senin">📌 Senin</option>
-                            <option value="Selasa"> Selasa</option>
+                            <option value="Senin"> Senin</option>
+                            <option value="Selasa">📌 Selasa</option>
                             <option value="Rabu">📌 Rabu</option>
                             <option value="Kamis">📌 Kamis</option>
                             <option value="Jumat"> Jumat</option>
