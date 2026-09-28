@@ -98,7 +98,7 @@ class LaporanController extends Controller
 
             $tanggalRef = Carbon::parse($tanggal, 'Asia/Makassar');
 
-            switch ($periode) {
+                       switch ($periode) {
                 case 'mingguan':
                     $dari = $tanggalRef->copy()->startOfWeek();
                     $sampai = $tanggalRef->copy()->endOfWeek();
@@ -125,9 +125,11 @@ class LaporanController extends Controller
                 default:
                     $dari = $tanggalRef->copy()->startOfDay();
                     $sampai = $tanggalRef->copy()->endOfDay();
-                    $labelPeriode = 'Harian — '.$tanggalRef->isoFormat('dddd, D MMMM Y');
+                    // ===== DIPERBAIKI: Hilangkan nama hari & tanggal agar tidak bentrok dengan filter =====
+                    $labelPeriode = 'Harian';
+                    break;
             }
-
+                
             $dariStr   = $dari->toDateString();
             $sampaiStr = $sampai->toDateString();
             $withSiswa = 'siswa:id,nisn,nis,nama,kelas,jurusan';
