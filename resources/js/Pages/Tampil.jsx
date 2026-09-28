@@ -15,6 +15,65 @@ const labelPeriode = {
     semester: "Semester",
 };
 
+// ===== DROPDOWN CUSTOM: menu terkunci di dalam card (tidak keluar layar) =====
+function SelectCustom({
+    value,
+    onChange,
+    options,
+    focusRing = "focus:ring-red-500",
+}) {
+    const [open, setOpen] = useState(false);
+    const current = options.find((o) => o.value === value);
+
+    return (
+        <div className="relative w-full sm:flex-1">
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className={`flex w-full items-center justify-between rounded-lg border-0 bg-slate-700 px-3 py-2 text-xs font-semibold text-white shadow focus:ring-2 ${focusRing} sm:text-sm`}
+            >
+                <span className="truncate">{current?.label ?? value}</span>
+                <span
+                    className={`ml-2 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+                >
+                    ▾
+                </span>
+            </button>
+
+            {open && (
+                <>
+                    {/* Klik di luar menu untuk menutup */}
+                    <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setOpen(false)}
+                    />
+                    {/* left-0 right-0 = lebar menu persis sama dengan tombol → tidak keluar card */}
+                    <ul className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-auto rounded-lg border border-slate-600 bg-slate-800 py-1 shadow-2xl">
+                        {options.map((o) => (
+                            <li key={o.value}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(o.value);
+                                        setOpen(false);
+                                    }}
+                                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold sm:text-sm ${
+                                        o.value === value
+                                            ? "bg-indigo-600 text-white"
+                                            : "text-slate-200 hover:bg-slate-700"
+                                    }`}
+                                >
+                                    {o.label}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
+        </div>
+    );
+}
+
 export default function Tampil(props) {
     usePoll(60000);
 
@@ -129,31 +188,32 @@ export default function Tampil(props) {
                         📄 Unduh Laporan PDF
                     </p>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <select
+                        {/* PERBAIKAN: select native diganti SelectCustom */}
+                        <SelectCustom
                             value={downloadPeriode}
-                            onChange={(e) => setDownloadPeriode(e.target.value)}
-                            className="w-full rounded-lg border-0 bg-slate-700 px-2 py-2 text-xs font-semibold text-white shadow focus:ring-2 focus:ring-red-500 sm:flex-1 sm:px-3 sm:text-sm"
-                        >
-                            <option value="harian">📅 Harian</option>
-                            <option value="bulanan">📆 Bulanan</option>
-                            <option value="semester">🎓 Semester</option>
-                        </select>
+                            onChange={setDownloadPeriode}
+                            focusRing="focus:ring-red-500"
+                            options={[
+                                { value: "harian", label: "📅 Harian" },
+                                { value: "bulanan", label: "📆 Bulanan" },
+                                { value: "semester", label: "🎓 Semester" },
+                            ]}
+                        />
 
-                        <select
+                        <SelectCustom
                             value={downloadFilterHari}
-                            onChange={(e) =>
-                                setDownloadFilterHari(e.target.value)
-                            }
-                            className="w-full rounded-lg border-0 bg-slate-700 px-2 py-2 text-xs font-semibold text-white shadow focus:ring-2 focus:ring-blue-500 sm:flex-1 sm:px-3 sm:text-sm"
-                        >
-                            <option value="Semua Hari">👥 Semua Hari</option>
-                            <option value="Senin">📌 Senin</option>
-                            <option value="Selasa">📌 Selasa</option>
-                            <option value="Rabu">📌 Rabu</option>
-                            <option value="Kamis">📌 Kamis</option>
-                            <option value="Jumat">📌 Jumat</option>
-                            <option value="Sabtu">📌 Sabtu</option>
-                        </select>
+                            onChange={setDownloadFilterHari}
+                            focusRing="focus:ring-blue-500"
+                            options={[
+                                { value: "Semua Hari", label: "👥 Semua Hari" },
+                                { value: "Senin", label: "📌 Senin" },
+                                { value: "Selasa", label: "📌 Selasa" },
+                                { value: "Rabu", label: "📌 Rabu" },
+                                { value: "Kamis", label: "📌 Kamis" },
+                                { value: "Jumat", label: "📌 Jumat" },
+                                { value: "Sabtu", label: "📌 Sabtu" },
+                            ]}
+                        />
 
                         <button
                             onClick={downloadLaporan}
