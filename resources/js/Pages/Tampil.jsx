@@ -16,7 +16,6 @@ const labelPeriode = {
 };
 
 export default function Tampil(props) {
-    // usePoll tetap dipertahankan agar data tetap update di background tanpa perlu refresh manual
     usePoll(60000);
 
     const pengaturan = usePage().props.pengaturan ?? {};
@@ -94,39 +93,39 @@ export default function Tampil(props) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 p-4 sm:p-6">
+        <div className="min-h-screen bg-slate-900 p-2 sm:p-4 md:p-6">
             <Head title="Papan Informasi Piket" />
 
-            {/* Header */}
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+            {/* Header - Responsive */}
+            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     {logoSrc ? (
                         <img
                             src={logoSrc}
                             alt="Logo"
-                            className="h-12 w-12 rounded-xl bg-white object-contain p-1"
+                            className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white object-contain p-1 flex-shrink-0"
                         />
                     ) : (
-                        <span className="text-4xl">🏫</span>
+                        <span className="text-3xl sm:text-4xl flex-shrink-0">
+                            🏫
+                        </span>
                     )}
-                    <div>
-                        <h1 className="text-2xl font-extrabold text-white">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="text-lg sm:text-2xl font-extrabold text-white truncate">
                             {pengaturan.nama_sekolah ?? "SMKN 2 Kolaka"}
                         </h1>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-xs sm:text-sm text-slate-400 truncate">
                             Papan Informasi Piket — {props.hariIni}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2">
-                    {/* JAM DAN TEKS PEMBARUAN DIHAPUS DI SINI */}
-
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
+                    <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full">
                         <select
                             value={downloadPeriode}
                             onChange={(e) => setDownloadPeriode(e.target.value)}
-                            className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-red-500"
+                            className="rounded-lg border-0 bg-slate-800 px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-red-500 flex-1 sm:flex-none"
                         >
                             <option value="harian">📅 Harian</option>
                             <option value="bulanan">📆 Bulanan</option>
@@ -138,7 +137,7 @@ export default function Tampil(props) {
                             onChange={(e) =>
                                 setDownloadFilterHari(e.target.value)
                             }
-                            className="rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-blue-500"
+                            className="rounded-lg border-0 bg-slate-800 px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none"
                         >
                             <option value="Semua Hari">👥 Semua Hari</option>
                             <option value="Senin">📌 Senin</option>
@@ -146,39 +145,40 @@ export default function Tampil(props) {
                             <option value="Rabu">📌 Rabu</option>
                             <option value="Kamis">📌 Kamis</option>
                             <option value="Jumat">📌 Jumat</option>
-                            <option value="Sabtu">📌 Sabtu</option>
+                            <option value="Sabtu"> Sabtu</option>
                         </select>
-
-                        <button
-                            onClick={downloadLaporan}
-                            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:bg-red-700"
-                            title="Download PDF berdasarkan pilihan Header + Panel Ungu"
-                        >
-                            Download Laporan {labelPeriode[downloadPeriode]}
-                        </button>
                     </div>
+
+                    <button
+                        onClick={downloadLaporan}
+                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg bg-red-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition hover:bg-red-700"
+                        title="Download PDF berdasarkan pilihan Header + Panel Ungu"
+                    >
+                        📄 {labelPeriode[downloadPeriode]}
+                    </button>
                 </div>
             </div>
 
-            {/* ===== PANEL UNGU: Hanya memfilter tampilan ===== */}
-            <div className="mb-6 rounded-lg bg-indigo-900/40 border border-indigo-700/50 p-4 shadow-lg">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
+            {/* Panel Ungu - Responsive */}
+            <div className="mb-4 sm:mb-6 rounded-lg bg-indigo-900/40 border border-indigo-700/50 p-3 sm:p-4 shadow-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <button
                             onClick={() => setShowFilter(!showFilter)}
-                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-indigo-700 whitespace-nowrap"
                         >
                             <span>📅</span>
-                            <span>
+                            <span className="hidden sm:inline">
                                 {showFilter
                                     ? "Sembunyikan Filter"
                                     : "Tampilkan Filter Tanggal"}
                             </span>
+                            <span className="sm:hidden">Filter</span>
                         </button>
 
                         {(currentFilters?.dari_tanggal ||
                             currentFilters?.sampai_tanggal) && (
-                            <span className="text-sm text-slate-300">
+                            <span className="text-xs sm:text-sm text-slate-300 break-all sm:break-normal">
                                 Aktif:{" "}
                                 <strong className="text-white">
                                     {currentFilters.dari_tanggal}
@@ -192,9 +192,9 @@ export default function Tampil(props) {
                     </div>
 
                     {showFilter && (
-                        <div className="flex flex-wrap items-end gap-3">
-                            <div>
-                                <label className="block text-xs font-medium text-slate-400 mb-1">
+                        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-2 sm:gap-3 w-full sm:w-auto">
+                            <div className="flex-1 sm:flex-none">
+                                <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">
                                     Dari Tanggal
                                 </label>
                                 <input
@@ -203,11 +203,11 @@ export default function Tampil(props) {
                                     onChange={(e) =>
                                         setDariTanggal(e.target.value)
                                     }
-                                    className="rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full rounded-lg border-0 bg-slate-700 px-2 sm:px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-400 mb-1">
+                            <div className="flex-1 sm:flex-none">
+                                <label className="block text-[10px] sm:text-xs font-medium text-slate-400 mb-1">
                                     Sampai Tanggal
                                 </label>
                                 <input
@@ -216,28 +216,30 @@ export default function Tampil(props) {
                                     onChange={(e) =>
                                         setSampaiTanggal(e.target.value)
                                     }
-                                    className="rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full rounded-lg border-0 bg-slate-700 px-2 sm:px-3 py-2 text-xs sm:text-sm text-white focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
-                            <button
-                                onClick={applyFilter}
-                                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
-                            >
-                                ✅ Terapkan
-                            </button>
-                            <button
-                                onClick={resetFilter}
-                                className="rounded-lg bg-slate-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
-                            >
-                                🔄 Reset
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={applyFilter}
+                                    className="flex-1 sm:flex-none rounded-lg bg-green-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-green-700 whitespace-nowrap"
+                                >
+                                    ✅ Terapkan
+                                </button>
+                                <button
+                                    onClick={resetFilter}
+                                    className="flex-1 sm:flex-none rounded-lg bg-slate-600 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-slate-700 whitespace-nowrap"
+                                >
+                                    🔄 Reset
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* ===== KONTEN TAMPILAN ===== */}
-            <div className="space-y-6">
+            {/* Content - Responsive */}
+            <div className="space-y-4 sm:space-y-6">
                 <KartuAbsensiPetugas
                     data={props.absensiPetugas ?? []}
                     displayKey={props.displayKey}
@@ -251,7 +253,7 @@ export default function Tampil(props) {
                     bukuTamuList={props.bukuTamuList ?? []}
                 />
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
                         <GrafikKeterlambatan
                             data={props.chartData}
@@ -264,14 +266,14 @@ export default function Tampil(props) {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
                     <TabelTerlambatTertinggi data={props.topTerlambat} />
                     <TabelPoinTertinggi data={props.topPelanggaran} />
                     <AktivitasTerbaru data={props.aktivitas} />
                 </div>
             </div>
 
-            <p className="mt-6 text-center text-xs text-slate-600">
+            <p className="mt-4 sm:mt-6 text-center text-[10px] sm:text-xs text-slate-600 px-2">
                 © {new Date().getFullYear()}{" "}
                 {pengaturan.nama_sekolah ?? "SMKN 2 Kolaka"} — Sistem Informasi
                 Piket
