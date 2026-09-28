@@ -77,12 +77,10 @@ function Modal({ open, onClose, title, icon, children }) {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop gelap */}
             <div
                 className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                 onClick={onClose}
             />
-            {/* Panel modal */}
             <div className="relative w-full max-w-md rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-2xl">
                 <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3">
                     <h3 className="text-base font-bold text-white">
@@ -209,13 +207,21 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== BAR KONTROL: 2 TOMBOL PEMBUKA MODAL ===== */}
-            <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-3 shadow-lg sm:mb-6 sm:p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    {/* TOMBOL 1: UNDUH LAPORAN */}
+            {/* ===== KONTEN TAMPILAN ===== */}
+            <div className="space-y-4 sm:space-y-6">
+                {/* 1. CARD PETUGAS PIKET */}
+                <div className="min-w-0">
+                    <KartuAbsensiPetugas
+                        data={props.absensiPetugas ?? []}
+                        displayKey={props.displayKey}
+                    />
+                </div>
+
+                {/* 2. DUA TOMBOL KONTROL: INLINE, DI TENGAH, TANPA CARD */}
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
                     <button
                         onClick={() => setModalDownload(true)}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:w-auto sm:text-sm"
+                        className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:text-sm"
                     >
                         <span>📄</span>
                         <span>Unduh Laporan PDF</span>
@@ -225,10 +231,9 @@ export default function Tampil(props) {
                         </span>
                     </button>
 
-                    {/* TOMBOL 2: FILTER TAMPILAN */}
                     <button
                         onClick={() => setModalFilter(true)}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-indigo-700 sm:w-auto sm:text-sm"
+                        className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-indigo-700 sm:text-sm"
                     >
                         <span>🖥️</span>
                         <span>Filter Tampilan Data</span>
@@ -237,6 +242,46 @@ export default function Tampil(props) {
                             {currentFilters?.sampai_tanggal ?? today}
                         </span>
                     </button>
+                </div>
+
+                {/* 3. SISA KONTEN */}
+                <div className="min-w-0">
+                    <KartuStatistik stats={props.stats} />
+                </div>
+                <div className="min-w-0">
+                    <DataHariIni
+                        keterlambatanList={props.keterlambatanList ?? []}
+                        izinKeluarList={props.izinKeluarList ?? []}
+                        pelanggaranList={props.pelanggaranList ?? []}
+                        bukuTamuList={props.bukuTamuList ?? []}
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+                    <div className="min-w-0 lg:col-span-2">
+                        <GrafikKeterlambatan
+                            data={props.chartData}
+                            judul="📊 Keterlambatan per Kelas"
+                        />
+                    </div>
+                    <div className="min-w-0">
+                        <DonutChart
+                            data={props.donutJurusan}
+                            judul="🎓 Keterlambatan per Jurusan"
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+                    <div className="min-w-0">
+                        <TabelTerlambatTertinggi data={props.topTerlambat} />
+                    </div>
+                    <div className="min-w-0">
+                        <TabelPoinTertinggi data={props.topPelanggaran} />
+                    </div>
+                    <div className="min-w-0">
+                        <AktivitasTerbaru data={props.aktivitas} />
+                    </div>
                 </div>
             </div>
 
@@ -351,54 +396,6 @@ export default function Tampil(props) {
                     </div>
                 </div>
             </Modal>
-
-            {/* ===== KONTEN TAMPILAN ===== */}
-            <div className="space-y-4 sm:space-y-6">
-                <div className="min-w-0">
-                    <KartuAbsensiPetugas
-                        data={props.absensiPetugas ?? []}
-                        displayKey={props.displayKey}
-                    />
-                </div>
-                <div className="min-w-0">
-                    <KartuStatistik stats={props.stats} />
-                </div>
-                <div className="min-w-0">
-                    <DataHariIni
-                        keterlambatanList={props.keterlambatanList ?? []}
-                        izinKeluarList={props.izinKeluarList ?? []}
-                        pelanggaranList={props.pelanggaranList ?? []}
-                        bukuTamuList={props.bukuTamuList ?? []}
-                    />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-                    <div className="min-w-0 lg:col-span-2">
-                        <GrafikKeterlambatan
-                            data={props.chartData}
-                            judul="📊 Keterlambatan per Kelas"
-                        />
-                    </div>
-                    <div className="min-w-0">
-                        <DonutChart
-                            data={props.donutJurusan}
-                            judul="🎓 Keterlambatan per Jurusan"
-                        />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-                    <div className="min-w-0">
-                        <TabelTerlambatTertinggi data={props.topTerlambat} />
-                    </div>
-                    <div className="min-w-0">
-                        <TabelPoinTertinggi data={props.topPelanggaran} />
-                    </div>
-                    <div className="min-w-0">
-                        <AktivitasTerbaru data={props.aktivitas} />
-                    </div>
-                </div>
-            </div>
 
             <p className="mt-4 px-2 text-center text-[10px] text-slate-600 sm:mt-6 sm:text-xs">
                 © {new Date().getFullYear()}{" "}
