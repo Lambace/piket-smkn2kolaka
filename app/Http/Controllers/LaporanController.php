@@ -560,7 +560,7 @@ class LaporanController extends Controller
         return [$start, $end, $label];
     }
 
-    private function ambilData(string $jenis, Carbon $start, Carbon $end, string $filterHari = 'Semua Hari')
+        private function ambilData(string $jenis, Carbon $start, Carbon $end, string $filterHari = 'Semua Hari')
     {
         $data = collect();
 
@@ -581,32 +581,33 @@ class LaporanController extends Controller
             $query->orderByDesc('tanggal')->get()->each(function ($k) use ($data) {
                 $data->push([
                     'jenis_aktivitas' => 'Keterlambatan',
-                    'tanggal' => $k->tanggal->isoFormat('D MMM Y'),
-                    'jam' => $k->jam_datang,
+                    'tanggal' => $k->tanggal?->isoFormat('D MMM Y') ?? '-',
+                    'jam' => $k->jam_datang ?? '-',
                     'siswa' => $k->siswa?->nama ?? '-',
                     'kelas' => $k->siswa?->kelas ?? '-',
                     'nisn' => $k->siswa?->nisn ?? '-',
-                    'detail' => $k->menit_terlambat . ' menit',
+                    'detail' => ($k->menit_terlambat ?? 0).' menit',
                     'keterangan' => $k->keterangan ?? '-',
-                    'status' => $k->status,
+                    'status' => $k->status ?? '-',
                 ]);
             });
         }
 
-        if (in_array($jenis, ['gabungan', 'izin_keluar'])) {
+        if (in_array($jenis, ['gabungan', 'izin_keluar'))) {
+            // CATATAN: ganti baris di atas menjadi: if (in_array($jenis, ['gabungan', 'izin_keluar'])) {
             $query = IzinKeluar::with('siswa:id,nisn,nama,kelas')->whereBetween('tanggal', [$start, $end]);
             $applyDayFilter($query, 'tanggal');
             $query->orderByDesc('tanggal')->get()->each(function ($i) use ($data) {
                 $data->push([
                     'jenis_aktivitas' => 'Izin Keluar',
-                    'tanggal' => $i->tanggal->isoFormat('D MMM Y'),
-                    'jam' => $i->jam_keluar,
+                    'tanggal' => $i->tanggal?->isoFormat('D MMM Y') ?? '-',
+                    'jam' => $i->jam_keluar ?? '-',
                     'siswa' => $i->siswa?->nama ?? '-',
                     'kelas' => $i->siswa?->kelas ?? '-',
                     'nisn' => $i->siswa?->nisn ?? '-',
-                    'detail' => $i->jenis . ($i->jam_kembali ? ' (kembali ' . $i->jam_kembali . ')' : ''),
+                    'detail' => ($i->jenis ?? '-').($i->jam_kembali ? ' (kembali '.$i->jam_kembali.')' : ''),
                     'keterangan' => $i->keterangan ?? '-',
-                    'status' => $i->status,
+                    'status' => $i->status ?? '-',
                 ]);
             });
         }
@@ -617,14 +618,14 @@ class LaporanController extends Controller
             $query->orderByDesc('tanggal')->get()->each(function ($p) use ($data) {
                 $data->push([
                     'jenis_aktivitas' => 'Pelanggaran',
-                    'tanggal' => $p->tanggal->isoFormat('D MMM Y'),
+                    'tanggal' => $p->tanggal?->isoFormat('D MMM Y') ?? '-',
                     'jam' => '-',
                     'siswa' => $p->siswa?->nama ?? '-',
                     'kelas' => $p->siswa?->kelas ?? '-',
                     'nisn' => $p->siswa?->nisn ?? '-',
-                    'detail' => $p->jenis_pelanggaran . ' (' . $p->poin . ' poin)',
+                    'detail' => ($p->jenis_pelanggaran ?? '-').' ('.($p->poin ?? 0).' poin)',
                     'keterangan' => $p->keterangan ?? '-',
-                    'status' => $p->status,
+                    'status' => $p->status ?? '-',
                 ]);
             });
         }
@@ -635,12 +636,12 @@ class LaporanController extends Controller
             $query->orderByDesc('tanggal_kunjungan')->get()->each(function ($t) use ($data) {
                 $data->push([
                     'jenis_aktivitas' => 'Tamu',
-                    'tanggal' => $t->tanggal_kunjungan->isoFormat('D MMM Y'),
-                    'jam' => $t->jam_masuk,
-                    'siswa' => $t->nama,
+                    'tanggal' => $t->tanggal_kunjungan?->isoFormat('D MMM Y') ?? '-',
+                    'jam' => $t->jam_masuk ?? '-',
+                    'siswa' => $t->nama ?? '-',
                     'kelas' => $t->instansi ?? '-',
                     'nisn' => $t->telepon ?? '-',
-                    'detail' => 'Bertemu: ' . ($t->bertemu_dengan ?? '-') . ' | ' . $t->keperluan,
+                    'detail' => 'Bertemu: '.($t->bertemu_dengan ?? '-').' | '.($t->keperluan ?? '-'),
                     'keterangan' => $t->catatan ?? '-',
                     'status' => $t->jam_keluar ? 'Sudah keluar' : 'Masih di sekolah',
                 ]);
