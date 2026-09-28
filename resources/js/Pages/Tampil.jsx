@@ -207,21 +207,23 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== TOMBOL KONTROL + TRAPESIUM + AKSEN KIRI (BERJARAK & TUMPUKAN 50%) ===== */}
+            {/* ===== TOMBOL KONTROL + TRAPESIUM + AKSEN KIRI (TINGGI SINKRON MOCKUP) ===== */}
             <div className="mb-5 mt-8 flex justify-end sm:mb-8 sm:mt-12">
                 <div className="relative w-1/4 sm:w-auto sm:max-w-none">
-                    {/* AKSEN ABU-ABU (slate) — belakang, kanan-atas kelompok aksen
-            mobile: w-6(24px) h-12(48px) | desktop: w-11(44px) h-24(96px)
-            posisi dipilih agar ada celah ±12px ke lapisan putih mockup */}
-                    <div className="pointer-events-none absolute -left-10 -top-3 h-12 w-6 rounded-md bg-slate-400 shadow-md [transform:skewX(-14deg)] sm:-left-[104px] sm:-top-8 sm:h-24 sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
-                    {/* AKSEN PUTIH/TERANG (gray-300) — depan, kiri-bawah
-            offset = -(50% lebar) & +(50% tinggi) dari aksen abu-abu
-            mobile: -52px = -40px - 12px ; top 12px = -12px + 24px
-            desktop: -126px = -104px - 22px ; top 16px = -32px + 48px
-            → menutup tepat 50% lebar & 50% tinggi aksen abu-abu */}
-                    <div className="pointer-events-none absolute -left-[52px] -top-1 h-12 w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:-left-[126px] sm:-top-[17px] sm:h-24 sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
+                    {/* WADAH AKSEN KIRI: inset-y IDENTIK dengan lapisan putih mockup
+            → tinggi wadah = tinggi mockup (H) di semua ukuran layar,
+               otomatis sinkron meski ukuran tombol berubah */}
+                    <div className="pointer-events-none absolute -inset-y-1.5 -left-[52px] w-9 sm:-inset-y-5 sm:-left-[126px] sm:w-[66px]">
+                        {/* AKSEN BELAKANG: slate (kanan-atas) — tinggi 84% wadah */}
+                        <div className="absolute left-3 top-0 h-[84%] w-6 rounded-md bg-slate-400 shadow-md [transform:skewX(-14deg)] sm:left-[22px] sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
 
-                    {/* Lapisan 1: putih miring membulat (TEPIS -12/-2 → tidak menyentuh aksen) */}
+                        {/* AKSEN DEPAN: terang/putih (kiri-bawah) — mulai 16% dari atas, tinggi 84%
+                → 16% + 84% = 100% = tinggi mockup persis,
+                  overlap horizontal tetap 50% lebar aksen slate */}
+                        <div className="absolute left-0 top-[16%] h-[84%] w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
+                    </div>
+
+                    {/* Lapisan 1: putih miring membulat (tidak menyentuh aksen, celah ±12px) */}
                     <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-6 rounded-lg bg-white shadow-lg [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:-right-14 sm:rounded-2xl sm:shadow-xl sm:[transform:skewX(-20deg)]" />
 
                     {/* Lapisan 2: abu-abu miring membulat */}
