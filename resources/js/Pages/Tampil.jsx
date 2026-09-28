@@ -160,7 +160,7 @@ export default function Tampil(props) {
                             className="flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:w-auto sm:px-4 sm:text-sm"
                             title="Download PDF sesuai pilihan periode & hari"
                         >
-                            📄 Download Laporan {labelPeriode[downloadPeriode]}
+                            📄 Download 
                         </button>
                     </div>
                 </div>
