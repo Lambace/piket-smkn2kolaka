@@ -184,13 +184,13 @@ export default function Tampil(props) {
         <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-900 p-2 sm:p-4 md:p-6">
             <Head title="Papan Informasi Piket" />
 
-            {/* ===== HEADER ===== */}
-            <div className="mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3">
+            {/* ===== HEADER: Logo & Judul (Kiri) ===== */}
+            <div className="mb-3 flex items-center gap-2 sm:mb-4 sm:gap-3">
                 {logoSrc ? (
                     <img
                         src={logoSrc}
                         alt="Logo"
-                        className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 rounded-xl bg-white object-contain p-1"
+                        className="h-10 w-10 flex-shrink-0 rounded-xl bg-white object-contain p-1 sm:h-12 sm:w-12"
                     />
                 ) : (
                     <span className="flex-shrink-0 text-3xl sm:text-4xl">
@@ -207,9 +207,35 @@ export default function Tampil(props) {
                 </div>
             </div>
 
+            {/* ===== DUA TOMBOL KONTROL: BERTUMPUK DI KANAN ATAS (sesuai mockup) ===== */}
+            <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:items-end">
+                <button
+                    onClick={() => setModalDownload(true)}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:justify-start sm:text-sm"
+                >
+                    <span>📄</span>
+                    <span>Unduh Laporan PDF</span>
+                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                        {labelPeriode[downloadPeriode]} • {downloadFilterHari}
+                    </span>
+                </button>
+
+                <button
+                    onClick={() => setModalFilter(true)}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow transition hover:bg-indigo-700 sm:justify-start sm:text-sm"
+                >
+                    <span>🖥️</span>
+                    <span>Filter Tampilan Data</span>
+                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                        {currentFilters?.dari_tanggal ?? today} s/d{" "}
+                        {currentFilters?.sampai_tanggal ?? today}
+                    </span>
+                </button>
+            </div>
+
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
-                {/* 1. CARD PETUGAS PIKET */}
+                {/* Card Petugas Piket (langsung di bawah tombol) */}
                 <div className="min-w-0">
                     <KartuAbsensiPetugas
                         data={props.absensiPetugas ?? []}
@@ -217,37 +243,10 @@ export default function Tampil(props) {
                     />
                 </div>
 
-                {/* 2. DUA TOMBOL KONTROL: INLINE, DI TENGAH, TANPA CARD */}
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                    <button
-                        onClick={() => setModalDownload(true)}
-                        className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-red-700 sm:text-sm"
-                    >
-                        <span>📄</span>
-                        <span>Unduh Laporan PDF</span>
-                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-                            {labelPeriode[downloadPeriode]} •{" "}
-                            {downloadFilterHari}
-                        </span>
-                    </button>
-
-                    <button
-                        onClick={() => setModalFilter(true)}
-                        className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow transition hover:bg-indigo-700 sm:text-sm"
-                    >
-                        <span>🖥️</span>
-                        <span>Filter Tampilan Data</span>
-                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
-                            {currentFilters?.dari_tanggal ?? today} s/d{" "}
-                            {currentFilters?.sampai_tanggal ?? today}
-                        </span>
-                    </button>
-                </div>
-
-                {/* 3. SISA KONTEN */}
                 <div className="min-w-0">
                     <KartuStatistik stats={props.stats} />
                 </div>
+
                 <div className="min-w-0">
                     <DataHariIni
                         keterlambatanList={props.keterlambatanList ?? []}
