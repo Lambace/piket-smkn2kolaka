@@ -189,9 +189,9 @@ export default function KartuAbsensiPetugas({ data }) {
             {/* ===== ISI KARTU ===== */}
             {isLiburOtomatis ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <span className="mb-3 text-6xl">🏖️</span>
+                    <span className="mb-3 text-6xl">📭</span>
                     <p className="text-xl font-bold text-slate-200">
-                        {data[0]?.pesan || "Tidak ada aktivitas piket hari ini"}
+                        {data[0]?.pesan || "Tidak ada Petugas Piket yang dijadwalkan Hari ini"}
                     </p>
                     <p className="mt-2 text-sm text-slate-400">
                         Silakan coba lagi besok atau periksa jadwal piket.

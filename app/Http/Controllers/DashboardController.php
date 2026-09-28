@@ -124,7 +124,7 @@ class DashboardController extends Controller
             $isLibur = ($namaHariIni === 'Minggu') || ($totalAbsensiHariIni === 0);
 
             if ($isLibur) {
-                $absensiPetugas = collect([['status' => 'libur', 'pesan' => 'Hari ini sekolah libur']]);
+                $absensiPetugas = collect([['status' => 'libur', 'pesan' => 'Tidak ada Petugas Piket yang dijadwalkan Hari ini']]);
             }
         }
 
