@@ -674,44 +674,56 @@ export default function UserPetugasIndex(props) {
                     </form>
                 )}
 
-                <div className="rounded-lg bg-white p-6 shadow">
+                <div className="rounded-lg bg-white p-4 shadow sm:p-6">
                     <h3 className="mb-4 font-semibold">Daftar Akun</h3>
+
+                    {/* Wrapper scroll horizontal untuk layar kecil */}
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        {/* min-w = KUNCI: tabel tidak pernah lebih sempit dari 960px,
+                            sehingga di HP wrapper membuat geser horizontal, bukan meremas kolom */}
+                        <table className="w-full min-w-[960px] text-sm">
                             <thead>
                                 <tr className="border-b text-left text-gray-500">
-                                    <th className="py-2">Nama</th>
-                                    <th className="py-2">Email</th>
-                                    <th className="py-2">Role</th>
-                                    <th className="py-2">JK</th>
-                                    <th className="py-2">NIP</th>
-                                    <th className="py-2">Gol</th>
-                                    <th className="py-2">Status</th>
-                                    <th className="py-2">📅 Piket</th>
-                                    <th className="py-2">🤖 Auto</th>
-                                    <th className="py-2 text-right">Aksi</th>
+                                    <th className="py-2 pr-3">Nama</th>
+                                    <th className="py-2 pr-3">Email</th>
+                                    <th className="py-2 pr-3">Role</th>
+                                    <th className="py-2 pr-3">JK</th>
+                                    <th className="py-2 pr-3">NIP</th>
+                                    <th className="py-2 pr-3">Gol</th>
+                                    <th className="py-2 pr-3">Status</th>
+                                    <th className="py-2 pr-3">📅 Piket</th>
+                                    <th className="py-2 pr-3">🤖 Auto</th>
+                                    <th className="sticky right-0 bg-white py-2 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.15)]">
+                                        Aksi
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {props.users.map((u) => (
                                     <tr key={u.id} className="border-b">
-                                        <td className="py-2 font-semibold">
-                                            {u.name}
+                                        <td className="py-2 pr-3">
+                                            <div className="max-w-[220px] truncate font-semibold">
+                                                {u.name}
+                                            </div>
                                         </td>
-                                        <td className="py-2">{u.email}</td>
-                                        <td className="py-2">
+                                        <td className="py-2 pr-3">
+                                            <div className="max-w-[220px] truncate">
+                                                {u.email}
+                                            </div>
+                                        </td>
+                                        <td className="py-2 pr-3">
                                             {roleBadge(u.role)}
                                         </td>
-                                        <td className="py-2 text-xs">
+                                        <td className="py-2 pr-3 text-xs">
                                             {jkLabel(u.jenis_kelamin)}
                                         </td>
-                                        <td className="py-2 font-mono text-xs">
+                                        <td className="py-2 pr-3 font-mono text-xs">
                                             {u.nip || "-"}
                                         </td>
-                                        <td className="py-2 text-xs">
+                                        <td className="py-2 pr-3 text-xs">
                                             {u.golongan || "-"}
                                         </td>
-                                        <td className="py-2">
+                                        <td className="py-2 pr-3">
                                             {u.status_kepegawaian ? (
                                                 <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">
                                                     {u.status_kepegawaian}
@@ -722,10 +734,10 @@ export default function UserPetugasIndex(props) {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="py-2">
+                                        <td className="py-2 pr-3">
                                             {hariPiketBadge(u.hari_piket)}
                                         </td>
-                                        <td className="py-2">
+                                        <td className="py-2 pr-3">
                                             {u.role === "wakasek" ? (
                                                 <span className="text-xs text-gray-400">
                                                     —
@@ -734,7 +746,8 @@ export default function UserPetugasIndex(props) {
                                                 autoHadirBadge(u.auto_hadir)
                                             )}
                                         </td>
-                                        <td className="py-2 text-right">
+                                        {/* Kolom Aksi sticky: tetap terlihat saat tabel digeser */}
+                                        <td className="sticky right-0 bg-white py-2 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.15)]">
                                             <button
                                                 onClick={(e) =>
                                                     toggleMenu(e, u)
@@ -750,6 +763,11 @@ export default function UserPetugasIndex(props) {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Petunjuk geser — hanya muncul di layar kecil */}
+                    <p className="mt-2 text-[11px] text-gray-400 md:hidden">
+                        👆 Geser tabel ke samping untuk melihat semua kolom
+                    </p>
                 </div>
 
                 {/* ===== BARU: DROPDOWN AKSI (⋮) ===== */}
