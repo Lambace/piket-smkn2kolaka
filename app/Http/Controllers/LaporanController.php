@@ -135,7 +135,6 @@ class LaporanController extends Controller
 
             $pengaturan = Pengaturan::first();
 
-            // ===== FUNGSI HELPER: FILTER BERDASARKAN HARI =====
             $applyDayFilter = function ($query, $columnName = 'tanggal') use ($filterHari) {
                 if ($filterHari !== 'Semua Hari') {
                     $dayMap = [
@@ -154,7 +153,6 @@ class LaporanController extends Controller
             $applyDayFilter($absensiPetugasQuery, 'tanggal');
             $absensiPetugas = $absensiPetugasQuery->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
-            // ===== REKAP PETUGAS =====
             $rekapPetugas = collect();
             $tidakAdaJadwal = false;
             $pesanLibur = '';
@@ -259,7 +257,6 @@ class LaporanController extends Controller
                 $alphaHariIni = 0;
             }
 
-            // ===== DATA SISWA & TAMU =====
             $keterlambatanQuery = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr]);
             $applyDayFilter($keterlambatanQuery, 'tanggal');
             $keterlambatan = $keterlambatanQuery->orderBy('tanggal')->get();
@@ -326,8 +323,6 @@ class LaporanController extends Controller
             }
 
             // ===== LOGIKA TTD LAPORAN PIKET =====
-            // Harian / Rekap per-hari → koordinator hari itu
-            // Rekap "Semua Hari" → Wakasek (jika ada) atau koordinator struktural
             if ($periode === 'harian') {
                 $hariDokumen = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
             } else {
@@ -451,19 +446,19 @@ class LaporanController extends Controller
         $dariStr   = $dari->toDateString();
         $sampaiStr = min($sampai->toDateString(), Carbon::now('Asia/Makassar')->toDateString());
 
+        // $namaHariTanggal = hari dari filter atau dari tanggal acuan
         $namaHariTanggal = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
 
         $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
 
-        $petugasRelevan = $semuaPetugas->filter(function ($u) use ($namaHariTanggal, $filterHari, $periode) {
-            if ($filterHari !== 'Semua Hari') {
-                return $u->hari_piket === $filterHari;
-            }
-            if ($periode === 'harian') {
-                return $u->hari_piket === $namaHariTanggal;
-            }
-            return true;
-        })->values();
+        // ===== PERBAIKAN: FILTER KETAT UNTUK SEMUA PERIODE =====
+        // Daftar hadir = dokumen operasional = SELALU hanya 1 kelompok piket
+        // - Harian: kelompok dari tanggal acuan
+        // - Rentang/Mingguan/Bulanan/Semester: kelompok dari tanggal acuan (atau filter hari)
+        // TIDAK ADA lagi "return true" yang menampilkan semua 21 petugas
+        $petugasRelevan = $semuaPetugas
+            ->filter(fn ($u) => $u->hari_piket === $namaHariTanggal)
+            ->values();
 
         $rows = $petugasRelevan->map(function ($u) use ($dari, $sampaiStr, $dariStr, $periode, $filterHari) {
             $absensiUserQuery = AbsensiPetugas::where('nama', $u->name)->whereBetween('tanggal', [$dariStr, $sampaiStr]);
@@ -525,7 +520,6 @@ class LaporanController extends Controller
             ];
         })->values();
 
-        // ===== SINKRONISASI: LIBUR OTOMATIS =====
         $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
         $totalAbsensiTanggal = AbsensiPetugas::whereDate('tanggal', $dariStr)->count();
 
@@ -557,12 +551,8 @@ class LaporanController extends Controller
             : $dari->isoFormat('D MMMM Y') . ' s/d ' . Carbon::parse($sampaiStr, 'Asia/Makassar')->isoFormat('D MMMM Y');
 
         // ===== LOGIKA TTD DAFTAR HADIR =====
-        // SELALU koordinator hari itu (dokumen operasional).
-        // Untuk rentang: memakai hari dari tanggal acuan ($tanggalRef),
-        // atau filter hari jika dipilih.
-        $hariDokumen = $filterHari !== 'Semua Hari'
-            ? $filterHari
-            : $tanggalRef->isoFormat('dddd');
+        // SELALU koordinator hari itu (dokumen operasional)
+        $hariDokumen = $namaHariTanggal; // sinkron dengan filter petugas di atas
 
         $koordinator = User::where('role', 'koordinator')
                 ->where('hari_piket', $hariDokumen)
