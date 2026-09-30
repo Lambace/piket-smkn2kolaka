@@ -37,6 +37,7 @@ return [
 
 
     'fonnte' => [
+        'base'  => env('FONNTE_BASE', 'https://api.fonnte.com'),
         'token' => env('FONNTE_TOKEN'),
     ],
 
