@@ -16,5 +16,6 @@ class Pengaturan extends Model
         'warna_tema',
         'logo',
         'lat', 'lng', 'radius_meter',
+        
     ];
 }

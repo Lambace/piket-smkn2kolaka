@@ -22,8 +22,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'status_kepegawaian',
     'hari_piket',
     'auto_hadir',      // ← agar toggle di form Akun Petugas bisa disimpan
-    // 'no_wa',        // ← aktifkan setelah migration WA dijalankan
-    // 'fonnte_token', // ← aktifkan setelah migration WA dijalankan
+    'no_wa',        // ← aktifkan setelah migration WA dijalankan
+    'fonnte_token', // ← aktifkan setelah migration WA dijalankan
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
