@@ -129,10 +129,9 @@
         </tr>
     </thead>
     <tbody>
-        {{-- ===== PERBAIKAN: @forelse untuk menangani kondisi libur/tidak ada jadwal ===== --}}
         @forelse($rows as $i => $r)
         <tr>
-            <td class="tengah">{{ $i+1 }}</td>
+            <td class="tengah">{{ $loop->iteration }}</td>
             <td><strong>{{ $r['nama'] }}</strong></td>
             <td class="tengah">{{ $r['jk'] }}</td>
             <td>{{ $r['nip'] }}</td>
@@ -147,7 +146,6 @@
             <td>{{ $r['ket'] }}</td>
         </tr>
         @empty
-        {{-- TAMPILKAN PESAN LIBUR / TIDAK ADA JADWAL --}}
         <tr>
             <td colspan="12" class="pesan-libur">
                 <span class="ikon">📭</span>
@@ -169,7 +167,8 @@
     </tbody>
 </table>
 
-<!-- ===== BLOK TANDA TANGAN (prioritas data Pengaturan) ===== -->
+<!-- ===== BLOK TANDA TANGAN ===== -->
+<!-- PRIORITAS: data dinamis dari controller ($koordinator) MENANG atas field statis Pengaturan -->
 <table class="ttd">
     <tr>
         <td>
@@ -185,13 +184,16 @@
         </td>
         <td>
             <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
+            {{-- Jabatan dinamis: "Koordinator Piket" atau "Wakasek Kurikulum" (untuk Laporan Piket rekap) --}}
             {{ $jabatanTtd ?? 'Koordinator Piket' }}
             <div class="ttd-space"></div>
+            {{-- NAMA: data dinamis ($koordinator dari controller) DIUTAMAKAN, fallback ke pengaturan --}}
             <span class="ttd-nama">
-                {{ $pengaturan->koordinator_piket ?: ($koordinator?->name ?? '……………………………………') }}
+                {{ $koordinator?->name ?: ($pengaturan->koordinator_piket ?? '……………………………………') }}
             </span>
+            {{-- NIP: sama, dinamis dulu --}}
             <div class="ttd-nip">
-                NIP. {{ $pengaturan->nip_koordinator_piket ?: ($koordinator?->nip ?? '………………………………') }}
+                NIP. {{ $koordinator?->nip ?: ($pengaturan->nip_koordinator_piket ?? '………………………………') }}
             </div>
         </td>
     </tr>
