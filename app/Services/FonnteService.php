@@ -12,7 +12,7 @@ class FonnteService
 
     public function __construct()
     {
-        $this->base  = config('services.fonnte.base', 'https://rest.fonnte.com');
+        $this->base  = config('services.fonnte.base', 'https://api.fonnte.com');
         $this->token = (string) config('services.fonnte.token');
     }
 
