@@ -14,15 +14,22 @@ use Intervention\Image\ImageManagerStatic as Image;
 
 class KirimTvKeGrup extends Command
 {
-    protected $signature = 'tv:kirim-grup {--hari= : Simulasi hari (uji coba), contoh: --hari=Rabu}';
+    protected $signature = 'tv:kirim-grup {--hari= : Simulasi hari untuk uji coba, contoh: --hari=Rabu}';
     protected $description = 'Kirim banner Laporan Tim Piket ke grup sekolah (otomatis harian)';
 
     public function handle(PengirimWaResolver $resolver, WaRelayService $relay): int
     {
         $now       = Carbon::now('Asia/Makassar');
-        $hariIni = $this->option('hari') ?: $now->isoFormat('dddd');
+        $hariIni   = $this->option('hari') ?: $now->isoFormat('dddd');
         $tanggal   = $now->isoFormat('dddd, D MMMM Y');
         $todayStr  = $now->toDateString();
+        $isSimulasi = !empty($this->option('hari'));
+
+        // ===== PENGAMAN SIMULASI: konfirmasi sebelum kirim sungguhan =====
+        if ($isSimulasi && !$this->confirm("⚠️  SIMULASI hari {$hariIni}? Pesan SUNGGUHAN akan terkirim ke WA. Lanjutkan?")) {
+            $this->info('Dibatalkan.');
+            return Command::SUCCESS;
+        }
 
         // ===== GATEKEEPER 1: Libur Minggu =====
         if ($hariIni === 'Minggu') {
@@ -30,25 +37,26 @@ class KirimTvKeGrup extends Command
             return Command::SUCCESS;
         }
 
-        // ===== GATEKEEPER 2: Koordinator aktif hari ini =====
-        $koordinator = $resolver->resolve();
+        // ===== GATEKEEPER 2: Koordinator aktif di HARI SASARAN =====
+        // FIX 1: resolver menerima $hariIni agar simulasi bekerja
+        $koordinator = $resolver->resolve($hariIni);
         if (!$koordinator) {
-            $this->warn("⚠️ Tidak ada koordinator aktif hari {$hariIni}. Skip pengiriman.");
+            $this->warn("⚠️ Tidak ada koordinator aktif untuk hari {$hariIni}. Skip pengiriman.");
             return Command::SUCCESS;
         }
 
-        $this->info("✅ Hari {$hariIni} — koordinator aktif: {$koordinator->name}");
+        $this->info("✅ Hari {$hariIni}" . ($isSimulasi ? " (SIMULASI)" : "") . " — koordinator aktif: {$koordinator->name}");
 
         // ===== AMBIL DATA REAL DARI DATABASE =====
         $pengaturan = Pengaturan::first();
         $sekolah    = $pengaturan?->nama_sekolah ?? 'SMKN 2 KOLAKA';
 
-        // Petugas yang JADWAL piket hari ini
+        // Petugas yang JADWAL piket pada HARI SASARAN (mendukung simulasi)
         $petugasJadwal = User::whereIn('role', ['petugas', 'koordinator'])
             ->where('hari_piket', $hariIni)
             ->get();
 
-        // Absensi yang SUDAH tercatat hari ini
+        // Absensi tercatat hari ini (tetap real, karena ini data historis aktual)
         $absensiHariIni = AbsensiPetugas::whereDate('tanggal', $todayStr)->get();
 
         $petugasHadir = 0;
@@ -157,7 +165,8 @@ class KirimTvKeGrup extends Command
 
         // ===== KIRIM LEWAT WaRelayService =====
         $this->info('📱 Mengirim ke grup sekolah via WaRelayService...');
-        $ok = $relay->kirimBanner($bannerUrl, $caption);
+        // FIX 2: teruskan $hariIni agar service memilih koordinator yang tepat
+        $ok = $relay->kirimBanner($bannerUrl, $caption, $hariIni);
 
         $this->newLine();
         $this->info('💾 Banner disimpan di public/banners/ (tidak dihapus untuk antrean Fonnte).');

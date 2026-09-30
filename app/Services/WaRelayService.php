@@ -15,21 +15,22 @@ class WaRelayService
     /**
      * Kirim banner TV ke GRUP SEKOLAH memakai nomor koordinator bertugas.
      *
+     * $hari opsional: hari sasaran (untuk simulasi --hari=Rabu).
+     * Null = hari ini otomatis (perilaku scheduler harian).
+     *
      * Strategi 3 lapis:
      *  1) LANGSUNG ke grup sekolah pakai device koordinator
-     *     (berhasil jika nomor koordinator terdaftar di grup)
-     *  2) RELAY: banner masuk ke WA pribadi koordinator + instruksi
-     *     "forward ke Grup Sekolah"
+     *  2) RELAY: banner ke WA pribadi koordinator + instruksi forward
      *  3) FALLBACK: langsung ke grup sekolah pakai device sistem
-     *
-     * Return false hanya jika hari itu tanpa koordinator aktif
-     * atau ketiga lapis gagal.
      */
-    public function kirimBanner(string $bannerUrl, string $caption): bool
+    public function kirimBanner(string $bannerUrl, string $caption, ?string $hari = null): bool
     {
         $pengaturan  = Pengaturan::first();
         $grupSekolah = $pengaturan?->wa_grup ?: env('WA_GROUP_ID');
+
+        // ===== FIX: $hari kini parameter resmi method =====
         $koordinator = $this->resolver->resolve($hari);
+        $labelHari   = $hari ?? \Illuminate\Support\Carbon::now('Asia/Makassar')->isoFormat('dddd');
 
         if (empty($grupSekolah)) {
             Log::error('[WA-RELAY] Grup sekolah belum diisi (pengaturan.wa_grup atau WA_GROUP_ID).');
@@ -38,7 +39,7 @@ class WaRelayService
 
         // Gatekeeper: tanpa koordinator aktif → skip senyap
         if (!$koordinator) {
-            Log::info('[WA-RELAY] Tidak ada koordinator aktif hari ini → banner dilewati.');
+            Log::info('[WA-RELAY] Tidak ada koordinator aktif hari ' . $labelHari . ' → banner dilewati.');
             return false;
         }
 
