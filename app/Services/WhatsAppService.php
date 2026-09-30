@@ -11,7 +11,9 @@ class WhatsAppService
     private string $apiUrl = 'https://api.fonnte.com/send';
 
     // ===== Kirim pesan teks =====
-    public function kirim(string $nomor, string $pesan, $penerima = null): Notifikasi
+    // $token opsional: token Fonnte koordinator → pesan keluar dari NOMOR KOORDINATOR.
+    // Null / kosong = token sistem (config services.fonnte.token).
+    public function kirim(string $nomor, string $pesan, $penerima = null, ?string $token = null): Notifikasi
     {
         // ===== FIX: pakai normalisasiTarget agar ID grup @g.us tidak dirusak =====
         $nomor = $this->normalisasiTarget($nomor);
@@ -20,11 +22,11 @@ class WhatsAppService
         return $this->kirimKeFonnte($notifikasi, [
             'target'  => $nomor,
             'message' => $pesan,
-        ], 30);
+        ], 30, null, null, $token);
     }
 
     // ===== Kirim gambar via URL (untuk banner/logo) =====
-    public function sendImage(string $target, string $imageUrl, string $caption = '', $penerima = null): Notifikasi
+    public function sendImage(string $target, string $imageUrl, string $caption = '', $penerima = null, ?string $token = null): Notifikasi
     {
         $target = $this->normalisasiTarget($target);
         $notifikasi = $this->buatNotifikasi($target, '[GAMBAR] '.$caption, $penerima);
@@ -33,11 +35,11 @@ class WhatsAppService
             'target'  => $target,
             'message' => $caption,
             'url'     => $imageUrl,
-        ], 60);
+        ], 60, null, null, $token);
     }
 
     // ===== KIRIM PDF: upload binary LANGSUNG (icon PDF asli di WA) =====
-    public function kirimPdf(string $target, string $pdfContent, string $filename, string $caption = ''): Notifikasi
+    public function kirimPdf(string $target, string $pdfContent, string $filename, string $caption = '', ?string $token = null): Notifikasi
     {
         $target = $this->normalisasiTarget($target);
         $notifikasi = $this->buatNotifikasi($target, '[PDF] '.$filename, null);
@@ -46,7 +48,7 @@ class WhatsAppService
             'target'   => $target,
             'message'  => $caption,
             'filename' => $filename,
-        ], 120, $pdfContent, $filename);
+        ], 120, $pdfContent, $filename, $token);
     }
 
     // ===== HELPER: buat record notifikasi =====
@@ -62,12 +64,19 @@ class WhatsAppService
         ]);
     }
 
-    // ===== HELPER: panggil Fonnte (dukung upload file binary) =====
-    private function kirimKeFonnte(Notifikasi $notifikasi, array $payload, int $timeout, ?string $fileContent = null, ?string $fileName = null): Notifikasi
-    {
-        $token = config('services.fonnte.token');
+    // ===== HELPER: panggil Fonnte (dukung upload file binary + multi-device) =====
+    private function kirimKeFonnte(
+        Notifikasi $notifikasi,
+        array $payload,
+        int $timeout,
+        ?string $fileContent = null,
+        ?string $fileName = null,
+        ?string $token = null,
+    ): Notifikasi {
+        $tokenAktif = ($token !== null && $token !== '') ? $token : config('services.fonnte.token');
+        $device     = ($token !== null && $token !== '') ? 'koordinator' : 'sistem';
 
-        if (!$token) {
+        if (!$tokenAktif) {
             $notifikasi->update([
                 'status'      => 'gagal',
                 'pesan_error' => 'Token Fonnte belum diatur',
@@ -76,7 +85,7 @@ class WhatsAppService
         }
 
         try {
-            $request = Http::withHeaders(['Authorization' => $token])->timeout($timeout);
+            $request = Http::withHeaders(['Authorization' => $tokenAktif])->timeout($timeout);
 
             if ($fileContent !== null) {
                 $response = $request
@@ -88,7 +97,11 @@ class WhatsAppService
 
             $body = $response->json() ?? [];
 
-            Log::info('Fonnte response', ['target' => $payload['target'], 'body' => $body]);
+            Log::info('Fonnte response', [
+                'target' => $payload['target'],
+                'device' => $device,
+                'body'   => $body,
+            ]);
 
             if ($response->successful() && ($body['status'] === true || $body['status'] === 'success')) {
                 $notifikasi->update([
