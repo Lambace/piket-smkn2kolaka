@@ -9,8 +9,6 @@ use App\Services\PengirimWaResolver;
 use App\Services\WaRelayService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\File;
-use Intervention\Image\ImageManagerStatic as Image;
 
 class KirimTvKeGrup extends Command
 {
@@ -19,10 +17,10 @@ class KirimTvKeGrup extends Command
 
     public function handle(PengirimWaResolver $resolver, WaRelayService $relay): int
     {
-        $now       = Carbon::now('Asia/Makassar');
-        $hariIni   = $this->option('hari') ?: $now->isoFormat('dddd');
-        $tanggal   = $now->isoFormat('dddd, D MMMM Y');
-        $todayStr  = $now->toDateString();
+        $now        = Carbon::now('Asia/Makassar');
+        $hariIni    = $this->option('hari') ?: $now->isoFormat('dddd');
+        $tanggal    = $now->isoFormat('dddd, D MMMM Y');
+        $todayStr   = $now->toDateString();
         $isSimulasi = !empty($this->option('hari'));
 
         // ===== PENGAMAN SIMULASI: konfirmasi sebelum kirim sungguhan =====
@@ -38,7 +36,6 @@ class KirimTvKeGrup extends Command
         }
 
         // ===== GATEKEEPER 2: Koordinator aktif di HARI SASARAN =====
-        // FIX 1: resolver menerima $hariIni agar simulasi bekerja
         $koordinator = $resolver->resolve($hariIni);
         if (!$koordinator) {
             $this->warn("⚠️ Tidak ada koordinator aktif untuk hari {$hariIni}. Skip pengiriman.");
@@ -47,16 +44,14 @@ class KirimTvKeGrup extends Command
 
         $this->info("✅ Hari {$hariIni}" . ($isSimulasi ? " (SIMULASI)" : "") . " — koordinator aktif: {$koordinator->name}");
 
-        // ===== AMBIL DATA REAL DARI DATABASE =====
+        // ===== AMBIL DATA REAL DARI DATABASE (untuk caption) =====
         $pengaturan = Pengaturan::first();
         $sekolah    = $pengaturan?->nama_sekolah ?? 'SMKN 2 KOLAKA';
 
-        // Petugas yang JADWAL piket pada HARI SASARAN (mendukung simulasi)
         $petugasJadwal = User::whereIn('role', ['petugas', 'koordinator'])
             ->where('hari_piket', $hariIni)
             ->get();
 
-        // Absensi tercatat hari ini (tetap real, karena ini data historis aktual)
         $absensiHariIni = AbsensiPetugas::whereDate('tanggal', $todayStr)->get();
 
         $petugasHadir = 0;
@@ -73,68 +68,13 @@ class KirimTvKeGrup extends Command
             }
         }
 
-        // ===== GENERATE BANNER =====
-        $this->info('🎨 Sedang membuat banner...');
-
-        $templatePath = public_path('images/banner-bg.png');
-        if (!File::exists($templatePath)) {
-            $this->error('❌ File template banner-bg.png tidak ditemukan di public/images/');
-            return Command::FAILURE;
-        }
-
-        $image = Image::make($templatePath);
-
-        if ($pengaturan?->logo) {
-            $logoPath = public_path('storage/' . $pengaturan->logo);
-            if (File::exists($logoPath)) {
-                $logo = Image::make($logoPath)->resize(180, 180, function ($constraint) {
-                    $constraint->aspectRatio();
-                });
-                $image->insert($logo, 'top', 0, 50);
-            }
-        }
-
-        $image->text($tanggal, 540, 750, function($font) {
-            $font->size(40);
-            $font->color('#2c3e50');
-            $font->align('center');
-            $font->valign('middle');
-        });
-
-        $image->text((string)$petugasHadir, 340, 1300, function($font) {
-            $font->size(100);
-            $font->color('#ffffff');
-            $font->align('center');
-            $font->valign('middle');
-        });
-        $image->text('HADIR', 340, 1200, function($font) {
-            $font->size(22);
-            $font->color('#ffffff');
-            $font->align('center');
-        });
-
-        $image->text((string)$alpha, 740, 1300, function($font) {
-            $font->size(100);
-            $font->color('#ffffff');
-            $font->align('center');
-            $font->valign('middle');
-        });
-        $image->text('ALPHA', 740, 1200, function($font) {
-            $font->size(22);
-            $font->color('#ffffff');
-            $font->align('center');
-        });
-
-        $folder = public_path('banners');
-        if (!File::isDirectory($folder)) {
-            File::makeDirectory($folder, 0755, true);
-        }
-
-        $fileName  = 'piket-' . $now->timestamp . '.png';
-        $savePath  = $folder . '/' . $fileName;
-        $image->save($savePath);
-        $bannerUrl = url('banners/' . $fileName);
-        $this->info('✅ Banner disimpan: ' . $bannerUrl);
+        // ===== BANNER ON-DEMAND: dirender via route, tanpa file tersimpan =====
+        // Ini memecahkan masalah 404 di Laravel Cloud karena gambar dibuat saat diakses
+        $bannerUrl = url('/banner/piket.png') . '?' . http_build_query([
+            'hari'    => $hariIni,
+            'tanggal' => $todayStr,
+        ]);
+        $this->info('✅ Banner on-demand siap: ' . $bannerUrl);
 
         // ===== SIAPKAN CAPTION =====
         $key    = env('DISPLAY_KEY', 'piket2026');
@@ -165,11 +105,10 @@ class KirimTvKeGrup extends Command
 
         // ===== KIRIM LEWAT WaRelayService =====
         $this->info('📱 Mengirim ke grup sekolah via WaRelayService...');
-        // FIX 2: teruskan $hariIni agar service memilih koordinator yang tepat
         $ok = $relay->kirimBanner($bannerUrl, $caption, $hariIni);
 
         $this->newLine();
-        $this->info('💾 Banner disimpan di public/banners/ (tidak dihapus untuk antrean Fonnte).');
+        $this->info('💾 Banner akan di-render on-demand oleh server (tidak ada file tersimpan).');
 
         return $ok ? Command::SUCCESS : Command::FAILURE;
     }

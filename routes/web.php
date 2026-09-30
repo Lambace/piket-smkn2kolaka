@@ -92,6 +92,17 @@ Route::get('/download/laporan/{filename}', function (string $filename) {
     ]);
 })->where('filename', '[\w\-.]+')->name('laporan.download');
 
+// ===== BANNER PIKET ON-DEMAND (dirender saat diakses, tanpa file tersimpan) =====
+// Route ini PUBLIK (tanpa auth) karena diakses oleh Fonnte dari luar
+Route::get('/banner/piket.png', function (\App\Services\BannerPiketService $banner) {
+    $hari    = request('hari', now()->locale('id')->isoFormat('dddd'));
+    $tanggal = request('tanggal', now()->toDateString());
+    return response($banner->render($hari, $tanggal), 200, [
+        'Content-Type'  => 'image/png',
+        'Cache-Control' => 'no-store',
+    ]);
+})->name('banner.piket');
+
 // ===== SEMUA USER LOGIN (Koordinator + Petugas) =====
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -140,14 +151,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
-    // ===== CRON EKSTERNAL: picu scheduler setiap menit =====
-    Route::get('/cron/schedule-run', function () {
-        if (request()->query('key') !== env('CRON_KEY')) {
-            abort(404);
-        }
-        \Illuminate\Support\Facades\Artisan::call('schedule:run');
-        return response()->json(['ok' => true]);
-    });
+// ===== CRON EKSTERNAL: picu scheduler setiap menit =====
+Route::get('/cron/schedule-run', function () {
+    if (request()->query('key') !== env('CRON_KEY')) {
+        abort(404);
+    }
+    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+    return response()->json(['ok' => true]);
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
