@@ -28,7 +28,6 @@ const GOLONGAN_OPTIONS = [
     },
 ];
 
-// ===== BARU: Pilihan Hari Piket =====
 const HARI_PIKET_OPTIONS = [
     "Senin",
     "Selasa",
@@ -48,7 +47,8 @@ const defaultForm = {
     nip: "",
     golongan: "",
     status_kepegawaian: "",
-    hari_piket: "", // ← BARU
+    hari_piket: "",
+    auto_hadir: false, // ← BARU
 };
 
 export default function UserPetugasIndex(props) {
@@ -73,7 +73,8 @@ export default function UserPetugasIndex(props) {
             nip: form.nip,
             golongan: form.golongan,
             status_kepegawaian: form.status_kepegawaian,
-            hari_piket: form.hari_piket || null, // ← BARU
+            hari_piket: form.hari_piket || null,
+            auto_hadir: form.auto_hadir ? true : false, // ← BARU
         };
 
         if (editId) {
@@ -109,7 +110,8 @@ export default function UserPetugasIndex(props) {
             nip: u.nip || "",
             golongan: u.golongan || "",
             status_kepegawaian: u.status_kepegawaian || "",
-            hari_piket: u.hari_piket || "", // ← BARU
+            hari_piket: u.hari_piket || "",
+            auto_hadir: !!u.auto_hadir, // ← BARU
         });
         setShowForm(true);
     };
@@ -132,7 +134,6 @@ export default function UserPetugasIndex(props) {
     const jkLabel = (jk) =>
         jk === "L" ? "Laki-laki" : jk === "P" ? "Perempuan" : "-";
 
-    // ===== BARU: badge warna untuk hari piket =====
     const hariPiketBadge = (hari) => {
         if (!hari) return <span className="text-xs text-gray-400">-</span>;
         const colors = {
@@ -152,6 +153,19 @@ export default function UserPetugasIndex(props) {
             </span>
         );
     };
+
+    // ← BARU: badge status auto-hadir di tabel
+    const autoHadirBadge = (aktif) =>
+        aktif ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                Auto Aktif
+            </span>
+        ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                Manual
+            </span>
+        );
 
     return (
         <AuthenticatedLayout
@@ -196,6 +210,16 @@ export default function UserPetugasIndex(props) {
                         Setiap petugas piket <b>1x seminggu</b>. Atur hari piket
                         agar rekapan otomatis menghitung alpha untuk yang tidak
                         absen setelah pukul 07:30.
+                    </p>
+                </div>
+
+                <div className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <p className="font-semibold">🤖 Auto-Hadir:</p>
+                    <p className="mt-1">
+                        Aktifkan untuk petugas yang absennya perlu{" "}
+                        <b>dicatat otomatis</b> oleh sistem pada pukul
+                        07:00–07:29 WITA di hari piketnya (status:{" "}
+                        <i>Tepat Waktu</i>).
                     </p>
                 </div>
 
@@ -409,7 +433,7 @@ export default function UserPetugasIndex(props) {
                                 </select>
                             </div>
 
-                            {/* ===== BARU: HARI PIKET ===== */}
+                            {/* ===== HARI PIKET ===== */}
                             <div className="md:col-span-2">
                                 <div className="rounded-lg border-2 border-purple-200 bg-purple-50/50 p-4">
                                     <label className="mb-1 flex items-center gap-2 text-xs font-bold text-purple-900">
@@ -423,7 +447,7 @@ export default function UserPetugasIndex(props) {
                                         Setiap petugas piket <b>1x seminggu</b>.
                                         Pilih hari agar rekapan otomatis
                                         menghitung alpha untuk yang tidak absen
-                                        setelah pukul 08:30.
+                                        setelah pukul 07:30.
                                     </p>
                                     <select
                                         value={form.hari_piket}
@@ -444,6 +468,69 @@ export default function UserPetugasIndex(props) {
                                             </option>
                                         ))}
                                     </select>
+                                </div>
+                            </div>
+
+                            {/* ===== BARU: AUTO-HADIR TOGGLE ===== */}
+                            <div className="md:col-span-2">
+                                <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50/50 p-4">
+                                    <label className="flex cursor-pointer items-start gap-3">
+                                        {/* Custom toggle switch */}
+                                        <div className="relative mt-0.5 flex-shrink-0">
+                                            <input
+                                                type="checkbox"
+                                                checked={form.auto_hadir}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        "auto_hadir",
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                                className="peer sr-only"
+                                            />
+                                            <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-emerald-500"></div>
+                                            <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></div>
+                                        </div>
+
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-emerald-900">
+                                                    🤖 AUTO-HADIR OTOMATIS
+                                                </span>
+                                                <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                    OPSIONAL
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 text-[11px] text-emerald-700">
+                                                Jika diaktifkan, sistem akan
+                                                otomatis mencatat kehadiran
+                                                petugas ini pada pukul{" "}
+                                                <b>07:00–07:29 WITA</b> setiap
+                                                hari piketnya dengan status{" "}
+                                                <i>Tepat Waktu</i>. Cocok untuk
+                                                petugas yang jadwalnya tetap dan
+                                                tidak perlu menekan tombol absen
+                                                manual.
+                                            </p>
+                                            {form.auto_hadir &&
+                                                form.hari_piket && (
+                                                    <div className="mt-2 rounded bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">
+                                                        ✅ Akan auto-hadir
+                                                        setiap hari{" "}
+                                                        <b>{form.hari_piket}</b>{" "}
+                                                        pagi
+                                                    </div>
+                                                )}
+                                            {form.auto_hadir &&
+                                                !form.hari_piket && (
+                                                    <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-800">
+                                                        ⚠️ Pilih hari piket
+                                                        terlebih dahulu agar
+                                                        auto-hadir aktif
+                                                    </div>
+                                                )}
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -483,6 +570,8 @@ export default function UserPetugasIndex(props) {
                                     <th className="py-2">Gol</th>
                                     <th className="py-2">Status</th>
                                     <th className="py-2">📅 Piket</th>
+                                    <th className="py-2">🤖 Auto</th>{" "}
+                                    {/* ← BARU */}
                                     <th className="py-2 text-right">Aksi</th>
                                 </tr>
                             </thead>
@@ -530,6 +619,10 @@ export default function UserPetugasIndex(props) {
                                         <td className="py-2">
                                             {hariPiketBadge(u.hari_piket)}
                                         </td>
+                                        <td className="py-2">
+                                            {autoHadirBadge(u.auto_hadir)}
+                                        </td>{" "}
+                                        {/* ← BARU */}
                                         <td className="py-2 text-right">
                                             <button
                                                 onClick={() => edit(u)}

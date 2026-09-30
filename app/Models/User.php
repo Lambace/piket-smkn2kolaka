@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,6 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// ===== ATRIBUT MODEL: menempel tepat sebelum deklarasi class =====
 #[Fillable([
     'name',
     'email',
@@ -20,7 +20,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'nip',
     'golongan',
     'status_kepegawaian',
-    'hari_piket',   // ← BARU: supaya field tersimpan ke database
+    'hari_piket',
+    'auto_hadir',      // ← agar toggle di form Akun Petugas bisa disimpan
+    // 'no_wa',        // ← aktifkan setelah migration WA dijalankan
+    // 'fonnte_token', // ← aktifkan setelah migration WA dijalankan
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -29,15 +32,15 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Cast atribut ke tipe data native.
+     * (Laravel 11 memakai method, BUKAN properti $casts)
      */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
+            'auto_hadir'        => 'boolean', // ← badge JSX menerima true/false bersih
         ];
     }
 
@@ -62,6 +65,7 @@ class User extends Authenticatable
         };
     }
 
+    // ===== Relasi =====
     public function jadwalPiket(): HasMany
     {
         return $this->hasMany(JadwalPiket::class, 'user_id');
