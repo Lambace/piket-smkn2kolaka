@@ -1,6 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ===== Data Dropdown =====
 const GOLONGAN_OPTIONS = [
@@ -58,6 +58,23 @@ export default function UserPetugasIndex(props) {
     const [resetId, setResetId] = useState(null);
     const [form, setForm] = useState(defaultForm);
     const [resetForm, setResetForm] = useState({ password: "" });
+
+    // ===== BARU: ref ke elemen form =====
+    const formRef = useRef(null);
+
+    // ===== BARU: auto-scroll saat form dibuka (Edit / Tambah Akun) =====
+    useEffect(() => {
+        if (showForm && formRef.current) {
+            // tunggu form selesai dirender, lalu scroll halus ke form
+            const t = setTimeout(() => {
+                formRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            }, 60);
+            return () => clearTimeout(t);
+        }
+    }, [showForm, editId]);
 
     // Helper: apakah role yang dipilih adalah Wakasek?
     const isWakasek = form.role === "wakasek";
@@ -278,6 +295,7 @@ export default function UserPetugasIndex(props) {
 
                 {showForm && (
                     <form
+                        ref={formRef}
                         onSubmit={submit}
                         className="rounded-lg bg-white p-6 shadow"
                     >
