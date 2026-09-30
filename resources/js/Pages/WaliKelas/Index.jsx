@@ -200,13 +200,17 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                             </div>
                             <div>
                                 <label className="text-sm text-gray-600">
-                                    Email
+                                    Email{" "}
+                                    <span className="text-xs text-gray-400">
+                                        (opsional)
+                                    </span>
                                 </label>
                                 <input
                                     name="email"
                                     type="email"
                                     value={form.email}
                                     onChange={handleChange}
+                                    placeholder="wali@smkn2kolaka.sch.id (boleh kosong)"
                                     className={inputClass}
                                 />
                                 {errors.email && (
@@ -214,6 +218,10 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                         {errors.email}
                                     </p>
                                 )}
+                                <p className="mt-1 text-xs text-gray-500">
+                                    📧 Kosongkan jika wali kelas tidak punya
+                                    email.
+                                </p>
                             </div>
                             <div className="md:col-span-2">
                                 <label className="flex items-center gap-2 text-sm text-gray-600">

@@ -18,6 +18,8 @@ class UserPetugasController extends Controller
                 'jenis_kelamin', 'nip', 'golongan', 'status_kepegawaian',
                 'hari_piket',
                 'auto_hadir',
+                'no_wa',        // ← BARU: dibutuhkan badge & form
+                'fonnte_token', // ← BARU: dibutuhkan badge "Terhubung"
             ])->orderBy('name')->get(),
         ]);
     }
@@ -28,18 +30,18 @@ class UserPetugasController extends Controller
             'name'               => 'required|string|max:255',
             'email'              => 'required|email|unique:users,email',
             'password'           => 'required|string|min:6',
-            'role'               => 'nullable|in:petugas,koordinator,wakasek', // ← wakasek ditambah
+            'role'               => 'nullable|in:petugas,koordinator,wakasek',
             'jenis_kelamin'      => 'nullable|in:L,P',
             'nip'                => 'nullable|string|max:20',
             'golongan'           => 'nullable|string|max:10',
             'status_kepegawaian' => 'nullable|in:PNS,PPPK Guru,PPPK/PW Guru,PPPK/Staf TU,PPPK/PW Staf TU,Guru Honorer',
             'hari_piket'         => 'nullable|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
             'auto_hadir'         => 'nullable|boolean',
+            'no_wa'              => 'nullable|string|max:30',      // ← BARU
+            'fonnte_token'       => 'nullable|string|max:255',     // ← BARU
         ]);
 
-        // ===== LOGIKA KHUSUS WAKASEK =====
-        // Wakasek tidak bertugas piket & tidak auto-hadir
-        $roleBaru = $validated['role'] ?? 'petugas';
+        $roleBaru  = $validated['role'] ?? 'petugas';
         $isWakasek = $roleBaru === 'wakasek';
 
         User::create([
@@ -53,6 +55,8 @@ class UserPetugasController extends Controller
             'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
             'hari_piket'         => $isWakasek ? null : ($validated['hari_piket'] ?? null),
             'auto_hadir'         => $isWakasek ? false : (bool) ($validated['auto_hadir'] ?? false),
+            'no_wa'              => $isWakasek ? null : ($validated['no_wa'] ?? null),          // ← BARU
+            'fonnte_token'       => $isWakasek ? null : ($validated['fonnte_token'] ?? null),   // ← BARU
         ]);
 
         return redirect()->route('user-petugas.index')
@@ -64,20 +68,21 @@ class UserPetugasController extends Controller
         $validated = $request->validate([
             'name'               => 'required|string|max:255',
             'email'              => 'required|email|unique:users,email,' . $user->id,
-            'role'               => 'nullable|in:petugas,koordinator,wakasek', // ← wakasek ditambah
+            'role'               => 'nullable|in:petugas,koordinator,wakasek',
             'jenis_kelamin'      => 'nullable|in:L,P',
             'nip'                => 'nullable|string|max:20',
             'golongan'           => 'nullable|string|max:10',
             'status_kepegawaian' => 'nullable|in:PNS,PPPK Guru,PPPK/PW Guru,PPPK/Staf TU,PPPK/PW Staf TU,Guru Honorer',
             'hari_piket'         => 'nullable|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu,Minggu',
             'auto_hadir'         => 'nullable|boolean',
+            'no_wa'              => 'nullable|string|max:30',      // ← BARU
+            'fonnte_token'       => 'nullable|string|max:255',     // ← BARU
         ]);
 
-        $roleBaru = $validated['role'] ?? $user->role;
+        $roleBaru  = $validated['role'] ?? $user->role;
         $isWakasek = $roleBaru === 'wakasek';
 
         // ===== PROTEKSI: cegah sistem kehilangan koordinator terakhir =====
-        // Berlaku juga saat koordinator diturunkan menjadi petugas ATAU wakasek
         if ($user->role === 'koordinator' && $roleBaru !== 'koordinator') {
             if (User::where('role', 'koordinator')->count() <= 1) {
                 return back()->with('error', 'Role tidak dapat diturunkan: minimal harus ada 1 koordinator aktif.');
@@ -94,6 +99,8 @@ class UserPetugasController extends Controller
             'status_kepegawaian' => $validated['status_kepegawaian'] ?? null,
             'hari_piket'         => $isWakasek ? null : ($validated['hari_piket'] ?? null),
             'auto_hadir'         => $isWakasek ? false : (bool) ($validated['auto_hadir'] ?? false),
+            'no_wa'              => $isWakasek ? null : ($validated['no_wa'] ?? null),          // ← BARU
+            'fonnte_token'       => $isWakasek ? null : ($validated['fonnte_token'] ?? null),   // ← BARU
         ]);
 
         return redirect()->route('user-petugas.index')
@@ -117,8 +124,6 @@ class UserPetugasController extends Controller
             return back()->with('error', 'Tidak bisa menghapus akun Anda sendiri.');
         }
 
-        // ===== PROTEKSI: cegah menghapus koordinator terakhir =====
-        // Wakasek & petugas boleh dihapus kapan saja tanpa batasan ini
         if ($user->role === 'koordinator' && User::where('role', 'koordinator')->count() <= 1) {
             return back()->with('error', 'Tidak bisa menghapus koordinator terakhir.');
         }

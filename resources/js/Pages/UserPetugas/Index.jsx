@@ -49,6 +49,8 @@ const defaultForm = {
     status_kepegawaian: "",
     hari_piket: "",
     auto_hadir: false,
+    no_wa: "",
+    fonnte_token: "",
 };
 
 export default function UserPetugasIndex(props) {
@@ -121,6 +123,8 @@ export default function UserPetugasIndex(props) {
             // Wakasek tidak punya hari_piket & auto_hadir
             hari_piket: isWakasek ? null : form.hari_piket || null,
             auto_hadir: isWakasek ? false : form.auto_hadir ? true : false,
+            no_wa: isWakasek ? null : form.no_wa || null,
+            fonnte_token: isWakasek ? null : form.fonnte_token || null,
         };
 
         if (editId) {
@@ -158,6 +162,8 @@ export default function UserPetugasIndex(props) {
             status_kepegawaian: u.status_kepegawaian || "",
             hari_piket: u.hari_piket || "",
             auto_hadir: !!u.auto_hadir,
+            no_wa: u.no_wa || "",
+            fonnte_token: u.fonnte_token || "",
         });
         setShowForm(true);
     };
@@ -624,6 +630,100 @@ export default function UserPetugasIndex(props) {
                             )}
 
                             {/* ← BARU: Info khusus Wakasek */}
+
+                            {/* ===== KONEKSI WHATSAPP (FONNTE) ===== */}
+                            {!isWakasek && (
+                                <div className="md:col-span-2">
+                                    <div className="rounded-lg border-2 border-sky-200 bg-sky-50/50 p-4">
+                                        <div className="mb-2 flex items-center gap-2">
+                                            <span className="text-xs font-bold text-sky-900">
+                                                📱 KONEKSI WHATSAPP (FONNTE)
+                                            </span>
+                                            <span className="rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                KHUSUS KOORDINATOR
+                                            </span>
+                                        </div>
+                                        <p className="mb-3 text-[11px] text-sky-700">
+                                            Isi hanya jika akun ini bertugas
+                                            sebagai <b>koordinator piket</b>.
+                                            Sistem akan mengirim laporan
+                                            otomatis ke grup sekolah & wali
+                                            kelas memakai{" "}
+                                            <b>nomor WA Anda sendiri</b> pada
+                                            hari piket Anda.
+                                        </p>
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                            <div>
+                                                <label className="mb-1 block text-xs font-semibold">
+                                                    No. WhatsApp
+                                                </label>
+                                                <input
+                                                    value={form.no_wa}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            "no_wa",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="6281234567890"
+                                                    maxLength={20}
+                                                    className="w-full rounded-lg border-sky-300 font-mono"
+                                                />
+                                                <p className="mt-1 text-[11px] text-sky-600">
+                                                    Format internasional: 628xxx
+                                                    (tanpa +, spasi, atau 0 di
+                                                    depan)
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label className="mb-1 block text-xs font-semibold">
+                                                    Token Fonnte
+                                                </label>
+                                                <input
+                                                    type="password"
+                                                    value={form.fonnte_token}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            "fonnte_token",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Tempel token dari dashboard Fonnte"
+                                                    className="w-full rounded-lg border-sky-300 font-mono text-xs"
+                                                />
+                                                <p className="mt-1 text-[11px] text-sky-600">
+                                                    Daftar gratis di fonnte.com
+                                                    → menu Device → scan WA →
+                                                    salin token
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {form.no_wa && form.fonnte_token && (
+                                            <div className="mt-3 rounded bg-emerald-100 px-2 py-1.5 text-[11px] font-medium text-emerald-800">
+                                                ✅ Siap kirim otomatis: laporan
+                                                hari{" "}
+                                                <b>
+                                                    {form.hari_piket ||
+                                                        "(pilih hari piket dulu)"}
+                                                </b>{" "}
+                                                akan dikirim dari nomor ini.
+                                            </div>
+                                        )}
+                                        {form.role === "koordinator" &&
+                                            (!form.no_wa ||
+                                                !form.fonnte_token) && (
+                                                <div className="mt-3 rounded bg-amber-100 px-2 py-1.5 text-[11px] font-medium text-amber-800">
+                                                    ⚠️ Akun ini koordinator
+                                                    tetapi No. WA / Token belum
+                                                    lengkap — pengiriman
+                                                    otomatis di hari piketnya
+                                                    akan dilewati.
+                                                </div>
+                                            )}
+                                    </div>
+                                </div>
+                            )}
+
                             {isWakasek && (
                                 <div className="md:col-span-2">
                                     <div className="rounded-lg border-2 border-teal-200 bg-teal-50/50 p-4">
@@ -681,7 +781,7 @@ export default function UserPetugasIndex(props) {
                     <div className="overflow-x-auto">
                         {/* min-w = KUNCI: tabel tidak pernah lebih sempit dari 960px,
                             sehingga di HP wrapper membuat geser horizontal, bukan meremas kolom */}
-                        <table className="w-full min-w-[960px] text-sm">
+                        <table className="w-full min-w-[1040px] text-sm">
                             <thead>
                                 <tr className="border-b text-left text-gray-500">
                                     <th className="py-2 pr-3">Nama</th>
@@ -693,6 +793,7 @@ export default function UserPetugasIndex(props) {
                                     <th className="py-2 pr-3">Status</th>
                                     <th className="py-2 pr-3">📅 Piket</th>
                                     <th className="py-2 pr-3">🤖 Auto</th>
+                                    <th className="py-2 pr-3">📱 WA</th>
                                     <th className="sticky right-0 bg-white py-2 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.15)]">
                                         Aksi
                                     </th>
@@ -746,6 +847,18 @@ export default function UserPetugasIndex(props) {
                                                 autoHadirBadge(u.auto_hadir)
                                             )}
                                         </td>
+                                        <td className="py-2 pr-3">
+                                            {u.fonnte_token ? (
+                                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                                    ✓ Terhubung
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] text-gray-400">
+                                                    —
+                                                </span>
+                                            )}
+                                        </td>
+
                                         {/* Kolom Aksi sticky: tetap terlihat saat tabel digeser */}
                                         <td className="sticky right-0 bg-white py-2 text-right shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.15)]">
                                             <button
