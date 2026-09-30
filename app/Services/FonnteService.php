@@ -18,26 +18,36 @@ class FonnteService
 
     /**
      * Kirim pesan teks.
-     * $token opsional = token Fonnte koordinator (pengirim = nomor koordinator).
-     * Null / kosong = pakai token sistem (config services.fonnte.token).
      */
-    public function kirimTeks(string $to, string $message, ?string $token = null): bool
+    public function kirimTeks(string $target, string $message, ?string $token = null): bool
     {
-        return $this->kirim(['to' => $to, 'message' => $message], $token);
+        return $this->kirim(['target' => $target, 'message' => $message], $token);
     }
 
-    public function kirimGambar(string $to, string $url, string $caption, ?string $token = null): bool
+    /**
+     * Kirim gambar via URL.
+     */
+    public function kirimGambar(string $target, string $url, string $caption, ?string $token = null): bool
     {
         return $this->kirim([
-            'to' => $to, 'message' => $caption, 'type' => 'image', 'url' => $url,
+            'target'  => $target,
+            'message' => $caption,
+            'type'    => 'image',
+            'url'     => $url,
         ], $token);
     }
 
-    public function kirimDokumen(string $to, string $url, string $filename, string $caption, ?string $token = null): bool
+    /**
+     * Kirim dokumen (PDF, dll).
+     */
+    public function kirimDokumen(string $target, string $url, string $filename, string $caption, ?string $token = null): bool
     {
         return $this->kirim([
-            'to' => $to, 'message' => $caption,
-            'type' => 'document', 'url' => $url, 'filename' => $filename,
+            'target'   => $target,
+            'message'  => $caption,
+            'type'     => 'document',
+            'url'      => $url,
+            'filename' => $filename,
         ], $token);
     }
 
@@ -55,9 +65,9 @@ class FonnteService
             $ok = $res->successful() && ($res->json('status') ?? false);
 
             if (!$ok) {
-                Log::warning('[FONNTE] Gagal ke ' . $payload['to'] . ' (device ' . $device . '): ' . $res->body());
+                Log::warning('[FONNTE] Gagal ke ' . $payload['target'] . ' (device ' . $device . '): ' . $res->body());
             } else {
-                Log::info('[FONNTE] Terkirim ke ' . $payload['to'] . ' via device ' . $device);
+                Log::info('[FONNTE] Terkirim ke ' . $payload['target'] . ' via device ' . $device);
             }
 
             return $ok;
