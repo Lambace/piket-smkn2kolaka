@@ -29,7 +29,7 @@ class WaRelayService
     {
         $pengaturan  = Pengaturan::first();
         $grupSekolah = $pengaturan?->wa_grup ?: env('WA_GROUP_ID');
-        $koordinator = $this->resolver->resolve();
+        $koordinator = $this->resolver->resolve($hari);
 
         if (empty($grupSekolah)) {
             Log::error('[WA-RELAY] Grup sekolah belum diisi (pengaturan.wa_grup atau WA_GROUP_ID).');

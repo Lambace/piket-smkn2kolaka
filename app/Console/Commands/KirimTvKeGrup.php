@@ -2,68 +2,72 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AbsensiPetugas;
 use App\Models\Pengaturan;
+use App\Models\User;
+use App\Services\PengirimWaResolver;
+use App\Services\WaRelayService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Intervention\Image\ImageManagerStatic as Image;
 
 class KirimTvKeGrup extends Command
 {
-    protected $signature = 'tv:kirim-grup {--grup= : ID grup WA (default: env WA_GROUP_ID)}';
-    protected $description = 'Kirim banner Laporan Tim Piket profesional ke grup WhatsApp';
+    protected $signature = 'tv:kirim-grup {--hari= : Simulasi hari (uji coba), contoh: --hari=Rabu}';
+    protected $description = 'Kirim banner Laporan Tim Piket ke grup sekolah (otomatis harian)';
 
-    public function handle(): int
+    public function handle(PengirimWaResolver $resolver, WaRelayService $relay): int
     {
-        $grup = $this->option('grup') ?? env('WA_GROUP_ID');
+        $now       = Carbon::now('Asia/Makassar');
+        $hariIni = $this->option('hari') ?: $now->isoFormat('dddd');
+        $tanggal   = $now->isoFormat('dddd, D MMMM Y');
+        $todayStr  = $now->toDateString();
 
-        if (empty($grup)) {
-            $this->error('❌ WA_GROUP_ID belum diisi.');
-            return Command::FAILURE;
+        // ===== GATEKEEPER 1: Libur Minggu =====
+        if ($hariIni === 'Minggu') {
+            $this->info("🗓️ Hari Minggu — libur otomatis, skip pengiriman.");
+            return Command::SUCCESS;
         }
 
-        // ===== 1. Token Fonnte =====
-        $token = env('FONNTE_TOKEN');
-        if (empty($token)) {
-            $pengaturan = Pengaturan::first();
-            if ($pengaturan) {
-                foreach ($pengaturan->getAttributes() as $kolom => $nilai) {
-                    if ((str_contains($kolom, 'fonnte') || str_contains($kolom, 'token')) && !empty($nilai)) {
-                        $token = $nilai;
-                        break;
-                    }
-                }
+        // ===== GATEKEEPER 2: Koordinator aktif hari ini =====
+        $koordinator = $resolver->resolve();
+        if (!$koordinator) {
+            $this->warn("⚠️ Tidak ada koordinator aktif hari {$hariIni}. Skip pengiriman.");
+            return Command::SUCCESS;
+        }
+
+        $this->info("✅ Hari {$hariIni} — koordinator aktif: {$koordinator->name}");
+
+        // ===== AMBIL DATA REAL DARI DATABASE =====
+        $pengaturan = Pengaturan::first();
+        $sekolah    = $pengaturan?->nama_sekolah ?? 'SMKN 2 KOLAKA';
+
+        // Petugas yang JADWAL piket hari ini
+        $petugasJadwal = User::whereIn('role', ['petugas', 'koordinator'])
+            ->where('hari_piket', $hariIni)
+            ->get();
+
+        // Absensi yang SUDAH tercatat hari ini
+        $absensiHariIni = AbsensiPetugas::whereDate('tanggal', $todayStr)->get();
+
+        $petugasHadir = 0;
+        $alpha        = 0;
+        foreach ($petugasJadwal as $u) {
+            $namaKey = strtolower(trim($u->name));
+            $record  = $absensiHariIni->first(
+                fn($a) => strtolower(trim($a->nama)) === $namaKey
+            );
+            if ($record && in_array($record->status, ['tepat_waktu', 'terlambat'])) {
+                $petugasHadir++;
+            } else {
+                $alpha++;
             }
         }
 
-        if (empty($token)) {
-            $this->error('❌ Token Fonnte tidak ditemukan.');
-            return Command::FAILURE;
-        }
-
-        // ===== 2. Ambil Data =====
-        $pengaturan = Pengaturan::first();
-        $sekolah = $pengaturan?->nama_sekolah ?? 'SMKN 2 KOLAKA';
-        $now = now()->locale('id');
-        $hari = $now->isoFormat('dddd');
-        $tanggal = $now->isoFormat('dddd, D MMMM Y');
-
-        // ⚠️ GANTI dengan query database asli Anda!
-        $petugasHadir = 0; 
-        $alpha = 0; 
-
-        $key = env('DISPLAY_KEY', 'piket2026');
-        $urlTv = url('/tampil') . '?k=' . $key;
-        $urlPdf = url('/tampil/laporan') . '?' . http_build_query([
-            'jenis'   => 'gabungan',
-            'periode' => 'harian',
-            'tanggal' => $now->toDateString(),
-            'k'       => $key,
-        ]);
-
-        // ===== 3. Generate Banner =====
+        // ===== GENERATE BANNER =====
         $this->info('🎨 Sedang membuat banner...');
-        
+
         $templatePath = public_path('images/banner-bg.png');
         if (!File::exists($templatePath)) {
             $this->error('❌ File template banner-bg.png tidak ditemukan di public/images/');
@@ -72,7 +76,6 @@ class KirimTvKeGrup extends Command
 
         $image = Image::make($templatePath);
 
-        // A. Overlay Logo Dinamis
         if ($pengaturan?->logo) {
             $logoPath = public_path('storage/' . $pengaturan->logo);
             if (File::exists($logoPath)) {
@@ -80,11 +83,9 @@ class KirimTvKeGrup extends Command
                     $constraint->aspectRatio();
                 });
                 $image->insert($logo, 'top', 0, 50);
-                $this->info('✅ Logo dinamis ditambahkan.');
             }
         }
 
-        // B. Overlay Tanggal
         $image->text($tanggal, 540, 750, function($font) {
             $font->size(40);
             $font->color('#2c3e50');
@@ -92,7 +93,6 @@ class KirimTvKeGrup extends Command
             $font->valign('middle');
         });
 
-        // C. Overlay Angka Hadir
         $image->text((string)$petugasHadir, 340, 1300, function($font) {
             $font->size(100);
             $font->color('#ffffff');
@@ -105,7 +105,6 @@ class KirimTvKeGrup extends Command
             $font->align('center');
         });
 
-        // D. Overlay Angka Alpha
         $image->text((string)$alpha, 740, 1300, function($font) {
             $font->size(100);
             $font->color('#ffffff');
@@ -118,81 +117,51 @@ class KirimTvKeGrup extends Command
             $font->align('center');
         });
 
-        // Simpan di folder PUBLIC agar URL langsung bisa diakses tanpa symlink storage
         $folder = public_path('banners');
         if (!File::isDirectory($folder)) {
             File::makeDirectory($folder, 0755, true);
         }
 
-        $fileName = 'piket-' . now()->timestamp . '.png';
-        $savePath = $folder . '/' . $fileName;
+        $fileName  = 'piket-' . $now->timestamp . '.png';
+        $savePath  = $folder . '/' . $fileName;
         $image->save($savePath);
-        
-        // URL Publik langsung dari folder public
         $bannerUrl = url('banners/' . $fileName);
-        $this->info('✅ Banner berhasil disimpan: ' . $bannerUrl);
+        $this->info('✅ Banner disimpan: ' . $bannerUrl);
 
-        // ===== 4. Siapkan Caption =====
+        // ===== SIAPKAN CAPTION =====
+        $key    = env('DISPLAY_KEY', 'piket2026');
+        $urlTv  = url('/tampil') . '?k=' . $key;
+        $urlPdf = url('/tampil/laporan') . '?' . http_build_query([
+            'jenis'   => 'gabungan',
+            'periode' => 'harian',
+            'tanggal' => $todayStr,
+            'k'       => $key,
+        ]);
+
         $caption = implode("\n", [
-            '*LAPORAN TIM PIKET ' . strtoupper($hari) . '*',
+            '*LAPORAN TIM PIKET ' . strtoupper($hariIni) . '*',
             '_' . $sekolah . '_',
             $tanggal,
             '',
             '👥 Petugas Hadir: *' . $petugasHadir . ' orang*',
             '🔴 Alpha: *' . $alpha . ' orang*',
             '',
-            '🔴 *Live View* — lihat dashboard piket hari ini:',
+            '🔴 *Live View* — dashboard piket hari ini:',
             $urlTv,
             '',
-            '📄 *Download Laporan* — unduh PDF laporan harian:',
+            '📄 *Download Laporan* — PDF laporan harian:',
             $urlPdf,
             '',
-            '_© Sistem Informasi Si_Piket',
+            '_© Sistem Informasi Si_Piket_',
         ]);
 
-        // ===== 5. Kirim ke Fonnte =====
-        $this->info('📱 Mengirim ke Fonnte...');
-        
-        $payload = [
-            'target'  => $grup,
-            'message' => $caption,
-            'url'     => $bannerUrl,
-        ];
+        // ===== KIRIM LEWAT WaRelayService =====
+        $this->info('📱 Mengirim ke grup sekolah via WaRelayService...');
+        $ok = $relay->kirimBanner($bannerUrl, $caption);
 
-        $res = Http::withHeaders(['Authorization' => $token])
-            ->timeout(120)
-            ->asForm()
-            ->post('https://api.fonnte.com/send', $payload);
+        $this->newLine();
+        $this->info('💾 Banner disimpan di public/banners/ (tidak dihapus untuk antrean Fonnte).');
 
-        // ===== 6. Evaluasi =====
-        $body = [];
-        if ($res->successful()) {
-            try {
-                $body = $res->json() ?? [];
-                $this->info('📱 Response Fonnte: ' . json_encode($body));
-            } catch (\Throwable $e) {
-                $body = ['status' => false, 'reason' => 'Response bukan JSON'];
-            }
-        } else {
-            $this->error('❌ HTTP Error: ' . $res->status());
-            $this->error('Response: ' . $res->body());
-        }
-
-        // ===== 7. JANGAN HAPUS FILE SEKARANG =====
-        // Fonnte memproses pesan secara "pending" (antrean). 
-        // Jika file dihapus sekarang, Fonnte akan gagal mendownload gambar (404).
-        // File akan menumpuk sedikit di folder public/banners (hanya ~100KB per hari), 
-        // Anda bisa membersihkannya manual per bulan jika perlu.
-        $this->info('💾 File banner disimpan (tidak dihapus agar Fonnte bisa memproses antrean).');
-
-        $ok = $res->successful() && ($body['status'] ?? false);
-
-        if ($ok) {
-            $this->info("✅ Banner berhasil terkirim ke {$grup}");
-            return Command::SUCCESS;
-        }
-
-        $this->error('❌ Gagal kirim: ' . ($body['reason'] ?? 'Unknown error'));
-        return Command::FAILURE;
+        return $ok ? Command::SUCCESS : Command::FAILURE;
     }
 }

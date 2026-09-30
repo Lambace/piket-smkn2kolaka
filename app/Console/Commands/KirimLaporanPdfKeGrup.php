@@ -10,7 +10,8 @@ use App\Models\Pelanggaran;
 use App\Models\Pengaturan;
 use App\Models\Siswa;
 use App\Models\User;
-use App\Services\WhatsAppService;
+use App\Services\PengirimWaResolver;
+use App\Services\WaRelayService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -18,22 +19,31 @@ use Illuminate\Support\Facades\Storage;
 
 class KirimLaporanPdfKeGrup extends Command
 {
-    protected $signature = 'laporan:kirim-pdf {--grup= : ID grup/nomor WA (default: env WA_GROUP_ID)}';
-    protected $description = 'Generate PDF laporan harian, kirim file PDF beneran + banner Live View ke grup WA';
+    protected $signature = 'laporan:kirim-pdf';
+    protected $description = 'Generate PDF laporan harian + kirim ke grup sekolah via nomor koordinator';
 
-        public function handle(): int
+    public function handle(WaRelayService $relay, PengirimWaResolver $resolver): int
     {
-        $grup = $this->option('grup') ?? env('WA_GROUP_ID');
+        $now       = now()->locale('id');
+        $hariIni   = $now->isoFormat('dddd');
+        $tanggal   = $now->toDateString();
 
-        if (empty($grup)) {
-            $this->error('WA_GROUP_ID belum diisi di .env');
-            return Command::FAILURE;
+        // ===== GATEKEEPER: Libur / Tanpa Koordinator =====
+        if ($hariIni === 'Minggu') {
+            $this->info('🗓️ Minggu — skip pengiriman PDF.');
+            return Command::SUCCESS;
         }
 
-        // ===== 1. Generate PDF dengan DomPDF =====
-        $this->info('1️⃣  Generate PDF dengan DomPDF...');
+        $koordinator = $resolver->resolve();
+        if (!$koordinator) {
+            $this->warn("⚠️ Hari {$hariIni} tanpa koordinator aktif → skip PDF.");
+            return Command::SUCCESS;
+        }
+
+        // ===== 1. GENERATE PDF =====
+        $this->info('1️⃣  Generate PDF...');
         try {
-            $pdfData = $this->generatePdfData();
+            $pdfData    = $this->generatePdfData($koordinator);
             $pdfContent = Pdf::loadView('laporan.pdf', $pdfData)
                 ->setPaper('a4', 'portrait')
                 ->output();
@@ -42,38 +52,35 @@ class KirimLaporanPdfKeGrup extends Command
             return Command::FAILURE;
         }
 
-        // ===== 2. Simpan file (biar link download aktif) =====
-        $tanggal = now()->format('Y-m-d');
+        // ===== 2. SIMPAN PDF =====
         $filename = 'Laporan-Harian-'.$tanggal.'.pdf';
         Storage::disk('public')->put('laporan/'.$filename, $pdfContent);
+        $pdfUrl = route('laporan.download', $filename);
         $this->info('2️⃣  PDF tersimpan: laporan/'.$filename);
 
-        // ===== 3. Link publik =====
-        $pdfUrl = route('laporan.download', $filename);
-        $key = env('DISPLAY_KEY', 'piket2026');
+        // ===== 3. BANNER LIVE VIEW =====
+        $key   = env('DISPLAY_KEY', 'piket2026');
         $urlTv = url('/tampil').'?k='.$key;
 
-        // ===== Data caption =====
-        $now = now()->locale('id');
+        // ===== 4. CAPTION + TTD KOORDINATOR =====
         $sekolah = Pengaturan::first()?->nama_sekolah ?? 'SMKN 2 KOLAKA';
-        $hari = strtoupper($now->isoFormat('dddd'));
+        $hadir   = AbsensiPetugas::whereDate('tanggal', $tanggal)
+            ->whereIn('status', ['tepat_waktu', 'terlambat'])->count();
+        $petugasHariIni = User::whereIn('role', ['petugas', 'koordinator'])
+            ->where('hari_piket', $hariIni)->count();
+        $alpha = max(0, $petugasHariIni - $hadir);
 
-        $jumlahHadir = AbsensiPetugas::where('tanggal', now()->toDateString())->count();
-        $jumlahPetugas = User::whereIn('role', ['petugas', 'koordinator'])->count();
-        $jumlahAlpha = max(0, $jumlahPetugas - $jumlahHadir);
-
-        // ===== 4. SATU PESAN: banner + Live View + Download PDF =====
         $caption = implode("\n", [
-            '*LAPORAN TIM PIKET '.$hari.'*',
+            '*LAPORAN TIM PIKET '.strtoupper($hariIni).'*',
             '_'.$sekolah.'_',
             $now->isoFormat('dddd, D MMMM Y'),
             '',
             '━━━━━━━━━━━━━━━━━━━━',
-            '👥 Petugas Hadir : *'.$jumlahHadir.' orang*',
-            '❌ Alpha         : *'.$jumlahAlpha.' orang*',
+            '👥 Petugas Hadir : *'.$hadir.' orang*',
+            '❌ Alpha         : *'.$alpha.' orang*',
             '━━━━━━━━━━━━━━━━━━━━',
             '',
-            '🔴 *Lihat Dashboard piket hari ini*:',
+            '🔴 *Dashboard piket hari ini*:',
             $urlTv,
             '',
             '📥 *Download PDF Laporan*:',
@@ -83,26 +90,64 @@ class KirimLaporanPdfKeGrup extends Command
             '_© Sistem Informasi Piket_Si Piket',
         ]);
 
-        $this->info('3️⃣  Kirim pesan ke WA...');
-        $wa = new WhatsAppService();
-        $notif = $wa->kirim($grup, $caption);
+        // ===== 5. KIRIM PDF via WaRelayService =====
+        $this->info('3️⃣  Kirim PDF ke grup sekolah via device koordinator...');
 
-        // File disimpan 2 hari (dibersihkan otomatis oleh laporan:bersih-pdf)
-        $this->info('📌 File PDF disimpan 2 hari untuk link download.');
+        // Banner sebagai preview (url gambar dummy dari logo sekolah)
+        $bannerUrl = url('images/banner-bg.png');
+        $ok = $relay->kirimBanner($bannerUrl, $caption);
 
-        if ($notif->status === 'terkirim') {
-            $this->info('✅ Laporan terkirim ke '.$grup);
-            return Command::SUCCESS;
+        // PDF sebagai lampiran terpisah
+        if ($ok) {
+            $this->info('📎 Mengirim file PDF sebagai lampiran...');
+            $ok = $this->kirimPdfLangsung($relay, $pdfUrl, $filename, $caption);
         }
 
-        $this->error('❌ Gagal kirim: '.($notif->pesan_error ?? 'unknown'));
-        return Command::FAILURE;
+        $this->info('📌 File PDF disimpan 2 hari (dibersihkan otomatis oleh laporan:bersih-pdf).');
+
+        return $ok ? Command::SUCCESS : Command::FAILURE;
     }
-    // ===== Data untuk view laporan.pdf =====
-    private function generatePdfData(): array
+
+    /**
+     * Kirim PDF sebagai dokumen.
+     * Memakai FonnteService langsung dengan token koordinator.
+     */
+    private function kirimPdfLangsung(WaRelayService $relay, string $pdfUrl, string $filename, string $caption): bool
     {
-        $dari = now()->startOfDay();
-        $sampai = now()->endOfDay();
+        $koordinator = app(PengirimWaResolver::class)->resolve();
+        if (!$koordinator) return false;
+
+        $pengaturan = Pengaturan::first();
+        $grup = $pengaturan?->wa_grup ?: env('WA_GROUP_ID');
+        if (!$grup) return false;
+
+        $fonnte = app(\App\Services\FonnteService::class);
+
+        // Coba kirim PDF ke grup dengan token koordinator
+        if ($fonnte->kirimDokumen($grup, $pdfUrl, $filename, $caption, $koordinator->fonnte_token)) {
+            return true;
+        }
+
+        // Fallback: kirim ke WA koordinator + instruksi forward
+        if ($fonnte->kirimDokumen($koordinator->no_wa, $pdfUrl, $filename, $caption, $koordinator->fonnte_token)) {
+            $fonnte->kirimTeks(
+                $koordinator->no_wa,
+                "⬆️ PDF laporan piket hari ini.\nMohon *forward* ke *Grup Sekolah*.\n\nTerima kasih 🙏",
+                $koordinator->fonnte_token
+            );
+            return true;
+        }
+
+        // Fallback terakhir: device sistem
+        return $fonnte->kirimDokumen($grup, $pdfUrl, $filename, $caption, null);
+    }
+
+    private function generatePdfData($koordinator): array
+    {
+        $now     = now();
+        $hariIni = $now->isoFormat('dddd');
+        $dari    = $now->startOfDay();
+        $sampai  = $now->endOfDay();
         $dariStr = $dari->toDateString();
         $sampaiStr = $sampai->toDateString();
         $withSiswa = 'siswa:id,nisn,nis,nama,kelas,jurusan';
@@ -110,33 +155,41 @@ class KirimLaporanPdfKeGrup extends Command
         $absensiPetugas = AbsensiPetugas::whereBetween('tanggal', [$dariStr, $sampaiStr])
             ->orderBy('tanggal')->orderBy('jam_masuk')->get();
 
-        $rekapPetugas = User::whereIn('role', ['petugas', 'koordinator'])
-            ->orderBy('name')->get()
-            ->map(function ($u) use ($dariStr, $sampaiStr, $dari) {
-                $r = AbsensiPetugas::where('nama', $u->name)
-                    ->whereBetween('tanggal', [$dariStr, $sampaiStr])
-                    ->orderBy('jam_masuk')->first();
+        // ===== FILTER: HANYA PETUGAS YANG JADWAL HARI INI =====
+        $petugasHariIni = User::whereIn('role', ['petugas', 'koordinator'])
+            ->where('hari_piket', $hariIni)
+            ->orderBy('name')->get();
 
-                return [
-                    'nama'       => $u->name,
-                    'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
-                    'jam'        => $r?->jam_masuk ?? '-',
-                    'status'     => $r?->status ?? 'alpha',
-                    'keterangan' => $r?->keterangan ?? '',
-                    'tanggal'    => $r?->tanggal
-                        ? $r->tanggal->isoFormat('D MMM Y')
-                        : $dari->isoFormat('D MMM Y'),
-                ];
-            });
+        $rekapPetugas = $petugasHariIni->map(function ($u) use ($dariStr, $sampaiStr, $dari) {
+            $r = AbsensiPetugas::where('nama', $u->name)
+                ->whereBetween('tanggal', [$dariStr, $sampaiStr])
+                ->orderBy('jam_masuk')->first();
 
-        $hadirHariIni = AbsensiPetugas::where('tanggal', $sampaiStr)
-            ->whereIn('status', ['tepat_waktu', 'terlambat'])->count();
-        $alphaHariIni = max(0, User::whereIn('role', ['petugas', 'koordinator'])->count() - $hadirHariIni);
+            return [
+                'nama'       => $u->name,
+                'jabatan'    => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                'jam'        => $r?->jam_masuk ?? '-',
+                'status'     => $r?->status ?? 'alpha',
+                'keterangan' => $r?->keterangan ?? '',
+                'tanggal'    => $r?->tanggal
+                    ? $r->tanggal->isoFormat('D MMM Y')
+                    : $dari->isoFormat('D MMM Y'),
+            ];
+        });
 
-        $keterlambatan = Keterlambatan::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
-        $izinKeluar = IzinKeluar::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
-        $pelanggaran = Pelanggaran::with($withSiswa)->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
-        $tamu = BukuTamu::whereBetween('tanggal_kunjungan', [$dariStr, $sampaiStr])->orderBy('tanggal_kunjungan')->get();
+        $hadirHariIni = $rekapPetugas->filter(
+            fn($r) => in_array($r['status'], ['tepat_waktu', 'terlambat'])
+        )->count();
+        $alphaHariIni = $rekapPetugas->count() - $hadirHariIni;
+
+        $keterlambatan = Keterlambatan::with($withSiswa)
+            ->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
+        $izinKeluar = IzinKeluar::with($withSiswa)
+            ->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
+        $pelanggaran = Pelanggaran::with($withSiswa)
+            ->whereBetween('tanggal', [$dariStr, $sampaiStr])->orderBy('tanggal')->get();
+        $tamu = BukuTamu::whereBetween('tanggal_kunjungan', [$dariStr, $sampaiStr])
+            ->orderBy('tanggal_kunjungan')->get();
 
         $perKelas = Keterlambatan::select('siswa.kelas as label', DB::raw('COUNT(*) as jumlah'))
             ->join('siswa', 'siswa.id', '=', 'keterlambatan.siswa_id')
@@ -161,13 +214,13 @@ class KirimLaporanPdfKeGrup extends Command
             ->groupBy('siswa_id')->orderByDesc('jumlah')->limit(10)->get();
 
         $ringkasan = [
-            ['label' => 'Total Siswa Aktif', 'nilai' => Siswa::where('aktif', true)->count().' siswa'],
-            ['label' => 'Petugas Piket Hadir', 'nilai' => $hadirHariIni.' orang'],
-            ['label' => 'Petugas Alpha', 'nilai' => $alphaHariIni.' orang'],
-            ['label' => 'Keterlambatan Siswa', 'nilai' => $keterlambatan->count().' kejadian'],
-            ['label' => 'Izin Keluar', 'nilai' => $izinKeluar->count().' kejadian'],
-            ['label' => 'Pelanggaran', 'nilai' => $pelanggaran->count().' kejadian ('.$pelanggaran->sum('poin').' poin)'],
-            ['label' => 'Kunjungan Tamu', 'nilai' => $tamu->count().' kunjungan'],
+            ['label' => 'Total Siswa Aktif',     'nilai' => Siswa::where('aktif', true)->count().' siswa'],
+            ['label' => 'Petugas Piket Hadir',   'nilai' => $hadirHariIni.' orang'],
+            ['label' => 'Petugas Alpha',         'nilai' => $alphaHariIni.' orang'],
+            ['label' => 'Keterlambatan Siswa',   'nilai' => $keterlambatan->count().' kejadian'],
+            ['label' => 'Izin Keluar',           'nilai' => $izinKeluar->count().' kejadian'],
+            ['label' => 'Pelanggaran',           'nilai' => $pelanggaran->count().' kejadian ('.$pelanggaran->sum('poin').' poin)'],
+            ['label' => 'Kunjungan Tamu',        'nilai' => $tamu->count().' kunjungan'],
         ];
 
         $pengaturan = Pengaturan::first();
@@ -184,8 +237,7 @@ class KirimLaporanPdfKeGrup extends Command
             $logoInstansi = 'data:'.$mime.';base64,'.base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
         }
 
-        $koordinator = User::where('role', 'koordinator')->orderBy('name')->first();
-        $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.now()->isoFormat('D MMMM Y');
+        $tempatTanggal = ($pengaturan->kota ?? 'Kolaka').', '.$now->isoFormat('D MMMM Y');
 
         $totalData = $absensiPetugas->count() + $keterlambatan->count() + $izinKeluar->count()
                    + $pelanggaran->count() + $tamu->count();
@@ -194,7 +246,7 @@ class KirimLaporanPdfKeGrup extends Command
             'pengaturan'       => $pengaturan,
             'logo'             => $logo,
             'logoInstansi'     => $logoInstansi,
-            'labelPeriode'     => 'Harian — '.now()->isoFormat('dddd, D MMMM Y'),
+            'labelPeriode'     => 'Harian — '.$now->isoFormat('dddd, D MMMM Y'),
             'rekapPetugas'     => $rekapPetugas,
             'ringkasan'        => $ringkasan,
             'keterlambatan'    => $keterlambatan,
@@ -210,7 +262,12 @@ class KirimLaporanPdfKeGrup extends Command
             'dicetakOleh'      => 'Sistem Otomatis',
             'waktuCetak'       => now()->format('d-m-Y H:i'),
             'koordinator'      => $koordinator,
+            'jabatanTtd'       => 'Koordinator Piket',
             'tempatTanggal'    => $tempatTanggal,
+            'periode'          => 'harian',
+            'filter_hari'      => 'Semua Hari',
+            'tidakAdaJadwal'   => false,
+            'pesanLibur'       => null,
         ];
     }
 }

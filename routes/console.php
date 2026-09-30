@@ -7,34 +7,43 @@ Artisan::command('inspire', function () {
     $this->comment('Inspirational Quote');
 })->purpose('Display an inspiring quote');
 
-// ===== REKAP HARIAN OTOMATIS KE WALI KELAS =====
-// Sabtu 15:00 WITA - pesan pribadi ke setiap wali kelas
-Schedule::command('rekap:kirim-harian')
-    ->timezone('Asia/Makassar')
-    ->weeklyOn(6, '15:00')
-    ->withoutOverlapping();
+// ===== AUTO HADIR (07:00 WITA setiap hari) =====
+// Petugas dengan auto_hadir=true akan tercatat hadir di hari piket mereka.
+// Hari tanpa jadwal auto-hadir akan dilewati senyap (log: "Tidak ada target").
+Schedule::command('piket:auto-hadir')
+    ->dailyAt('07:00')
+    ->timezone('Asia/Makassar');
 
-// ===== LAPORAN PDF + LIVE VIEW KE GRUP SEKOLAH =====
-// Sabtu 15:02 WITA - 1x kirim berisi file PDF + link Live View di caption
-Schedule::command('laporan:kirim-pdf')
+// ===== BANNER TV KE GRUP SEKOLAH (15:00 WITA setiap hari) =====
+// Gatekeeper otomatis: skip Minggu, skip hari tanpa koordinator, skip tanpa token.
+// Banner dikirim dari nomor koordinator bertugas (via WaRelayService).
+Schedule::command('tv:kirim-grup')
+    ->dailyAt('15:00')
     ->timezone('Asia/Makassar')
-    ->weeklyOn(6, '15:00') 
     ->withoutOverlapping()
-    ->onFailure(function () {
-        \Illuminate\Support\Facades\Log::error('Laporan PDF gagal terkirim ke grup WA');
-    })
     ->onSuccess(function () {
-        \Illuminate\Support\Facades\Log::info('Laporan PDF berhasil terkirim ke grup WA');
+        \Illuminate\Support\Facades\Log::info('Banner TV berhasil terkirim ke grup sekolah.');
+    })
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('Banner TV gagal terkirim.');
     });
 
-// ===== PEMBERSIHAN FILE PDF LAMA =====
-// Setiap hari pukul 03:00 WITA - hapus PDF berusia lebih dari 2 hari
-Schedule::command('laporan:bersih-pdf')
+// ===== REKAP HARIAN KE WALI KELAS (15:05 WITA setiap hari) =====
+// Rekap dikirim ke WA pribadi wali kelas yang kelasnya punya aktivitas hari ini.
+// Pakai device Fonnte koordinator hari itu (fallback device sistem).
+Schedule::command('rekap:kirim-harian')
+    ->dailyAt('15:05')
     ->timezone('Asia/Makassar')
-    ->dailyAt('03:00');
+    ->withoutOverlapping();
 
-    // ===== Auto Hadir =====
-    Schedule::command('piket:auto-hadir')
-    ->saturdays()                 // ← hanya hari Sabtu
-    ->at('07:00')
+// ===== PDF LAPORAN + LINK LIVE VIEW (15:10 WITA setiap hari) =====
+// PDF disimpan 2 hari (link aktif) lalu dibersihkan otomatis.
+Schedule::command('laporan:kirim-pdf')
+    ->dailyAt('15:10')
+    ->timezone('Asia/Makassar')
+    ->withoutOverlapping();
+
+// ===== PEMBERSIHAN PDF LAMA (03:00 WITA setiap hari) =====
+Schedule::command('laporan:bersih-pdf')
+    ->dailyAt('03:00')
     ->timezone('Asia/Makassar');
