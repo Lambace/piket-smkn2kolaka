@@ -169,7 +169,7 @@ class LaporanController extends Controller
                 // Menghapus logika 'in_array' yang menyebabkan petugas hari lain "menyusup"
                 $petugasRelevanPdf = $semuaPetugasPdf->filter(function ($u) use ($namaHariLaporan) {
                     return $u->hari_piket === $namaHariLaporan;
-                });
+                })->values();
 
                 if ($petugasRelevanPdf->isEmpty()) {
                     $tidakAdaJadwal = true;
@@ -207,7 +207,7 @@ class LaporanController extends Controller
                                 : $tanggalRef->isoFormat('D MMM Y'),
                             'format'     => 'harian',
                         ];
-                    });
+                    })->values();
                 }
             } else {
                 $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
