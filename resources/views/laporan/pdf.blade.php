@@ -332,8 +332,9 @@
             <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
             {{ $jabatanTtd ?? 'Koordinator Piket' }}
             <div class="ttd-space"></div>
-            <span class="ttd-nama">{{ $pengaturan->koordinator_piket ?: ($koordinator?->name ?? '……………………………………') }}</span>
-            <div class="ttd-nip">NIP. {{ $pengaturan->nip_koordinator_piket ?: ($koordinator?->nip ?? '………………………………') }}</div>
+            <span class="ttd-nama">{{ $koordinator?->name ?: ($pengaturan->koordinator_piket ?? '……') }}</span>
+            <div class="ttd-nip">NIP. {{ $koordinator?->nip ?: ($pengaturan->nip_koordinator_piket ?? '………………………………') }}</div>
+               
         </td>
     </tr>
 </table>
