@@ -39,7 +39,7 @@ class AutoHadirPetugas extends Command
             }
 
             // ===== JAM ACAK 07:00:00 – 07:48:59 =====
-            $menit = rand(0, 48);
+            $menit = rand(0, 29);
             $detik = rand(0, 59);
             $jamMasuk = sprintf('07:%02d:%02d', $menit, $detik);
 

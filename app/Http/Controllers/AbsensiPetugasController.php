@@ -6,6 +6,7 @@ use App\Models\AbsensiPetugas;
 use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 
 class AbsensiPetugasController extends Controller
@@ -15,10 +16,12 @@ class AbsensiPetugasController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $today = now()->toDateString();
-        $awalBulan = now()->startOfMonth()->toDateString();
+        $now = Carbon::now('Asia/Makassar');
+        $today = $now->toDateString();
+        $awalBulan = $now->copy()->startOfMonth()->toDateString();
+        $namaHariIni = $now->isoFormat('dddd'); // "Senin", "Selasa", dst.
 
-        // ===== BARU: ambil pengaturan geofencing =====
+        // ===== GEOFENCING =====
         $pengaturan = Pengaturan::first();
         $geofence = [
             'aktif' => (bool) ($pengaturan && $pengaturan->lat && $pengaturan->lng),
@@ -26,7 +29,6 @@ class AbsensiPetugasController extends Controller
             'lng'   => $pengaturan->lng ?? null,
             'radius_meter' => (int) ($pengaturan->radius_meter ?? 150),
         ];
-        // ===== AKHIR BARU =====
 
         // Redirect otomatis kalau petugas sudah absen
         if ($user->role !== 'koordinator') {
@@ -56,33 +58,66 @@ class AbsensiPetugasController extends Controller
         $riwayat = AbsensiPetugas::where('nama', $user->name)
             ->orderByDesc('tanggal')->limit(10)->get();
 
-        $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])
+        // ===== AMBIL DAFTAR ABSENSI HARI INI SEKALI SAJA (efisien) =====
+        $absensiHariIni = AbsensiPetugas::whereDate('tanggal', $today)->get();
+
+        // ===== PERBAIKAN UTAMA: HANYA tampilkan petugas yang dijadwalkan HARI INI =====
+        $petugasJadwalHariIni = User::whereIn('role', ['petugas', 'koordinator'])
+            ->where('hari_piket', $namaHariIni)
+            ->orderBy('name')
+            ->get();
+
+        // Petugas lain yang kebetulan sudah absen hari ini (mis. izin/sakit/DL di luar jadwal)
+        // Ditambahkan agar datanya tetap terlihat, bukan hilang
+        $namaYangSudahAbsen = $absensiHariIni
+            ->pluck('nama')
+            ->map(fn ($n) => strtolower(trim($n)))
+            ->unique();
+
+        $petugasLainYangAbsen = User::whereIn('role', ['petugas', 'koordinator'])
+            ->where('hari_piket', '!=', $namaHariIni)
             ->orderBy('name')
             ->get()
-            ->map(function ($u) use ($today) {
-                $absen = AbsensiPetugas::where('nama', $u->name)
-                    ->where('tanggal', $today)->first();
+            ->filter(fn ($u) => $namaYangSudahAbsen->contains(strtolower(trim($u->name))));
 
-                return [
-                    'id'             => $u->id,
-                    'nama'           => $u->name,
-                    'jabatan'        => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
-                    'absen_id'       => $absen?->id,
-                    'status'         => $absen?->status ?? 'alpha',
-                    'jam_masuk'      => $absen?->jam_masuk,
-                    'keterangan'     => $absen?->keterangan,
-                    'sudah_absen'    => $absen !== null,
-                    'jarak_meter'    => $absen?->jarak_meter,
-                ];
-            });
+        // Gabungkan: jadwal hari ini + yang sudah absen di luar jadwal
+        $semuaPetugasCollect = $petugasJadwalHariIni->concat($petugasLainYangAbsen)->values();
+
+        // ===== Bangun array untuk frontend =====
+        $semuaPetugas = $semuaPetugasCollect->map(function ($u) use ($absensiHariIni) {
+            $absen = $absensiHariIni->first(
+                fn ($a) => strtolower(trim($a->nama)) === strtolower(trim($u->name))
+            );
+
+            return [
+                'id'             => $u->id,
+                'nama'           => $u->name,
+                'jabatan'        => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
+                'absen_id'       => $absen?->id,
+                // PERBAIKAN: 'belum_absen' bukan 'alpha'.
+                // Alpha adalah status FINAL di akhir hari / rekap, bukan status pagi.
+                'status'         => $absen?->status ?? 'belum_absen',
+                'jam_masuk'      => $absen?->jam_masuk,
+                'keterangan'     => $absen?->keterangan,
+                'sudah_absen'    => $absen !== null,
+                'jarak_meter'    => $absen?->jarak_meter,
+            ];
+        });
+
+        // Statistik ringkas untuk header card
+        $jumlahJadwal = $petugasJadwalHariIni->count();
+        $jumlahSudahAbsen = $semuaPetugas->where('sudah_absen', true)->count();
 
         return Inertia::render('AbsensiPetugas', [
-            'absenHariIni'  => $absenHariIni,
-            'summary'       => $summary,
-            'riwayat'       => $riwayat,
-            'semuaPetugas'  => $semuaPetugas,
-            'isKoordinator' => $user->isKoordinator(),
-            'geofence'      => $geofence,   // ← BARU
+            'absenHariIni'    => $absenHariIni,
+            'summary'         => $summary,
+            'riwayat'         => $riwayat,
+            'semuaPetugas'    => $semuaPetugas,
+            'namaHariIni'     => $namaHariIni,           // ← BARU: agar UI bisa tampilkan "Piket Hari Ini: Rabu"
+            'jumlahJadwal'    => $jumlahJadwal,           // ← BARU: jumlah wajib piket
+            'jumlahSudahAbsen'=> $jumlahSudahAbsen,       // ← BARU: jumlah sudah absen
+            'isKoordinator'   => $user->isKoordinator(),
+            'geofence'        => $geofence,
         ]);
     }
 
@@ -97,30 +132,28 @@ class AbsensiPetugasController extends Controller
         ]);
 
         $user = auth()->user();
-        $today = now()->toDateString();
+        $now = Carbon::now('Asia/Makassar');
+        $today = $now->toDateString();
 
         if (AbsensiPetugas::where('tanggal', $today)->where('nama', $user->name)->exists()) {
             return back()->with('error', 'Anda sudah absen hari ini.');
         }
 
-        // ===== BARU: VALIDASI GEOFENCE (hanya untuk status "masuk") =====
+        // ===== VALIDASI GEOFENCE (hanya untuk status "masuk") =====
         $pengaturan = Pengaturan::first();
         $jarakMeter = null;
         $latAbsen   = $validated['lat'] ?? null;
         $lngAbsen   = $validated['lng'] ?? null;
 
         if ($validated['status'] === 'masuk' && $pengaturan && $pengaturan->lat && $pengaturan->lng) {
-            // Cek kelengkapan lokasi dari device
             if ($latAbsen === null || $lngAbsen === null) {
                 return back()->with('error', 'Lokasi tidak terbaca. Izinkan akses lokasi di browser Anda.');
             }
 
-            // Cek akurasi (tolak kalau GPS terlalu tidak presisi)
             if (($validated['accuracy'] ?? 0) > 500) {
                 return back()->with('error', 'Sinyal GPS terlalu lemah. Pindah ke tempat terbuka lalu coba lagi.');
             }
 
-            // Hitung jarak Haversine
             $jarakMeter = (int) round($this->haversine(
                 (float) $latAbsen,
                 (float) $lngAbsen,
@@ -128,16 +161,14 @@ class AbsensiPetugasController extends Controller
                 (float) $pengaturan->lng
             ));
 
-            // Tolak kalau di luar radius
             $radius = (int) ($pengaturan->radius_meter ?? 150);
             if ($jarakMeter > $radius) {
                 return back()->with('error', "Absen ditolak. Anda berada {$jarakMeter} m dari sekolah (maksimum {$radius} m).");
             }
         }
-        // ===== AKHIR BARU =====
 
         if ($validated['status'] === 'masuk') {
-            $jam = now()->format('H:i:s');
+            $jam = $now->format('H:i:s');
             $status = $jam <= self::BATAS_TEPAT_WAKTU.':00' ? 'tepat_waktu' : 'terlambat';
             $jamMasuk = $jam;
             $keterangan = null;
@@ -158,9 +189,9 @@ class AbsensiPetugasController extends Controller
             'jam_masuk'   => $jamMasuk,
             'status'      => $status,
             'keterangan'  => $keterangan,
-            'absen_lat'   => $latAbsen,       // ← BARU
-            'absen_lng'   => $lngAbsen,       // ← BARU
-            'jarak_meter' => $jarakMeter,     // ← BARU (audit trail)
+            'absen_lat'   => $latAbsen,
+            'absen_lng'   => $lngAbsen,
+            'jarak_meter' => $jarakMeter,
         ]);
 
         $pesan = 'Absensi berhasil dicatat.';
@@ -176,7 +207,7 @@ class AbsensiPetugasController extends Controller
      */
     private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
-        $R = 6371000; // radius bumi dalam meter
+        $R = 6371000;
         $dLat = deg2rad($lat2 - $lat1);
         $dLng = deg2rad($lng2 - $lng1);
         $a = sin($dLat / 2) ** 2
