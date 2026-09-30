@@ -48,7 +48,7 @@ const defaultForm = {
     golongan: "",
     status_kepegawaian: "",
     hari_piket: "",
-    auto_hadir: false, // ← BARU
+    auto_hadir: false,
 };
 
 export default function UserPetugasIndex(props) {
@@ -59,8 +59,19 @@ export default function UserPetugasIndex(props) {
     const [form, setForm] = useState(defaultForm);
     const [resetForm, setResetForm] = useState({ password: "" });
 
+    // Helper: apakah role yang dipilih adalah Wakasek?
+    const isWakasek = form.role === "wakasek";
+
     const updateField = (field, value) =>
-        setForm((prev) => ({ ...prev, [field]: value }));
+        setForm((prev) => {
+            const next = { ...prev, [field]: value };
+            // Reset hari_piket & auto_hadir jika role diganti jadi wakasek
+            if (field === "role" && value === "wakasek") {
+                next.hari_piket = "";
+                next.auto_hadir = false;
+            }
+            return next;
+        });
 
     const submit = (e) => {
         e.preventDefault();
@@ -73,8 +84,9 @@ export default function UserPetugasIndex(props) {
             nip: form.nip,
             golongan: form.golongan,
             status_kepegawaian: form.status_kepegawaian,
-            hari_piket: form.hari_piket || null,
-            auto_hadir: form.auto_hadir ? true : false, // ← BARU
+            // Wakasek tidak punya hari_piket & auto_hadir
+            hari_piket: isWakasek ? null : form.hari_piket || null,
+            auto_hadir: isWakasek ? false : form.auto_hadir ? true : false,
         };
 
         if (editId) {
@@ -111,7 +123,7 @@ export default function UserPetugasIndex(props) {
             golongan: u.golongan || "",
             status_kepegawaian: u.status_kepegawaian || "",
             hari_piket: u.hari_piket || "",
-            auto_hadir: !!u.auto_hadir, // ← BARU
+            auto_hadir: !!u.auto_hadir,
         });
         setShowForm(true);
     };
@@ -154,7 +166,6 @@ export default function UserPetugasIndex(props) {
         );
     };
 
-    // ← BARU: badge status auto-hadir di tabel
     const autoHadirBadge = (aktif) =>
         aktif ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
@@ -166,6 +177,29 @@ export default function UserPetugasIndex(props) {
                 Manual
             </span>
         );
+
+    // ← BARU: badge role dengan 3 varian
+    const roleBadge = (role) => {
+        if (role === "koordinator") {
+            return (
+                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                    👑 Koordinator
+                </span>
+            );
+        }
+        if (role === "wakasek") {
+            return (
+                <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-semibold text-teal-700">
+                    🎓 Wakasek
+                </span>
+            );
+        }
+        return (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                🧑 Petugas
+            </span>
+        );
+    };
 
     return (
         <AuthenticatedLayout
@@ -189,17 +223,25 @@ export default function UserPetugasIndex(props) {
                     </div>
                 )}
 
+                {/* ← DIPERBAIKI: Tambah penjelasan Wakasek */}
                 <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
                     <p className="font-semibold">ℹ️ Tentang Role:</p>
                     <ul className="ml-5 mt-1 list-disc space-y-0.5">
                         <li>
                             <b>Koordinator</b> = Admin Piket — akses semua menu,
-                            termasuk kelola akun & pengaturan
+                            termasuk kelola akun & pengaturan. Bertanda tangan
+                            di laporan harian & rekap "Semua Hari" jika tidak
+                            ada Wakasek.
                         </li>
                         <li>
                             <b>Petugas Piket</b> — akses menu piket harian
                             (Dashboard, Keterlambatan, Izin Keluar, Buku Tamu,
                             Pelanggaran, Laporan)
+                        </li>
+                        <li>
+                            <b>Wakasek Kurikulum</b> — tidak bertugas piket;
+                            namanya otomatis menjadi penanda tangan laporan
+                            rekap <i>"Semua Hari"</i> (dokumen tingkat sekolah).
                         </li>
                     </ul>
                 </div>
@@ -217,8 +259,8 @@ export default function UserPetugasIndex(props) {
                     <p className="font-semibold">🤖 Auto-Hadir:</p>
                     <p className="mt-1">
                         Aktifkan untuk petugas yang absennya perlu{" "}
-                        <b>dicatat otomatis</b> oleh sistem pada pukul
-                        07:00–07:29 WITA di hari piketnya (status:{" "}
+                        <b>dicatat otomatis</b> oleh sistem pada pukul{" "}
+                        <b>07:00–07:29 WITA</b> di hari piketnya (status:{" "}
                         <i>Tepat Waktu</i>).
                     </p>
                 </div>
@@ -313,6 +355,9 @@ export default function UserPetugasIndex(props) {
                                     </option>
                                     <option value="koordinator">
                                         Koordinator (Admin Piket)
+                                    </option>
+                                    <option value="wakasek">
+                                        Wakasek Kurikulum (Penanda Tangan Rekap)
                                     </option>
                                 </select>
                             </div>
@@ -433,106 +478,144 @@ export default function UserPetugasIndex(props) {
                                 </select>
                             </div>
 
-                            {/* ===== HARI PIKET ===== */}
-                            <div className="md:col-span-2">
-                                <div className="rounded-lg border-2 border-purple-200 bg-purple-50/50 p-4">
-                                    <label className="mb-1 flex items-center gap-2 text-xs font-bold text-purple-900">
-                                        📅 HARI PIKET
-                                        <span className="text-red-500">*</span>
-                                        <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
-                                            WAJIB
-                                        </span>
-                                    </label>
-                                    <p className="mb-2 text-[11px] text-purple-700">
-                                        Setiap petugas piket <b>1x seminggu</b>.
-                                        Pilih hari agar rekapan otomatis
-                                        menghitung alpha untuk yang tidak absen
-                                        setelah pukul 07:30.
-                                    </p>
-                                    <select
-                                        value={form.hari_piket}
-                                        onChange={(e) =>
-                                            updateField(
-                                                "hari_piket",
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="w-full rounded-lg border-purple-300 bg-white font-semibold text-purple-900 focus:border-purple-500 focus:ring-purple-500"
-                                    >
-                                        <option value="">
-                                            -- Pilih Hari Piket --
-                                        </option>
-                                        {HARI_PIKET_OPTIONS.map((h) => (
-                                            <option key={h} value={h}>
-                                                {h}
+                            {/* ===== HARI PIKET (disembunyikan untuk Wakasek) ===== */}
+                            {!isWakasek && (
+                                <div className="md:col-span-2">
+                                    <div className="rounded-lg border-2 border-purple-200 bg-purple-50/50 p-4">
+                                        <label className="mb-1 flex items-center gap-2 text-xs font-bold text-purple-900">
+                                            📅 HARI PIKET
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                            <span className="rounded bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
+                                                WAJIB
+                                            </span>
+                                        </label>
+                                        <p className="mb-2 text-[11px] text-purple-700">
+                                            Setiap petugas piket{" "}
+                                            <b>1x seminggu</b>. Pilih hari agar
+                                            rekapan otomatis menghitung alpha
+                                            untuk yang tidak absen setelah pukul
+                                            07:30.
+                                        </p>
+                                        <select
+                                            value={form.hari_piket}
+                                            onChange={(e) =>
+                                                updateField(
+                                                    "hari_piket",
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="w-full rounded-lg border-purple-300 bg-white font-semibold text-purple-900 focus:border-purple-500 focus:ring-purple-500"
+                                        >
+                                            <option value="">
+                                                -- Pilih Hari Piket --
                                             </option>
-                                        ))}
-                                    </select>
+                                            {HARI_PIKET_OPTIONS.map((h) => (
+                                                <option key={h} value={h}>
+                                                    {h}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {/* ===== BARU: AUTO-HADIR TOGGLE ===== */}
-                            <div className="md:col-span-2">
-                                <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50/50 p-4">
-                                    <label className="flex cursor-pointer items-start gap-3">
-                                        {/* Custom toggle switch */}
-                                        <div className="relative mt-0.5 flex-shrink-0">
-                                            <input
-                                                type="checkbox"
-                                                checked={form.auto_hadir}
-                                                onChange={(e) =>
-                                                    updateField(
-                                                        "auto_hadir",
-                                                        e.target.checked,
-                                                    )
-                                                }
-                                                className="peer sr-only"
-                                            />
-                                            <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-emerald-500"></div>
-                                            <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></div>
-                                        </div>
-
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-emerald-900">
-                                                    🤖 AUTO-HADIR OTOMATIS
-                                                </span>
-                                                <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                                    OPSIONAL
-                                                </span>
+                            {/* ===== AUTO-HADIR TOGGLE (disembunyikan untuk Wakasek) ===== */}
+                            {!isWakasek && (
+                                <div className="md:col-span-2">
+                                    <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50/50 p-4">
+                                        <label className="flex cursor-pointer items-start gap-3">
+                                            <div className="relative mt-0.5 flex-shrink-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={form.auto_hadir}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            "auto_hadir",
+                                                            e.target.checked,
+                                                        )
+                                                    }
+                                                    className="peer sr-only"
+                                                />
+                                                <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-emerald-500"></div>
+                                                <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></div>
                                             </div>
-                                            <p className="mt-1 text-[11px] text-emerald-700">
-                                                Jika diaktifkan, sistem akan
-                                                otomatis mencatat kehadiran
-                                                petugas ini pada pukul{" "}
-                                                <b>07:00–07:29 WITA</b> setiap
-                                                hari piketnya dengan status{" "}
-                                                <i>Tepat Waktu</i>. Cocok untuk
-                                                petugas yang jadwalnya tetap dan
-                                                tidak perlu menekan tombol absen
-                                                manual.
-                                            </p>
-                                            {form.auto_hadir &&
-                                                form.hari_piket && (
-                                                    <div className="mt-2 rounded bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">
-                                                        ✅ Akan auto-hadir
-                                                        setiap hari{" "}
-                                                        <b>{form.hari_piket}</b>{" "}
-                                                        pagi
-                                                    </div>
-                                                )}
-                                            {form.auto_hadir &&
-                                                !form.hari_piket && (
-                                                    <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-800">
-                                                        ⚠️ Pilih hari piket
-                                                        terlebih dahulu agar
-                                                        auto-hadir aktif
-                                                    </div>
-                                                )}
-                                        </div>
-                                    </label>
+
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-emerald-900">
+                                                        🤖 AUTO-HADIR OTOMATIS
+                                                    </span>
+                                                    <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                        OPSIONAL
+                                                    </span>
+                                                </div>
+                                                <p className="mt-1 text-[11px] text-emerald-700">
+                                                    Jika diaktifkan, sistem akan
+                                                    otomatis mencatat kehadiran
+                                                    petugas ini pada pukul{" "}
+                                                    <b>07:00–07:29 WITA</b>{" "}
+                                                    setiap hari piketnya dengan
+                                                    status <i>Tepat Waktu</i>.
+                                                    Cocok untuk petugas yang
+                                                    jadwalnya tetap.
+                                                </p>
+                                                {form.auto_hadir &&
+                                                    form.hari_piket && (
+                                                        <div className="mt-2 rounded bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">
+                                                            ✅ Akan auto-hadir
+                                                            setiap hari{" "}
+                                                            <b>
+                                                                {
+                                                                    form.hari_piket
+                                                                }
+                                                            </b>{" "}
+                                                            pagi
+                                                        </div>
+                                                    )}
+                                                {form.auto_hadir &&
+                                                    !form.hari_piket && (
+                                                        <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-800">
+                                                            ⚠️ Pilih hari piket
+                                                            terlebih dahulu agar
+                                                            auto-hadir aktif
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* ← BARU: Info khusus Wakasek */}
+                            {isWakasek && (
+                                <div className="md:col-span-2">
+                                    <div className="rounded-lg border-2 border-teal-200 bg-teal-50/50 p-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-2xl">🎓</span>
+                                            <span className="text-xs font-bold text-teal-900">
+                                                WAKASEK KURIKULUM
+                                            </span>
+                                        </div>
+                                        <p className="mt-2 text-[11px] text-teal-700">
+                                            Role ini <b>tidak bertugas piket</b>{" "}
+                                            dan tidak memiliki jadwal harian.
+                                            Nama & NIP yang diisi di sini akan
+                                            otomatis digunakan sebagai{" "}
+                                            <b>penanda tangan</b> pada laporan
+                                            rekap dengan filter{" "}
+                                            <i>"Semua Hari"</i> (dokumen tingkat
+                                            sekolah untuk Kepala Sekolah /
+                                            Dinas).
+                                        </p>
+                                        <div className="mt-2 rounded bg-teal-100 px-2 py-1 text-[11px] font-medium text-teal-800">
+                                            💡 Pastikan NIP terisi dengan benar
+                                            untuk keperluan dokumen resmi.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-6 flex gap-2">
@@ -570,8 +653,7 @@ export default function UserPetugasIndex(props) {
                                     <th className="py-2">Gol</th>
                                     <th className="py-2">Status</th>
                                     <th className="py-2">📅 Piket</th>
-                                    <th className="py-2">🤖 Auto</th>{" "}
-                                    {/* ← BARU */}
+                                    <th className="py-2">🤖 Auto</th>
                                     <th className="py-2 text-right">Aksi</th>
                                 </tr>
                             </thead>
@@ -583,18 +665,7 @@ export default function UserPetugasIndex(props) {
                                         </td>
                                         <td className="py-2">{u.email}</td>
                                         <td className="py-2">
-                                            <span
-                                                className={
-                                                    "rounded-full px-2 py-0.5 text-xs font-semibold " +
-                                                    (u.role === "koordinator"
-                                                        ? "bg-indigo-100 text-indigo-700"
-                                                        : "bg-amber-100 text-amber-700")
-                                                }
-                                            >
-                                                {u.role === "koordinator"
-                                                    ? "👑 Koordinator"
-                                                    : "🧑 Petugas"}
-                                            </span>
+                                            {roleBadge(u.role)}
                                         </td>
                                         <td className="py-2 text-xs">
                                             {jkLabel(u.jenis_kelamin)}
@@ -620,9 +691,14 @@ export default function UserPetugasIndex(props) {
                                             {hariPiketBadge(u.hari_piket)}
                                         </td>
                                         <td className="py-2">
-                                            {autoHadirBadge(u.auto_hadir)}
-                                        </td>{" "}
-                                        {/* ← BARU */}
+                                            {u.role === "wakasek" ? (
+                                                <span className="text-xs text-gray-400">
+                                                    —
+                                                </span>
+                                            ) : (
+                                                autoHadirBadge(u.auto_hadir)
+                                            )}
+                                        </td>
                                         <td className="py-2 text-right">
                                             <button
                                                 onClick={() => edit(u)}
