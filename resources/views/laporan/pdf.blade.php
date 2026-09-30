@@ -330,7 +330,7 @@
         </td>
         <td>
             <div class="ttd-tanggal">{{ $tempatTanggal }}</div>
-            Koordinator Piket
+            {{ $jabatanTtd ?? 'Koordinator Piket' }}
             <div class="ttd-space"></div>
             <span class="ttd-nama">{{ $pengaturan->koordinator_piket ?: ($koordinator?->name ?? '……………………………………') }}</span>
             <div class="ttd-nip">NIP. {{ $pengaturan->nip_koordinator_piket ?: ($koordinator?->nip ?? '………………………………') }}</div>
