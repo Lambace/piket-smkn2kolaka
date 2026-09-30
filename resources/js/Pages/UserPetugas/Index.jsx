@@ -62,6 +62,23 @@ export default function UserPetugasIndex(props) {
     // ===== BARU: ref ke elemen form =====
     const formRef = useRef(null);
 
+    // ===== BARU: state dropdown aksi (⋮) =====
+    const [menu, setMenu] = useState(null); // { userId, top, left }
+
+    const toggleMenu = (e, u) => {
+        e.stopPropagation();
+        if (menu && menu.userId === u.id) {
+            setMenu(null);
+            return;
+        }
+        const rect = e.currentTarget.getBoundingClientRect();
+        setMenu({ userId: u.id, top: rect.bottom + 6, left: rect.right });
+    };
+
+    const menuUser = menu
+        ? props.users.find((x) => x.id === menu.userId)
+        : null;
+
     // ===== BARU: auto-scroll saat form dibuka (Edit / Tambah Akun) =====
     useEffect(() => {
         if (showForm && formRef.current) {
@@ -719,22 +736,13 @@ export default function UserPetugasIndex(props) {
                                         </td>
                                         <td className="py-2 text-right">
                                             <button
-                                                onClick={() => edit(u)}
-                                                className="mr-2 text-xs text-blue-600 hover:underline"
+                                                onClick={(e) =>
+                                                    toggleMenu(e, u)
+                                                }
+                                                title="Aksi"
+                                                className="rounded-lg border border-gray-300 px-2.5 py-1 text-sm font-bold leading-none text-gray-500 hover:bg-gray-100"
                                             >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => setResetId(u.id)}
-                                                className="mr-2 text-xs text-orange-600 hover:underline"
-                                            >
-                                                Reset PW
-                                            </button>
-                                            <button
-                                                onClick={() => hapus(u.id)}
-                                                className="text-xs text-red-600 hover:underline"
-                                            >
-                                                Hapus
+                                                ⋮
                                             </button>
                                         </td>
                                     </tr>
@@ -743,6 +751,50 @@ export default function UserPetugasIndex(props) {
                         </table>
                     </div>
                 </div>
+
+                {/* ===== BARU: DROPDOWN AKSI (⋮) ===== */}
+                {menu && menuUser && (
+                    <>
+                        {/* lapisan transparan: klik di luar = menu tertutup */}
+                        <div
+                            className="fixed inset-0 z-30"
+                            onClick={() => setMenu(null)}
+                        />
+                        <div
+                            className="fixed z-40 w-44 -translate-x-full overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-xl"
+                            style={{ top: menu.top, left: menu.left }}
+                        >
+                            <button
+                                onClick={() => {
+                                    setMenu(null);
+                                    edit(menuUser);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-blue-600 hover:bg-blue-50"
+                            >
+                                ✏️ Edit Akun
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setMenu(null);
+                                    setResetId(menuUser.id);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-orange-600 hover:bg-orange-50"
+                            >
+                                🔑 Reset Password
+                            </button>
+                            <div className="my-1 border-t border-gray-100"></div>
+                            <button
+                                onClick={() => {
+                                    setMenu(null);
+                                    hapus(menuUser.id);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-red-600 hover:bg-red-50"
+                            >
+                                🗑️ Hapus Akun
+                            </button>
+                        </div>
+                    </>
+                )}
 
                 {resetId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
