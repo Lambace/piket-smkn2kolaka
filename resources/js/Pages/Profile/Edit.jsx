@@ -1,12 +1,18 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head } from "@inertiajs/react";
+import MinimalLayout from "@/Layouts/MinimalLayout"; // ← BARU
+import { Head, usePage } from "@inertiajs/react"; // ← Tambah usePage
 import DeleteUserForm from "./Partials/DeleteUserForm";
 import UpdatePasswordForm from "./Partials/UpdatePasswordForm";
 import UpdateProfileInformationForm from "./Partials/UpdateProfileInformationForm";
 
 export default function Edit({ mustVerifyEmail, status }) {
+    // ===== BARU: Deteksi role user untuk pilih layout =====
+    const user = usePage().props.auth.user;
+    const Layout =
+        user?.role === "koordinator" ? AuthenticatedLayout : MinimalLayout;
+
     return (
-        <AuthenticatedLayout
+        <Layout // ← DIGANTI dari <AuthenticatedLayout>
             header={
                 <h2 className="text-xl font-semibold leading-tight text-gray-800">
                     Profile
@@ -34,6 +40,6 @@ export default function Edit({ mustVerifyEmail, status }) {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </Layout> // ← DIGANTI dari </AuthenticatedLayout>
     );
 }
