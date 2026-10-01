@@ -108,7 +108,7 @@ Route::get('/banner/piket.png', function (\App\Services\BannerPiketService $bann
 
 
 // ===== 3. SEMUA USER LOGIN (Dengan Proteksi restrict-offday) =====
-Route::middleware(['auth', 'verified', 'restrict-offday'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
