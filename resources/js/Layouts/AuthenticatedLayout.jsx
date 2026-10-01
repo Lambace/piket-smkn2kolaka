@@ -39,6 +39,9 @@ const icons = {
         "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
     userPetugas:
         "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
+    // ===== BARU: Ikon Monitoring (Grafik Batang) =====
+    monitoring:
+        "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
 };
 
 export default function AuthenticatedLayout({ header, children }) {
@@ -145,11 +148,10 @@ export default function AuthenticatedLayout({ header, children }) {
             title: "Sistem",
             items: [
                 {
-                    // ===== DIPERBAIKI: Laporan kini membuka Live View di tab baru =====
                     name: "Laporan",
                     href: liveViewUrl,
-                    external: true, // flag: render <a target="_blank">, bukan <Link>
-                    active: false, // tidak ada state aktif untuk tautan eksternal
+                    external: true,
+                    active: false,
                     icon: icons.laporan,
                     roles: ["koordinator", "petugas"],
                 },
@@ -165,6 +167,14 @@ export default function AuthenticatedLayout({ header, children }) {
                     href: route("user-petugas.index"),
                     active: route().current("user-petugas.*"),
                     icon: icons.userPetugas,
+                    roles: ["koordinator"],
+                },
+                // ===== BARU: Menu Monitoring =====
+                {
+                    name: "Monitoring",
+                    href: route("monitoring.index"),
+                    active: route().current("monitoring.*"),
+                    icon: icons.monitoring,
                     roles: ["koordinator"],
                 },
                 {
@@ -198,7 +208,6 @@ export default function AuthenticatedLayout({ header, children }) {
             : undefined;
 
         if (item.external) {
-            // Tautan eksternal: buka di tab baru, tutup drawer mobile
             return (
                 <a
                     key={item.name}
@@ -211,7 +220,6 @@ export default function AuthenticatedLayout({ header, children }) {
                 >
                     <Icon path={item.icon} className="h-5 w-5 shrink-0" />
                     <span className="flex-1 truncate">{item.name}</span>
-                    {/* Indikator tautan eksternal */}
                     <svg
                         className="h-3.5 w-3.5 shrink-0 opacity-50"
                         fill="none"
@@ -229,7 +237,6 @@ export default function AuthenticatedLayout({ header, children }) {
             );
         }
 
-        // Tautan internal: pakai Inertia <Link>
         return (
             <Link
                 key={item.name}
@@ -246,7 +253,6 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const sidebarContent = (
         <div className="flex h-full flex-col">
-            {/* Logo & Nama Sekolah Dinamis */}
             <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-6">
                 {logoSrc ? (
                     <img
@@ -267,7 +273,6 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             </div>
 
-            {/* Menu */}
             <nav className="sidebar-scroll flex-1 space-y-7 overflow-y-auto px-4 py-6">
                 {visibleMenuGroups.map((group) => (
                     <div key={group.title}>
@@ -281,7 +286,6 @@ export default function AuthenticatedLayout({ header, children }) {
                 ))}
             </nav>
 
-            {/* Profil User */}
             <div className="shrink-0 border-t border-slate-800 p-4">
                 <div className="flex items-center gap-3">
                     <div
@@ -316,7 +320,6 @@ export default function AuthenticatedLayout({ header, children }) {
 
     return (
         <div className="min-h-screen bg-slate-100">
-            {/* Topbar Mobile */}
             <div className="sticky top-0 z-40 flex h-14 items-center justify-between bg-slate-900 px-4 lg:hidden">
                 <button
                     onClick={() => setSidebarOpen(true)}
@@ -349,7 +352,6 @@ export default function AuthenticatedLayout({ header, children }) {
                 </Link>
             </div>
 
-            {/* Drawer Sidebar Mobile */}
             {sidebarOpen && (
                 <div className="fixed inset-0 z-50 lg:hidden">
                     <div
@@ -380,12 +382,10 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             )}
 
-            {/* Sidebar Desktop */}
             <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 bg-slate-900 lg:block">
                 {sidebarContent}
             </aside>
 
-            {/* Konten */}
             <div className="lg:pl-72">
                 {header && (
                     <header className="border-b border-slate-200 bg-white shadow-sm">
