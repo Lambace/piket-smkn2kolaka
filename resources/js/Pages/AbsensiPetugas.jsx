@@ -1,5 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router, usePage } from "@inertiajs/react";
+import MinimalLayout from "@/Layouts/MinimalLayout"; // ← BARU
+import { Head, router, usePage, Link } from "@inertiajs/react"; // ← Tambah Link
 import { useEffect, useState } from "react";
 
 const statusInfo = {
@@ -55,8 +56,16 @@ export default function AbsensiIndex({
     semuaPetugas = [],
     isKoordinator = false,
     geofence = { aktif: false },
+    // ===== BARU: Props dari backend untuk cek hari piket =====
+    bukan_hari_piket = false,
+    user_hari_piket = null,
+    hari_ini = null,
 }) {
     const { flash, auth } = usePage().props;
+
+    // ===== BARU: Pilih layout berdasarkan role =====
+    const Layout = isKoordinator ? AuthenticatedLayout : MinimalLayout;
+
     const [now, setNow] = useState(new Date());
     const [dropOpen, setDropOpen] = useState(false);
     const [modalStatus, setModalStatus] = useState(null);
@@ -69,8 +78,6 @@ export default function AbsensiIndex({
         jam_masuk: "",
         keterangan: "",
     });
-
-    // ===== BARU: State popup sukses absensi =====
     const [showSukses, setShowSukses] = useState(false);
 
     const [geo, setGeo] = useState({
@@ -96,16 +103,14 @@ export default function AbsensiIndex({
             }));
             return;
         }
-
         if (!("geolocation" in navigator)) {
             setGeo((g) => ({
                 ...g,
                 status: "error",
-                pesan: "Browser tidak mendukung GPS. Gunakan Chrome/Edge terbaru.",
+                pesan: "Browser tidak mendukung GPS.",
             }));
             return;
         }
-
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 const { latitude, longitude, accuracy } = pos.coords;
@@ -126,7 +131,7 @@ export default function AbsensiIndex({
                         lng: longitude,
                         accuracy,
                         jarakMeter: jarakBulat,
-                        pesan: `Sinyal GPS lemah (akurasi ${Math.round(accuracy)} m). Pindah ke tempat terbuka.`,
+                        pesan: `Sinyal GPS lemah (akurasi ${Math.round(accuracy)} m).`,
                     });
                 } else if (dekat) {
                     setGeo({
@@ -173,19 +178,15 @@ export default function AbsensiIndex({
         year: "numeric",
     });
 
-    // ===== BARU: Absen masuk → popup dulu, redirect nanti =====
     const absenMasuk = () => {
         if (geofence.aktif && geo.status !== "ok") {
             setErr(
                 geo.status === "far"
                     ? `Absen ditolak: ${geo.pesan}`
-                    : geo.status === "denied" || geo.status === "error"
-                      ? geo.pesan
-                      : "Menunggu GPS… coba beberapa detik lagi.",
+                    : geo.pesan,
             );
             return;
         }
-
         router.post(
             route("absensi.store"),
             {
@@ -194,7 +195,7 @@ export default function AbsensiIndex({
                 lng: geo.lng,
                 accuracy: geo.accuracy,
             },
-            { onSuccess: () => setShowSukses(true) }, // ← trigger popup
+            { onSuccess: () => setShowSukses(true) },
         );
     };
 
@@ -205,7 +206,6 @@ export default function AbsensiIndex({
         setModalStatus(s);
     };
 
-    // ===== BARU: Kirim keterangan → popup dulu, redirect nanti =====
     const kirimKeterangan = (e) => {
         e.preventDefault();
         if (keterangan.trim().length < 5) {
@@ -226,16 +226,15 @@ export default function AbsensiIndex({
                     setModalStatus(null);
                     setKeterangan("");
                     setErr("");
-                    setShowSukses(true); // ← trigger popup
+                    setShowSukses(true);
                 },
             },
         );
     };
 
-    // ===== BARU: Handler klik OK di popup =====
     const tutupPopupSukses = () => {
         setShowSukses(false);
-        router.visit(route("dashboard"));
+        router.visit(route("dashboard")); // Redirect ke dashboard setelah OK
     };
 
     const bukaEdit = (p) => {
@@ -305,8 +304,61 @@ export default function AbsensiIndex({
 
     const tombolTerkunci = geofence.aktif && geo.status !== "ok";
 
+    // ===== BARU: OVERLAY BLOKIR JIKA BUKAN HARI PIKET =====
+    if (bukan_hari_piket) {
+        return (
+            <Layout
+                header={
+                    <h2 className="text-xl font-semibold text-gray-800">
+                        Absensi Petugas Piket
+                    </h2>
+                }
+            >
+                <Head title="Absensi Petugas" />
+                <div className="flex min-h-[70vh] items-center justify-center p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl ring-1 ring-red-100">
+                        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
+                            <svg
+                                className="h-10 w-10 text-red-600"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                />
+                            </svg>
+                        </div>
+                        <h3 className="mb-2 text-xl font-bold text-gray-900">
+                            Bukan Jadwal Piket Anda
+                        </h3>
+                        <p className="mb-6 text-sm text-gray-600">
+                            Hari ini (<b>{hari_ini}</b>) bukan hari piket Anda.
+                            Silakan periksa kembali jadwal Anda.
+                        </p>
+                        {user_hari_piket && (
+                            <div className="mb-6 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-700">
+                                📅 Hari piket Anda: <b>{user_hari_piket}</b>
+                            </div>
+                        )}
+                        <Link
+                            href={route("dashboard")}
+                            className="mt-6 inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-700"
+                        >
+                            Kembali ke Dashboard
+                        </Link>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+
+    // ===== KONTEN NORMAL (TETAP SAMA SEPERTI KODE ANDA) =====
     return (
-        <AuthenticatedLayout
+        <Layout // ← DIGANTI DARI <AuthenticatedLayout> MENJADI <Layout>
             header={
                 <h2 className="text-xl font-semibold text-gray-800">
                     🕐 Absensi Petugas Piket
@@ -465,11 +517,7 @@ export default function AbsensiIndex({
                                             <button
                                                 onClick={absenMasuk}
                                                 disabled={tombolTerkunci}
-                                                className={`flex w-full flex-col items-center rounded-2xl px-6 py-3 shadow-lg transition sm:w-auto sm:rounded-full sm:px-8 ${
-                                                    tombolTerkunci
-                                                        ? "cursor-not-allowed bg-gray-500 opacity-60"
-                                                        : "bg-green-600 hover:scale-105 hover:bg-green-700"
-                                                }`}
+                                                className={`flex w-full flex-col items-center rounded-2xl px-6 py-3 shadow-lg transition sm:w-auto sm:rounded-full sm:px-8 ${tombolTerkunci ? "cursor-not-allowed bg-gray-500 opacity-60" : "bg-green-600 hover:scale-105 hover:bg-green-700"}`}
                                                 title={
                                                     tombolTerkunci
                                                         ? "Anda di luar area sekolah"
@@ -667,11 +715,7 @@ export default function AbsensiIndex({
                                         return (
                                             <div
                                                 key={p.id}
-                                                className={`flex items-center justify-between rounded-xl border p-3 transition ${
-                                                    p.sudah_absen
-                                                        ? "border-gray-200 bg-white"
-                                                        : "border-red-200 bg-red-50/50"
-                                                }`}
+                                                className={`flex items-center justify-between rounded-xl border p-3 transition ${p.sudah_absen ? "border-gray-200 bg-white" : "border-red-200 bg-red-50/50"}`}
                                             >
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
@@ -758,7 +802,7 @@ export default function AbsensiIndex({
                 </div>
             </div>
 
-            {/* ===== BARU: Popup Sukses Absensi ===== */}
+            {/* Popup Sukses Absensi */}
             {showSukses && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5 animate-[fadeIn_0.3s_ease-out]">
@@ -842,7 +886,6 @@ export default function AbsensiIndex({
                         <p className="mb-4 text-sm text-gray-600">
                             {editModal.nama}
                         </p>
-
                         <div className="space-y-3">
                             <div>
                                 <label className="mb-1 block text-xs font-semibold text-gray-700">
@@ -906,7 +949,6 @@ export default function AbsensiIndex({
                                 />
                             </div>
                         </div>
-
                         <div className="mt-5 flex gap-2">
                             <button
                                 type="button"
@@ -922,6 +964,6 @@ export default function AbsensiIndex({
                     </form>
                 </div>
             )}
-        </AuthenticatedLayout>
+        </Layout> // ← DIGANTI DARI </AuthenticatedLayout> MENJADI </Layout>
     );
 }

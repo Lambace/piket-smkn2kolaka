@@ -30,7 +30,7 @@ class AbsensiPetugasController extends Controller
             'radius_meter' => (int) ($pengaturan->radius_meter ?? 150),
         ];
 
-        // Redirect otomatis kalau petugas sudah absen
+        // Redirect otomatis kalau petugas sudah absen (Koordinator tetap bisa lihat halaman ini)
         if ($user->role !== 'koordinator') {
             $sudahAbsen = AbsensiPetugas::where('tanggal', $today)
                 ->where('nama', $user->name)->exists();
@@ -68,7 +68,6 @@ class AbsensiPetugasController extends Controller
             ->get();
 
         // Petugas lain yang kebetulan sudah absen hari ini (mis. izin/sakit/DL di luar jadwal)
-        // Ditambahkan agar datanya tetap terlihat, bukan hilang
         $namaYangSudahAbsen = $absensiHariIni
             ->pluck('nama')
             ->map(fn ($n) => strtolower(trim($n)))
@@ -94,8 +93,6 @@ class AbsensiPetugasController extends Controller
                 'nama'           => $u->name,
                 'jabatan'        => $u->role === 'koordinator' ? 'Koordinator Piket' : 'Guru Piket',
                 'absen_id'       => $absen?->id,
-                // PERBAIKAN: 'belum_absen' bukan 'alpha'.
-                // Alpha adalah status FINAL di akhir hari / rekap, bukan status pagi.
                 'status'         => $absen?->status ?? 'belum_absen',
                 'jam_masuk'      => $absen?->jam_masuk,
                 'keterangan'     => $absen?->keterangan,
@@ -108,16 +105,24 @@ class AbsensiPetugasController extends Controller
         $jumlahJadwal = $petugasJadwalHariIni->count();
         $jumlahSudahAbsen = $semuaPetugas->where('sudah_absen', true)->count();
 
+        // ===== BARU: Cek apakah user adalah petugas dan bukan hari piketnya =====
+        $bukanHariPiket = ($user->role === 'petugas' && $user->hari_piket !== $namaHariIni);
+
         return Inertia::render('AbsensiPetugas', [
-            'absenHariIni'    => $absenHariIni,
-            'summary'         => $summary,
-            'riwayat'         => $riwayat,
-            'semuaPetugas'    => $semuaPetugas,
-            'namaHariIni'     => $namaHariIni,           // ← BARU: agar UI bisa tampilkan "Piket Hari Ini: Rabu"
-            'jumlahJadwal'    => $jumlahJadwal,           // ← BARU: jumlah wajib piket
-            'jumlahSudahAbsen'=> $jumlahSudahAbsen,       // ← BARU: jumlah sudah absen
-            'isKoordinator'   => $user->isKoordinator(),
-            'geofence'        => $geofence,
+            'absenHariIni'     => $absenHariIni,
+            'summary'          => $summary,
+            'riwayat'          => $riwayat,
+            'semuaPetugas'     => $semuaPetugas,
+            'namaHariIni'      => $namaHariIni,
+            'jumlahJadwal'     => $jumlahJadwal,
+            'jumlahSudahAbsen' => $jumlahSudahAbsen,
+            'isKoordinator'    => $user->role === 'koordinator', // Fallback aman jika method isKoordinator() belum ada di Model
+            'geofence'         => $geofence,
+            
+            // ===== BARU: Props untuk memicu overlay blokir di frontend =====
+            'bukan_hari_piket' => $bukanHariPiket,
+            'user_hari_piket'  => $user->hari_piket,
+            'hari_ini'         => $namaHariIni,
         ]);
     }
 
@@ -199,7 +204,8 @@ class AbsensiPetugasController extends Controller
             $pesan .= " (jarak: {$jarakMeter} m dari sekolah)";
         }
 
-        return back()->with('success', $pesan);
+        // ===== PERBAIKAN: Redirect ke dashboard agar sidebar muncul setelah absen =====
+        return redirect()->route('dashboard')->with('success', $pesan);
     }
 
     /**
@@ -222,7 +228,7 @@ class AbsensiPetugasController extends Controller
         $user = auth()->user();
         $absen = AbsensiPetugas::findOrFail($id);
 
-        if (!$user->isKoordinator() && $absen->nama !== $user->name) {
+        if ($user->role !== 'koordinator' && $absen->nama !== $user->name) {
             return back()->with('error', 'Tidak punya izin mengubah data ini.');
         }
 
@@ -245,7 +251,7 @@ class AbsensiPetugasController extends Controller
         $user = auth()->user();
         $absen = AbsensiPetugas::findOrFail($id);
 
-        if (!$user->isKoordinator() && $absen->nama !== $user->name) {
+        if ($user->role !== 'koordinator' && $absen->nama !== $user->name) {
             return back()->with('error', 'Tidak punya izin menghapus data ini.');
         }
 

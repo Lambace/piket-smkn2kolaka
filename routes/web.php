@@ -18,16 +18,24 @@ use App\Models\Pengaturan;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
-// ===== ROUTE ROOT CERDAS =====
+// ===== 1. ROUTE ROOT CERDAS (Berdasarkan Role) =====
 Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('absensi.index');
+    if (!auth()->check()) {
+        return redirect()->route('login');
     }
-    return redirect()->route('login');
+
+    $user = auth()->user();
+
+    // Koordinator & wakasek → dashboard (layout penuh dengan sidebar)
+    if (in_array($user->role, ['koordinator', 'wakasek'])) {
+        return redirect()->route('dashboard');
+    }
+
+    // Petugas → langsung ke absensi (layout minimal tanpa sidebar)
+    return redirect()->route('absensi.index');
 });
 
-// ===== ROUTE PUBLIK (tanpa login) =====
-
+// ===== 2. ROUTE PUBLIK (tanpa login) =====
 Route::get('/tampil', [DashboardController::class, 'tampil'])->name('tampil');
 Route::get('/tampil/laporan', [LaporanController::class, 'pdf'])->name('tampil.laporan');
 Route::get('/tampil/daftar-hadir', [LaporanController::class, 'daftarHadir'])->name('tampil.daftar-hadir');
@@ -76,14 +84,11 @@ Route::get('/storage/{path}', function (string $path) {
     ]);
 })->where('path', '.*');
 
-// ===== DOWNLOAD PDF LAPORAN (header dipaksa application/pdf untuk Fonnte) =====
 Route::get('/download/laporan/{filename}', function (string $filename) {
     $path = 'laporan/'.$filename;
-
     if (!Storage::disk('public')->exists($path)) {
         abort(404, 'File laporan tidak ditemukan');
     }
-
     return response(Storage::disk('public')->get($path), 200, [
         'Content-Type'        => 'application/pdf',
         'Content-Disposition' => 'attachment; filename="'.$filename.'"',
@@ -92,8 +97,6 @@ Route::get('/download/laporan/{filename}', function (string $filename) {
     ]);
 })->where('filename', '[\w\-.]+')->name('laporan.download');
 
-// ===== BANNER PIKET ON-DEMAND (dirender saat diakses, tanpa file tersimpan) =====
-// Route ini PUBLIK (tanpa auth) karena diakses oleh Fonnte dari luar
 Route::get('/banner/piket.png', function (\App\Services\BannerPiketService $banner) {
     $hari    = request('hari', now()->locale('id')->isoFormat('dddd'));
     $tanggal = request('tanggal', now()->toDateString());
@@ -103,8 +106,10 @@ Route::get('/banner/piket.png', function (\App\Services\BannerPiketService $bann
     ]);
 })->name('banner.piket');
 
-// ===== SEMUA USER LOGIN (Koordinator + Petugas) =====
-Route::middleware(['auth', 'verified'])->group(function () {
+
+// ===== 3. SEMUA USER LOGIN (Dengan Proteksi restrict-offday) =====
+Route::middleware(['auth', 'verified', 'restrict-offday'])->group(function () {
+    
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ===== ABSENSI PETUGAS =====
@@ -113,7 +118,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('absensi-petugas/{id}', [AbsensiPetugasController::class, 'update'])->name('absensi-petugas.update');
     Route::delete('absensi-petugas/{id}', [AbsensiPetugasController::class, 'destroy'])->name('absensi-petugas.destroy');
 
-    // Menu yang bisa diakses KOORDINATOR & PETUGAS
+    // Menu yang bisa diakses KOORDINATOR & PETUGAS (akan diblokir middleware jika bukan hari piket)
     Route::resource('wali-murid', WaliMuridController::class)->except(['create', 'show', 'edit']);
     Route::resource('keterlambatan', KeterlambatanController::class)->except(['create', 'show', 'edit']);
     Route::resource('izin-keluar', IzinKeluarController::class)->except(['create', 'show', 'edit']);
@@ -131,7 +136,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('siswa', SiswaController::class)->except(['create', 'show', 'edit']);
 
         Route::resource('wali-kelas', WaliKelasController::class)->except(['create', 'show', 'edit']);
-
         Route::post('/rekap/kirim', [WaliKelasController::class, 'kirimRekap'])->name('rekap.kirim');
 
         Route::get('/notifikasi', [NotifikasiController::class, 'index'])->name('notifikasi.index');
@@ -139,8 +143,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('pengaturan', [PengaturanController::class, 'edit'])->name('pengaturan.edit');
         Route::match(['post', 'patch'], 'pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
-
-        // ===== BARU: route untuk tombol Reset Data Operasional =====
         Route::match(['post', 'delete'], 'pengaturan/reset-data', [PengaturanController::class, 'resetData'])->name('reset-data');
 
         Route::get('user-petugas', [UserPetugasController::class, 'index'])->name('user-petugas.index');
@@ -149,26 +151,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('user-petugas/{user}/reset-password', [UserPetugasController::class, 'resetPassword'])->name('user-petugas.reset-password');
         Route::delete('user-petugas/{user}', [UserPetugasController::class, 'destroy'])->name('user-petugas.destroy');
 
-                // ===== MONITORING =====
-        Route::get('monitoring', [\App\Http\Controllers\MonitoringController::class, 'index'])
-            ->name('monitoring.index');
-            
+        Route::get('monitoring', [\App\Http\Controllers\MonitoringController::class, 'index'])->name('monitoring.index');
     });
+
+    // ===== PROFILE & LOGOUT (Masuk whitelist restrict-offday) =====
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// ===== CRON EKSTERNAL: picu scheduler setiap menit =====
+// ===== 4. CRON EKSTERNAL =====
 Route::get('/cron/schedule-run', function () {
     if (request()->query('key') !== env('CRON_KEY')) {
         abort(404);
     }
     \Illuminate\Support\Facades\Artisan::call('schedule:run');
     return response()->json(['ok' => true]);
-});
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 require __DIR__.'/auth.php';
