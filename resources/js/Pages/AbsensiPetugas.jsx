@@ -371,7 +371,7 @@ export default function AbsensiIndex({
                                             d="M5 13l4 4L19 7"
                                         />
                                     </svg>
-                                    Halaman Absensi (ini)
+                                    Halaman Live
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <svg
@@ -386,7 +386,7 @@ export default function AbsensiIndex({
                                             d="M5 13l4 4L19 7"
                                         />
                                     </svg>
-                                    Profil & Logout
+                                    Logout
                                 </li>
                             </ul>
                         </div>
