@@ -148,6 +148,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('user-petugas/{user}', [UserPetugasController::class, 'update'])->name('user-petugas.update');
         Route::post('user-petugas/{user}/reset-password', [UserPetugasController::class, 'resetPassword'])->name('user-petugas.reset-password');
         Route::delete('user-petugas/{user}', [UserPetugasController::class, 'destroy'])->name('user-petugas.destroy');
+
+                // ===== MONITORING =====
+        Route::get('monitoring', [\App\Http\Controllers\MonitoringController::class, 'index'])
+            ->name('monitoring.index');
+            
     });
 });
 

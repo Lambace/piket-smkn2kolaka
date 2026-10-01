@@ -39,7 +39,6 @@ const icons = {
         "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
     userPetugas:
         "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
-    // ===== BARU: Ikon Monitoring (Grafik Batang) =====
     monitoring:
         "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
 };
@@ -51,28 +50,37 @@ export default function AuthenticatedLayout({ header, children }) {
         warna_tema: "#4f46e5",
         logo: null,
     };
-    // ===== KEY LIVE VIEW (dari middleware HandleInertiaRequests) =====
     const displayKey = usePage().props.displayKey;
-    const liveViewUrl = route("tampil", displayKey ? { k: displayKey } : {});
 
-    // ===== ROLE USER (untuk filter menu) =====
+    // ===== SAFE ROUTE HELPER =====
+    const safeRoute = (name, params = {}) => {
+        try {
+            return route(name, params);
+        } catch (e) {
+            console.error(`Route ${name} not found:`, e);
+            return "#";
+        }
+    };
+
+    const liveViewUrl = displayKey
+        ? safeRoute("tampil", { k: displayKey })
+        : safeRoute("tampil");
     const userRole = user?.role ?? "koordinator";
-
-    // URL logo dari server (aman untuk lokal & Laravel Cloud/S3)
     const logoSrc =
         pengaturan.logo_url ?? (pengaturan.logo ? "/logo.png" : null);
-
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // ===== DEFINISI MENU DENGAN ROLE =====
     const menuGroups = [
         {
             title: "Menu Utama",
             items: [
                 {
                     name: "Dashboard",
-                    href: route("dashboard"),
-                    active: route().current("dashboard"),
+                    href: safeRoute("dashboard"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("dashboard")
+                            : false,
                     icon: icons.dashboard,
                     roles: ["koordinator", "petugas"],
                 },
@@ -83,22 +91,31 @@ export default function AuthenticatedLayout({ header, children }) {
             items: [
                 {
                     name: "Data Siswa",
-                    href: route("siswa.index"),
-                    active: route().current("siswa.*"),
+                    href: safeRoute("siswa.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("siswa.*")
+                            : false,
                     icon: icons.siswa,
                     roles: ["koordinator"],
                 },
                 {
                     name: "Wali Kelas",
-                    href: route("wali-kelas.index"),
-                    active: route().current("wali-kelas.*"),
+                    href: safeRoute("wali-kelas.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("wali-kelas.*")
+                            : false,
                     icon: icons.waliKelas,
                     roles: ["koordinator"],
                 },
                 {
                     name: "Wali/Ortu Siswa",
-                    href: route("wali-murid.index"),
-                    active: route().current("wali-murid.*"),
+                    href: safeRoute("wali-murid.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("wali-murid.*")
+                            : false,
                     icon: icons.waliMurid,
                     roles: ["koordinator", "petugas"],
                 },
@@ -109,36 +126,51 @@ export default function AuthenticatedLayout({ header, children }) {
             items: [
                 {
                     name: "Absensi Petugas",
-                    href: route("absensi.index"),
-                    active: route().current("absensi.*"),
+                    href: safeRoute("absensi.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("absensi.*")
+                            : false,
                     icon: icons.absensi,
                     roles: ["koordinator"],
                 },
                 {
                     name: "Keterlambatan",
-                    href: route("keterlambatan.index"),
-                    active: route().current("keterlambatan.*"),
+                    href: safeRoute("keterlambatan.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("keterlambatan.*")
+                            : false,
                     icon: icons.terlambat,
                     roles: ["koordinator", "petugas"],
                 },
                 {
                     name: "Izin Keluar",
-                    href: route("izin-keluar.index"),
-                    active: route().current("izin-keluar.*"),
+                    href: safeRoute("izin-keluar.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("izin-keluar.*")
+                            : false,
                     icon: icons.izin,
                     roles: ["koordinator", "petugas"],
                 },
                 {
                     name: "Buku Tamu",
-                    href: route("buku-tamu.index"),
-                    active: route().current("buku-tamu.*"),
+                    href: safeRoute("buku-tamu.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("buku-tamu.*")
+                            : false,
                     icon: icons.tamu,
                     roles: ["koordinator", "petugas"],
                 },
                 {
                     name: "Pelanggaran",
-                    href: route("pelanggaran.index"),
-                    active: route().current("pelanggaran.*"),
+                    href: safeRoute("pelanggaran.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("pelanggaran.*")
+                            : false,
                     icon: icons.pelanggaran,
                     roles: ["koordinator", "petugas"],
                 },
@@ -157,30 +189,41 @@ export default function AuthenticatedLayout({ header, children }) {
                 },
                 {
                     name: "Notifikasi WA",
-                    href: route("notifikasi.index"),
-                    active: route().current("notifikasi.*"),
+                    href: safeRoute("notifikasi.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("notifikasi.*")
+                            : false,
                     icon: icons.notifikasi,
                     roles: ["koordinator"],
                 },
                 {
                     name: "Akun Petugas",
-                    href: route("user-petugas.index"),
-                    active: route().current("user-petugas.*"),
+                    href: safeRoute("user-petugas.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("user-petugas.*")
+                            : false,
                     icon: icons.userPetugas,
                     roles: ["koordinator"],
                 },
-                // ===== BARU: Menu Monitoring =====
                 {
                     name: "Monitoring",
-                    href: route("monitoring.index"),
-                    active: route().current("monitoring.*"),
+                    href: safeRoute("monitoring.index"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("monitoring.*")
+                            : false,
                     icon: icons.monitoring,
                     roles: ["koordinator"],
                 },
                 {
                     name: "Pengaturan",
-                    href: route("pengaturan.edit"),
-                    active: route().current("pengaturan.*"),
+                    href: safeRoute("pengaturan.edit"),
+                    active:
+                        typeof route !== "undefined"
+                            ? route().current("pengaturan.*")
+                            : false,
                     icon: icons.pengaturan,
                     roles: ["koordinator"],
                 },
@@ -188,7 +231,6 @@ export default function AuthenticatedLayout({ header, children }) {
         },
     ];
 
-    // ===== FILTER: sembunyikan grup yang kosong setelah filter role =====
     const visibleMenuGroups = menuGroups
         .map((group) => ({
             ...group,
@@ -196,7 +238,6 @@ export default function AuthenticatedLayout({ header, children }) {
         }))
         .filter((group) => group.items.length > 0);
 
-    // ===== HELPER: render item menu (internal vs eksternal) =====
     const renderMenuItem = (item) => {
         const baseClass =
             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition";
@@ -251,6 +292,8 @@ export default function AuthenticatedLayout({ header, children }) {
         );
     };
 
+    // ... (sidebarContent dan return tetap sama seperti sebelumnya)
+
     const sidebarContent = (
         <div className="flex h-full flex-col">
             <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-6">
@@ -300,12 +343,12 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                         <div className="truncate text-xs text-slate-400">
                             {userRole === "koordinator"
-                                ? "👑 Koordinator"
+                                ? " Koordinator"
                                 : "🧑 Petugas Piket"}
                         </div>
                     </div>
                     <Link
-                        href={route("logout")}
+                        href={safeRoute("logout")}
                         method="post"
                         as="button"
                         title="Keluar"
@@ -343,7 +386,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     {pengaturan.nama_sekolah}
                 </span>
                 <Link
-                    href={route("logout")}
+                    href={safeRoute("logout")}
                     method="post"
                     as="button"
                     className="rounded-md p-2 text-slate-300 hover:bg-slate-800 hover:text-red-400"

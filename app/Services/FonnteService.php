@@ -51,6 +51,33 @@ class FonnteService
         ], $token);
     }
 
+        /**
+     * Cek status device Fonnte (online/offline).
+     * Return array: ['status' => 'online'|'offline', 'device' => string|null]
+     */
+    public function cekStatusDevice(?string $token = null): array
+    {
+        $tokenAktif = ($token !== null && $token !== '') ? $token : $this->token;
+        $device = ($token !== null && $token !== '') ? 'koordinator' : 'sistem';
+
+        try {
+            $res = Http::withHeaders(['Authorization' => $tokenAktif])
+                ->timeout(10)
+                ->get($this->base . '/status');
+
+            if ($res->successful()) {
+                $body = $res->json() ?? [];
+                $status = ($body['status'] ?? false) ? 'online' : 'offline';
+                $deviceName = $body['device'] ?? null;
+                return ['status' => $status, 'device' => $deviceName, 'source' => $device];
+            }
+        } catch (\Throwable $e) {
+            Log::error('[FONNTE] Cek status gagal: ' . $e->getMessage());
+        }
+
+        return ['status' => 'offline', 'device' => null, 'source' => $device];
+    }
+
     protected function kirim(array $payload, ?string $token = null): bool
     {
         $tokenAktif = ($token !== null && $token !== '') ? $token : $this->token;
