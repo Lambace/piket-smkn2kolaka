@@ -371,23 +371,9 @@ export default function AbsensiIndex({
                                             d="M5 13l4 4L19 7"
                                         />
                                     </svg>
-                                    Halaman Live
+                                    Halaman Live atau Log Out, tetapi tidak dapat melakukan absensi.
                                 </li>
-                                <li className="flex items-center gap-2">
-                                    <svg
-                                        className="h-4 w-4 text-green-500"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    Logout
-                                </li>
+                               
                             </ul>
                         </div>
 
