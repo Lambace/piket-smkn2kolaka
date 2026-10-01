@@ -91,7 +91,7 @@ export default function MinimalLayout({ header, children }) {
             {/* Footer kecil */}
             <footer className="mx-auto max-w-3xl px-4 pb-6 pt-2 text-center text-[11px] text-slate-400 sm:px-6">
                 © {new Date().getFullYear()} {pengaturan.nama_sekolah} — Sistem
-                Informasi Piket
+                Informasi Piket_Designed by Ags
             </footer>
         </div>
     );
