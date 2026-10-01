@@ -18,10 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // ===== Alias middleware untuk RBAC & pembatasan petugas =====
-        $middleware->alias([
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
-            'restrict-offday' => \App\Http\Middleware\RestrictPetugasOffDay::class, // ← BARU
-        ]);
+       $middleware->alias([
+    'role' => \App\Http\Middleware\RoleMiddleware::class,
+    'restrict-offday' => \App\Http\Middleware\RestrictPetugasOffDay::class, // ← TAMBAHKAN
+]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
