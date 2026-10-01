@@ -65,11 +65,11 @@ export default function Edit({ mustVerifyEmail, status }) {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">
-                                        Profile Information
+                                        Profile
                                     </h3>
                                     <p className="text-sm text-gray-500">
-                                        Update your account's profile
-                                        information and email address.
+                                        Perbarui informasi profil dan alamat
+                                        email akun Anda.
                                     </p>
                                 </div>
                             </div>
@@ -107,8 +107,9 @@ export default function Edit({ mustVerifyEmail, status }) {
                                         Update Password
                                     </h3>
                                     <p className="text-sm text-gray-500">
-                                        Ensure your account is using a long,
-                                        random password to stay secure.
+                                        Pastikan akun Anda menggunakan kata
+                                        sandi yang panjang dan acak agar tetap
+                                        aman.
                                     </p>
                                 </div>
                             </div>
