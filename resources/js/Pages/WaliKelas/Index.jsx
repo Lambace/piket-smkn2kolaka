@@ -68,12 +68,73 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
         );
     };
 
-    // ===== KIRIM REKAP HARIAN KE SEMUA WALI KELAS =====
     const kirimRekap = () => {
         if (confirm("Kirim rekap harian sekarang ke semua wali kelas aktif?")) {
             router.post(route("rekap.kirim"));
         }
     };
+
+    // ===== STATUS BADGE =====
+    const StatusBadge = ({ aktif }) =>
+        aktif ? (
+            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                <span className="mr-1 h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                Aktif
+            </span>
+        ) : (
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-500">
+                <span className="mr-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                Nonaktif
+            </span>
+        );
+
+    // ===== CARD MOBILE (tampilan di layar kecil) =====
+    const WaliCard = ({ w }) => (
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-base font-semibold text-gray-900">
+                        {w.nama}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                            {w.kelas}
+                        </span>
+                        <StatusBadge aktif={w.aktif} />
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-1.5 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400"></span>
+                    <span className="truncate">{w.telepon ?? "—"}</span>
+                </div>
+                {w.email && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">✉️</span>
+                        <span className="truncate">{w.email}</span>
+                    </div>
+                )}
+            </div>
+
+            {/* Tombol horizontal di mobile */}
+            <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                <button
+                    onClick={() => startEdit(w)}
+                    className="flex-1 rounded-md bg-yellow-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-600"
+                >
+                    ✏️ Edit
+                </button>
+                <button
+                    onClick={() => remove(w.id)}
+                    className="flex-1 rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600"
+                >
+                    🗑️ Hapus
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <AuthenticatedLayout
@@ -93,20 +154,20 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                 )}
 
                 {/* Toolbar */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <input
                         type="text"
                         placeholder="Cari nama / kelas / telepon..."
                         value={search}
                         onChange={(e) => onSearch(e.target.value)}
-                        className="w-64 rounded-md border-gray-300 shadow-sm"
+                        className="w-full rounded-md border-gray-300 shadow-sm sm:w-64"
                     />
                     <div className="flex flex-wrap gap-2">
                         <button
                             onClick={kirimRekap}
-                            className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                            className="flex-1 rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 sm:flex-none"
                         >
-                            📨 Kirim Rekap Sekarang
+                            Kirim Rekap
                         </button>
                         <button
                             onClick={() => {
@@ -114,9 +175,9 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                 setEditingId(null);
                                 setForm(emptyForm);
                             }}
-                            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                            className="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 sm:flex-none"
                         >
-                            {showForm ? "Tutup Form" : "+ Tambah Wali Kelas"}
+                            {showForm ? " Tutup Form" : "+ Tambah"}
                         </button>
                     </div>
                 </div>
@@ -173,10 +234,6 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                         {errors.kelas}
                                     </p>
                                 )}
-                                <p className="mt-1 text-xs text-gray-500">
-                                    💡 Daftar kelas diambil otomatis dari Data
-                                    Siswa
-                                </p>
                             </div>
                             <div>
                                 <label className="text-sm text-gray-600">
@@ -194,9 +251,6 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                         {errors.telepon}
                                     </p>
                                 )}
-                                <p className="mt-1 text-xs text-gray-500">
-                                    📱 Untuk menerima rekap harian otomatis
-                                </p>
                             </div>
                             <div>
                                 <label className="text-sm text-gray-600">
@@ -210,7 +264,7 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                     type="email"
                                     value={form.email}
                                     onChange={handleChange}
-                                    placeholder="wali@smkn2kolaka.sch.id (boleh kosong)"
+                                    placeholder="boleh kosong"
                                     className={inputClass}
                                 />
                                 {errors.email && (
@@ -218,10 +272,6 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                         {errors.email}
                                     </p>
                                 )}
-                                <p className="mt-1 text-xs text-gray-500">
-                                    📧 Kosongkan jika wali kelas tidak punya
-                                    email.
-                                </p>
                             </div>
                             <div className="md:col-span-2">
                                 <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -242,8 +292,8 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                     </form>
                 )}
 
-                {/* Tabel */}
-                <div className="overflow-x-auto rounded-lg bg-white shadow">
+                {/* ===== TABEL DESKTOP (hidden di mobile) ===== */}
+                <div className="hidden overflow-x-auto rounded-lg bg-white shadow md:block">
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 text-left text-gray-600">
                             <tr>
@@ -286,29 +336,23 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                             {w.email ?? "-"}
                                         </td>
                                         <td className="p-3">
-                                            {w.aktif ? (
-                                                <span className="rounded-md bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
-                                                    Aktif
-                                                </span>
-                                            ) : (
-                                                <span className="rounded-md bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-500">
-                                                    Nonaktif
-                                                </span>
-                                            )}
+                                            <StatusBadge aktif={w.aktif} />
                                         </td>
-                                        <td className="p-3 text-center">
-                                            <button
-                                                onClick={() => startEdit(w)}
-                                                className="mr-2 rounded bg-yellow-500 px-2 py-1 text-xs font-semibold text-white hover:bg-yellow-600"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => remove(w.id)}
-                                                className="rounded bg-red-500 px-2 py-1 text-xs font-semibold text-white hover:bg-red-600"
-                                            >
-                                                Hapus
-                                            </button>
+                                        <td className="p-3">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => startEdit(w)}
+                                                    className="rounded bg-yellow-500 px-3 py-1 text-xs font-semibold text-white hover:bg-yellow-600"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => remove(w.id)}
+                                                    className="rounded bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
+                                                >
+                                                    Hapus
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -317,8 +361,19 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                     </table>
                 </div>
 
+                {/* ===== CARD MOBILE (hanya tampil di layar kecil) ===== */}
+                <div className="space-y-3 md:hidden">
+                    {list.length === 0 ? (
+                        <div className="rounded-lg bg-white p-6 text-center text-gray-500 shadow">
+                            Belum ada data wali kelas.
+                        </div>
+                    ) : (
+                        list.map((w) => <WaliCard key={w.id} w={w} />)
+                    )}
+                </div>
+
                 {/* Pagination */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
                     <div>
                         {waliKelas?.prev_page_url && (
                             <button
