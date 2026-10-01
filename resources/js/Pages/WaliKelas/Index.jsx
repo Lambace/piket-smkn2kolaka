@@ -1,6 +1,7 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
+import { useRef } from "react";
 
 const emptyForm = { nama: "", kelas: "", telepon: "", email: "", aktif: true };
 
@@ -10,7 +11,7 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(emptyForm);
     const [search, setSearch] = useState(params.search ?? "");
-
+    const formRef = useRef(null);
     const list = Array.isArray(waliKelas?.data) ? waliKelas.data : [];
     const kelasOptions = Array.isArray(daftarKelas) ? daftarKelas : [];
 
@@ -54,6 +55,33 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
         setShowForm(true);
     };
 
+    const scrollToForm = (w) => {
+        // Isi form dengan data wali kelas
+        setEditingId(w.id);
+        setForm({
+            nama: w.nama,
+            kelas: w.kelas,
+            telepon: w.telepon ?? "",
+            email: w.email ?? "",
+            aktif: !!w.aktif,
+        });
+
+        // Tampilkan form jika tersembunyi
+        if (!showForm) {
+            setShowForm(true);
+        }
+
+        // Scroll ke form dengan smooth animation
+        setTimeout(() => {
+            if (formRef.current) {
+                formRef.current.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                });
+            }
+        }, 100);
+    };
+
     const remove = (id) => {
         if (confirm("Hapus data wali kelas ini?"))
             router.delete(route("wali-kelas.destroy", id));
@@ -93,9 +121,12 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
         <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                    <div className="truncate text-base font-semibold text-gray-900">
+                    <button
+                        onClick={() => scrollToForm(w)}
+                        className="w-full text-left text-base font-semibold text-indigo-600 hover:text-indigo-800 hover:underline focus:outline-none"
+                    >
                         {w.nama}
-                    </div>
+                    </button>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                         <span className="inline-flex items-center rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
                             {w.kelas}
@@ -185,6 +216,7 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                 {/* Form */}
                 {showForm && (
                     <form
+                        ref={formRef}
                         onSubmit={submit}
                         className="space-y-4 rounded-lg bg-white p-6 shadow"
                     >
@@ -321,8 +353,13 @@ export default function Index({ waliKelas, daftarKelas = [], params = {} }) {
                                         key={w.id}
                                         className="border-t border-gray-200"
                                     >
-                                        <td className="p-3 font-medium">
-                                            {w.nama}
+                                        <td className="p-3">
+                                            <button
+                                                onClick={() => scrollToForm(w)}
+                                                className="text-left font-medium text-indigo-600 hover:text-indigo-800 hover:underline focus:outline-none"
+                                            >
+                                                {w.nama}
+                                            </button>
                                         </td>
                                         <td className="p-3">
                                             <span className="rounded-md bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700">
