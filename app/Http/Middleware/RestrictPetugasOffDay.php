@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -11,25 +10,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RestrictPetugasOffDay
 {
+    /**
+     * Route yang TETAP boleh diakses petugas di luar hari piket.
+     * Ketat: hanya hub overlay (absensi) dan logout.
+     * ('tampil' / Live View adalah route PUBLIK — tidak perlu whitelist.)
+     */
     protected array $allowedRoutes = [
-        'dashboard',
-        'absensi.index',
-        'absensi.store',
-        'absensi-petugas.update',
-        'absensi-petugas.destroy',
-        'profile.edit',
-        'profile.update',
-        'profile.destroy',
+        'absensi.index',   // hub overlay "Bukan Jadwal Piket Anda"
         'logout',
-        'notifikasi.index',
-        'monitoring.index',
-        'tampil',
-        'tampil.laporan',
-        'tampil.daftar-hadir',
-        'banner.piket',
-        'logo.sekolah',
-        'logo.instansi',
-        'papan.informasi',
+
+        // Opsional — hapus tanda // jika suatu saat ingin profil bisa diakses off-day:
+        // 'profile.edit',
+        // 'profile.update',
+        // 'profile.destroy',
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -40,6 +33,7 @@ class RestrictPetugasOffDay
             return $next($request);
         }
 
+        // Koordinator & wakasek bebas ke mana saja
         if (in_array($user->role, ['koordinator', 'wakasek'])) {
             return $next($request);
         }
@@ -47,12 +41,13 @@ class RestrictPetugasOffDay
         $hariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
         $currentRoute = $request->route()?->getName();
 
+        // Petugas di luar hari piket → hanya whitelist yang lolos
         if ($user->hari_piket !== $hariIni) {
             if ($currentRoute && in_array($currentRoute, $this->allowedRoutes)) {
                 return $next($request);
             }
 
-            Log::info('[RESTRICT] Petugas ' . $user->name . ' (piket=' . ($user->hari_piket ?? '-') . ') diblokir dari ' . $currentRoute . ' di hari ' . $hariIni);
+            Log::info('[RESTRICT] Petugas ' . $user->name . ' diblokir dari ' . $currentRoute . ' (bukan hari piket)');
 
             return redirect()
                 ->route('absensi.index')
