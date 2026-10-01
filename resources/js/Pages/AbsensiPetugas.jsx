@@ -343,7 +343,7 @@ export default function AbsensiIndex({
 
                         <p className="mb-6 text-sm text-gray-600">
                             Hari ini (<b>{hari_ini}</b>) bukan hari piket Anda.
-                            Silakan periksa kembali jadwal Anda.
+                            Silakan periksa kembali jadwal Anda atau Koordinasikan dengan Koordinator Piket Anda.
                         </p>
 
                         {user_hari_piket && (
