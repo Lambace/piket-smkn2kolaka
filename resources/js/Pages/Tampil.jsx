@@ -72,34 +72,35 @@ function SelectCustom({
     );
 }
 
-        /// ===== KOMPONEN MODAL (SCROLLABLE) =====
-        function Modal({ open, onClose, title, icon, children }) {
-            if (!open) return null;
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div
-                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        // ===== KOMPONEN MODAL (FLEX & SCROLLABLE) =====
+function Modal({ open, onClose, title, icon, children }) {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+            
+            {/* Wadah Utama: Flex Column, Max Height 90% Layar */}
+            <div className="relative flex flex-col w-full max-w-md max-h-[90vh] rounded-xl border border-slate-700 bg-slate-800 shadow-2xl">
+                
+                {/* Header: Sticky di Atas */}
+                <div className="flex items-center justify-between border-b border-slate-700 p-5 sticky top-0 bg-slate-800 z-10 rounded-t-xl">
+                    <h3 className="text-base font-bold text-white">{icon} {title}</h3>
+                    <button
                         onClick={onClose}
-                    />
-                    <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-2xl">
-                        <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3 sticky top-0 bg-slate-800 z-10">
-                            <h3 className="text-base font-bold text-white">
-                                {icon} {title}
-                            </h3>
-                            <button
-                                onClick={onClose}
-                                className="rounded-lg bg-slate-700 px-2.5 py-1 text-sm text-slate-300 transition hover:bg-slate-600"
-                                title="Tutup"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        {children}
-                    </div>
+                        className="rounded-lg bg-slate-700 px-2.5 py-1 text-sm text-slate-300 transition hover:bg-slate-600"
+                    >
+                        ✕
+                    </button>
                 </div>
-            );
-        }
 
+                {/* Body: Scrollable jika konten kepanjangan */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+}
 export default function Tampil(props) {
     usePoll(60000);
 
@@ -319,108 +320,109 @@ export default function Tampil(props) {
             <Modal
                 open={modalDownload}
                 onClose={() => setModalDownload(false)}
-                title="Unduh Laporan PDF"
+                title="Unduh Laporan"
                 icon="📄"
             >
-                <div className="space-y-3">
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-400">
-                            Periode Laporan
-                        </label>
-                        <SelectCustom
-                            value={downloadPeriode}
-                            onChange={handleDownloadPeriodeChange}
-                            focusRing="focus:ring-red-500"
-                            options={[
-                                { value: "harian", label: "📅 Harian" },
-                                {
-                                    value: "bulanan",
-                                    label: "📆 Bulanan (Rentang)",
-                                },
-                                { value: "semester", label: "🎓 Semester" },
-                            ]}
-                        />
-                    </div>
+                {/* 1. Periode */}
+                <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                        Periode Laporan
+                    </label>
+                    <SelectCustom
+                        value={downloadPeriode}
+                        onChange={handleDownloadPeriodeChange}
+                        focusRing="focus:ring-red-500"
+                        options={[
+                            { value: "harian", label: "📅 Harian" },
+                            {
+                                value: "bulanan",
+                                label: "📆 Bulanan (Rentang Tanggal)",
+                            },
+                            { value: "semester", label: "🎓 Semester" },
+                        ]}
+                    />
+                </div>
 
-                    {/* ===== PANEL DATE PICKER RENTANG ===== */}
-                    {downloadPeriode === "bulanan" && (
-                        <div className="space-y-2 rounded-lg border border-slate-600 bg-slate-700/50 p-2.5">
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-400">
-                                        Dari Tanggal
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={downloadDari}
-                                        max={downloadSampai}
-                                        onChange={(e) =>
-                                            setDownloadDari(e.target.value)
-                                        }
-                                        className="w-full rounded-lg border-0 bg-slate-800 px-2 py-1.5 text-xs text-white focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-xs font-medium text-slate-400">
-                                        📅 Sampai Tanggal
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={downloadSampai}
-                                        min={downloadDari}
-                                        onChange={(e) =>
-                                            setDownloadSampai(e.target.value)
-                                        }
-                                        className="w-full rounded-lg border-0 bg-slate-800 px-2 py-1.5 text-xs text-white focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                </div>
+                {/* 2. Panel Rentang (Muncul hanya jika Bulanan, Layout 2 Kolom) */}
+                {downloadPeriode === "bulanan" && (
+                    <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3">
+                        <p className="mb-2 text-xs font-semibold text-indigo-300">
+                            Pilih Rentang Tanggal:
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="mb-1 block text-[10px] font-medium text-slate-400">
+                                    Dari
+                                </label>
+                                <input
+                                    type="date"
+                                    value={downloadDari}
+                                    max={downloadSampai}
+                                    onChange={(e) =>
+                                        setDownloadDari(e.target.value)
+                                    }
+                                    className="w-full rounded border-0 bg-slate-900 px-2 py-1.5 text-xs text-white focus:ring-1 focus:ring-indigo-500"
+                                />
                             </div>
-                            <div className="rounded bg-slate-800/50 px-2 py-1 text-[10px] text-slate-300">
-                                <span className="text-slate-500">
-                                    Rentang aktif:{" "}
-                                </span>
-                                <span className="font-mono font-bold text-white">
-                                    {downloadDari}
-                                </span>
-                                <span className="text-slate-500"> s/d </span>
-                                <span className="font-mono font-bold text-white">
-                                    {downloadSampai}
-                                </span>
+                            <div>
+                                <label className="mb-1 block text-[10px] font-medium text-slate-400">
+                                    Sampai
+                                </label>
+                                <input
+                                    type="date"
+                                    value={downloadSampai}
+                                    min={downloadDari}
+                                    onChange={(e) =>
+                                        setDownloadSampai(e.target.value)
+                                    }
+                                    className="w-full rounded border-0 bg-slate-900 px-2 py-1.5 text-xs text-white focus:ring-1 focus:ring-indigo-500"
+                                />
                             </div>
                         </div>
-                    )}
-
-                    <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-400">
-                            Filter Hari
-                        </label>
-                        <SelectCustom
-                            value={downloadFilterHari}
-                            onChange={setDownloadFilterHari}
-                            focusRing="focus:ring-blue-500"
-                            options={[
-                                { value: "Semua Hari", label: "👥 Semua Hari" },
-                                { value: "Senin", label: "📌 Senin" },
-                                { value: "Selasa", label: "📌 Selasa" },
-                                { value: "Rabu", label: "📌 Rabu" },
-                                { value: "Kamis", label: "📌 Kamis" },
-                                { value: "Jumat", label: "📌 Jumat" },
-                                { value: "Sabtu", label: "📌 Sabtu" },
-                            ]}
-                        />
                     </div>
+                )}
 
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                        <button
-                            onClick={() => {
-                                downloadLaporan();
-                                setModalDownload(false);
-                            }}
-                            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-red-700"
-                        >
-                            📄 Laporan PDF
-                        </button>
-                    </div>
+                {/* 3. Filter Hari */}
+                <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                        Filter Hari
+                    </label>
+                    <SelectCustom
+                        value={downloadFilterHari}
+                        onChange={setDownloadFilterHari}
+                        focusRing="focus:ring-blue-500"
+                        options={[
+                            { value: "Semua Hari", label: "👥 Semua Hari" },
+                            { value: "Senin", label: "📌 Senin" },
+                            { value: "Selasa", label: "📌 Selasa" },
+                            { value: "Rabu", label: "📌 Rabu" },
+                            { value: "Kamis", label: "📌 Kamis" },
+                            { value: "Jumat", label: "📌 Jumat" },
+                            { value: "Sabtu", label: "📌 Sabtu" },
+                        ]}
+                    />
+                </div>
+
+                {/* 4. Tombol Aksi (Grid 2 Kolom agar kompak) */}
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                        onClick={() => {
+                            downloadLaporan();
+                            setModalDownload(false);
+                        }}
+                        className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-red-700"
+                    >
+                        <span>📄</span> PDF
+                    </button>
+                    <button
+                        onClick={() => {
+                            downloadDaftarHadir();
+                            setModalDownload(false);
+                        }}
+                        className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-blue-700"
+                    >
+                        <span>📋</span> Daftar Hadir
+                    </button>
                 </div>
             </Modal>
 
