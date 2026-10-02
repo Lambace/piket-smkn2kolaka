@@ -83,6 +83,9 @@ class LaporanController extends Controller
     // ===== LAPORAN PIKET (PDF BERWARNA) =====
     public function pdf(Request $request)
     {
+        if ($resp = $this->guardJadwalKosong($request)) {
+        return $resp;
+    }
         try {
             if ($request->routeIs('tampil.*')) {
                 $key = config('services.display.key');
@@ -724,4 +727,41 @@ class LaporanController extends Controller
 
         return $data->sortByDesc('tanggal')->values();
     }
+
+                            /**
+             * Guard: batalkan unduhan & tampilkan notifikasi jika tidak ada jadwal piket.
+             * Return null jika aman untuk lanjut generate PDF.
+             */
+            private function guardJadwalKosong(Request $request)
+            {
+                $periode    = $request->query('periode', 'harian');
+                $hariFilter = $request->query('hari');
+                $tanggal    = $request->query('tanggal', now('Asia/Makassar')->toDateString());
+
+                // Hari yang jadi target filter
+                $hariTarget = ($hariFilter && $hariFilter !== 'semua')
+                    ? $hariFilter
+                    : \Illuminate\Support\Carbon::parse($tanggal, 'Asia/Makassar')
+                        ->locale('id')->isoFormat('dddd');
+
+                // Cek apakah ada petugas yang dijadwalkan
+                $adaJadwal = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
+                    ->when($periode === 'harian', fn ($q) => $q->where('hari_piket', $hariTarget))
+                    ->when($periode !== 'harian', fn ($q) => $q->whereNotNull('hari_piket'))
+                    ->exists();
+
+                if ($adaJadwal) {
+                    return null; // ✅ aman, lanjut generate PDF
+                }
+
+                // ❌ tidak ada jadwal → tampilkan notifikasi, unduhan dibatalkan
+                return response()->view('laporan-tidak-tersedia', [
+                    'judul'      => 'Laporan PDF Tidak Tersedia',
+                    'pesan'      => 'Tidak ada petugas piket yang dijadwalkan untuk filter: '
+                                    . ($hariFilter && $hariFilter !== 'semua' ? $hariFilter : 'Semua Hari')
+                                    . ", periode {$periode}.",
+                    'hariTarget' => $hariTarget,
+                ], 404);
+            }
+
 }
