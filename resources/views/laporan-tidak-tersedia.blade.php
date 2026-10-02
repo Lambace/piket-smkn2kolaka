@@ -18,9 +18,11 @@
 
         <div class="space-y-6 bg-slate-50 p-8">
 
-            {{-- Pesan utama --}}
-            <div class="rounded-r-lg border-l-4 border-red-600 bg-red-50 px-5 py-4 text-slate-700">
-                {{ $pesan }}
+            {{-- Pesan utama (TEBAL, BESAR, MERAH) --}}
+            <div class="rounded-r-lg border-l-4 border-red-600 bg-red-50 px-5 py-4">
+                <p class="text-lg font-extrabold text-red-700">
+                    {{ $pesan ?? 'Tidak ada Petugas yang dijadwalkan Hari ini' }}
+                </p>
             </div>
 
             {{-- Langkah --}}

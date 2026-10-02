@@ -757,9 +757,7 @@ class LaporanController extends Controller
                 // ❌ tidak ada jadwal → tampilkan notifikasi, unduhan dibatalkan
                 return response()->view('laporan-tidak-tersedia', [
                     'judul'      => 'Laporan PDF Tidak Tersedia',
-                    'pesan'      => 'Tidak ada petugas piket yang dijadwalkan untuk filter: '
-                                    . ($hariFilter && $hariFilter !== 'semua' ? $hariFilter : 'Semua Hari')
-                                    . ", periode {$periode}.",
+                    'pesan' => 'Tidak ada Petugas yang dijadwalkan Hari ini',
                     'hariTarget' => $hariTarget,
                 ], 404);
             }
