@@ -1,20 +1,6 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, router, usePage } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import { useState } from "react";
-
-const today = new Date().toISOString().split("T")[0];
-const [tanggalAcuan, setTanggalAcuan] = useState(
-    props.tanggal ?? new Date().toISOString().split("T")[0],
-);
-const [dari, setDari] = useState(() => {
-    // Default: 1 bulan yang lalu
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    return d.toISOString().split("T")[0];
-});
-const [sampai, setSampai] = useState(
-    () => new Date().toISOString().split("T")[0],
-);
 
 export default function Index({
     ringkasan,
@@ -22,21 +8,38 @@ export default function Index({
     labelPeriode,
     params = {},
 }) {
+    const today = new Date().toISOString().split("T")[0];
+
     const [jenis, setJenis] = useState(params.jenis ?? "gabungan");
     const [periode, setPeriode] = useState(params.periode ?? "harian");
     const [tanggal, setTanggal] = useState(params.tanggal ?? today);
     const [semester, setSemester] = useState(params.semester ?? "ganjil");
+    const [filterHari, setFilterHari] = useState(
+        params.filterHari ?? "Semua Hari",
+    );
     const [loading, setLoading] = useState(null);
 
+    // ===== State rentang bebas =====
+    const [dari, setDari] = useState(() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        return d.toISOString().split("T")[0];
+    });
+    const [sampai, setSampai] = useState(today);
+
     const apply = () => {
-        router.get(
-            route("laporan.index"),
-            { jenis, periode, tanggal, semester },
-            {
-                preserveState: true,
-                preserveScroll: true,
-            },
-        );
+        const query = { jenis, periode, semester, filter_hari: filterHari };
+        if (periode === "rentang") {
+            query.dari = dari;
+            query.sampai = sampai;
+        } else {
+            query.tanggal = tanggal;
+        }
+
+        router.get(route("laporan.index"), query, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const exportFile = (type) => {
@@ -50,8 +53,9 @@ export default function Index({
         const query = new URLSearchParams({
             jenis,
             periode,
-            tanggal,
             semester,
+            filter_hari: filterHari,
+            ...(periode === "rentang" ? { dari, sampai } : { tanggal }),
         }).toString();
 
         window.location.href = `${urls[type]}?${query}`;
@@ -60,6 +64,32 @@ export default function Index({
 
     const inputClass =
         "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm";
+
+    // Helper preset tanggal rentang
+    const setPreset = (mode) => {
+        const t = new Date();
+        if (mode === "30") {
+            const ago = new Date();
+            ago.setDate(t.getDate() - 30);
+            setDari(ago.toISOString().split("T")[0]);
+            setSampai(today);
+        } else if (mode === "60") {
+            const ago = new Date();
+            ago.setDate(t.getDate() - 60);
+            setDari(ago.toISOString().split("T")[0]);
+            setSampai(today);
+        } else if (mode === "semester") {
+            const start =
+                t.getMonth() < 6
+                    ? new Date(t.getFullYear(), 0, 1)
+                    : new Date(t.getFullYear(), 6, 1);
+            setDari(start.toISOString().split("T")[0]);
+            setSampai(today);
+        } else if (mode === "agustus") {
+            setDari("2026-08-01");
+            setSampai("2026-10-02");
+        }
+    };
 
     return (
         <AuthenticatedLayout
@@ -72,12 +102,14 @@ export default function Index({
             <Head title="Laporan" />
 
             <div className="space-y-6">
-                {/* Form Filter */}
+                {/* ===== FORM FILTER ===== */}
                 <div className="rounded-lg bg-white p-6 shadow">
                     <h3 className="mb-4 text-base font-semibold text-gray-800">
                         📋 Filter Laporan
                     </h3>
+
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {/* Jenis Laporan */}
                         <div>
                             <label className="text-sm font-medium text-gray-700">
                                 Jenis Laporan
@@ -103,6 +135,7 @@ export default function Index({
                             </select>
                         </div>
 
+                        {/* Periode */}
                         <div>
                             <label className="text-sm font-medium text-gray-700">
                                 Periode
@@ -110,13 +143,11 @@ export default function Index({
                             <select
                                 value={periode}
                                 onChange={(e) => setPeriode(e.target.value)}
-                                className="w-full rounded-lg border-slate-600 bg-slate-700 px-3 py-2 text-white"
+                                className={inputClass}
                             >
                                 <option value="harian">📅 Harian</option>
                                 <option value="mingguan">🗓️ Mingguan</option>
-                                <option value="bulanan">
-                                    📆 Bulanan (1 bulan penuh)
-                                </option>
+                                <option value="bulanan">📆 Bulanan</option>
                                 <option value="semester">🎓 Semester</option>
                                 <option value="rentang">
                                     🔀 Rentang Bebas
@@ -124,18 +155,47 @@ export default function Index({
                             </select>
                         </div>
 
+                        {/* Filter Hari */}
                         <div>
                             <label className="text-sm font-medium text-gray-700">
-                                {periode === "semester" ? "Tahun" : "Tanggal"}
+                                Filter Hari
                             </label>
-                            <input
-                                type="date"
-                                value={tanggal}
-                                onChange={(e) => setTanggal(e.target.value)}
+                            <select
+                                value={filterHari}
+                                onChange={(e) => setFilterHari(e.target.value)}
                                 className={inputClass}
-                            />
+                            >
+                                <option value="Semua Hari">
+                                    🌐 Semua Hari
+                                </option>
+                                <option value="Senin">Senin</option>
+                                <option value="Selasa">Selasa</option>
+                                <option value="Rabu">Rabu</option>
+                                <option value="Kamis">Kamis</option>
+                                <option value="Jumat">Jumat</option>
+                                <option value="Sabtu">Sabtu</option>
+                                <option value="Minggu">Minggu</option>
+                            </select>
                         </div>
 
+                        {/* Tanggal acuan (untuk harian/mingguan/bulanan) */}
+                        {periode !== "rentang" && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    {periode === "semester"
+                                        ? "Tahun Acuan"
+                                        : "Tanggal Acuan"}
+                                </label>
+                                <input
+                                    type="date"
+                                    value={tanggal}
+                                    onChange={(e) => setTanggal(e.target.value)}
+                                    className={inputClass}
+                                />
+                            </div>
+                        )}
+
+                        {/* Semester pilih (hanya untuk semester) */}
                         {periode === "semester" && (
                             <div>
                                 <label className="text-sm font-medium text-gray-700">
@@ -155,133 +215,81 @@ export default function Index({
                                         Genap (Jan - Jun)
                                     </option>
                                 </select>
-
-                                {periode === "rentang" && (
-                                    <div className="mt-3 space-y-2">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <label className="mb-1 block text-xs font-semibold text-slate-400">
-                                                    📅 Dari Tanggal
-                                                </label>
-                                                <input
-                                                    type="date"
-                                                    value={dari}
-                                                    onChange={(e) =>
-                                                        setDari(e.target.value)
-                                                    }
-                                                    className="w-full rounded-lg border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-white"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="mb-1 block text-xs font-semibold text-slate-400">
-                                                    📅 Sampai Tanggal
-                                                </label>
-                                                <input
-                                                    type="date"
-                                                    value={sampai}
-                                                    onChange={(e) =>
-                                                        setSampai(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    className="w-full rounded-lg border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-white"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-wrap gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const today = new Date();
-                                                    const ago30 = new Date();
-                                                    ago30.setDate(
-                                                        today.getDate() - 30,
-                                                    );
-                                                    setDari(
-                                                        ago30
-                                                            .toISOString()
-                                                            .split("T")[0],
-                                                    );
-                                                    setSampai(
-                                                        today
-                                                            .toISOString()
-                                                            .split("T")[0],
-                                                    );
-                                                }}
-                                                className="rounded bg-slate-600 px-2 py-0.5 text-xs hover:bg-slate-500"
-                                            >
-                                                30 hari terakhir
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const today = new Date();
-                                                    const ago60 = new Date();
-                                                    ago60.setDate(
-                                                        today.getDate() - 60,
-                                                    );
-                                                    setDari(
-                                                        ago60
-                                                            .toISOString()
-                                                            .split("T")[0],
-                                                    );
-                                                    setSampai(
-                                                        today
-                                                            .toISOString()
-                                                            .split("T")[0],
-                                                    );
-                                                }}
-                                                className="rounded bg-slate-600 px-2 py-0.5 text-xs hover:bg-slate-500"
-                                            >
-                                                60 hari terakhir
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const today = new Date();
-                                                    const semesterStart =
-                                                        today.getMonth() < 6
-                                                            ? new Date(
-                                                                  today.getFullYear(),
-                                                                  0,
-                                                                  1,
-                                                              )
-                                                            : new Date(
-                                                                  today.getFullYear(),
-                                                                  6,
-                                                                  1,
-                                                              );
-                                                    setDari(
-                                                        semesterStart
-                                                            .toISOString()
-                                                            .split("T")[0],
-                                                    );
-                                                    setSampai(
-                                                        today
-                                                            .toISOString()
-                                                            .split("T")[0],
-                                                    );
-                                                }}
-                                                className="rounded bg-slate-600 px-2 py-0.5 text-xs hover:bg-slate-500"
-                                            >
-                                                Semester berjalan
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setDari("2026-08-01");
-                                                    setSampai("2026-10-02");
-                                                }}
-                                                className="rounded bg-indigo-600 px-2 py-0.5 text-xs hover:bg-indigo-500"
-                                            >
-                                                📊 1 Ags – 2 Okt
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
+
+                    {/* ===== PANEL RENTANG BEBAS ===== */}
+                    {periode === "rentang" && (
+                        <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                            <div className="mb-3 flex items-center gap-2">
+                                <span className="text-lg">🔀</span>
+                                <h4 className="text-sm font-bold text-indigo-900">
+                                    Rentang Tanggal Bebas
+                                </h4>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                        📅 Dari Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={dari}
+                                        onChange={(e) =>
+                                            setDari(e.target.value)
+                                        }
+                                        className={inputClass}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                        📅 Sampai Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={sampai}
+                                        onChange={(e) =>
+                                            setSampai(e.target.value)
+                                        }
+                                        className={inputClass}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setPreset("30")}
+                                    className="rounded bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-200"
+                                >
+                                    30 hari terakhir
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreset("60")}
+                                    className="rounded bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-200"
+                                >
+                                    60 hari terakhir
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreset("semester")}
+                                    className="rounded bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-200"
+                                >
+                                    Semester berjalan
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreset("agustus")}
+                                    className="rounded bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+                                >
+                                    📊 1 Ags – 2 Okt
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* ===== TOMBOL AKSI ===== */}
                     <div className="mt-5 flex flex-wrap gap-2">
@@ -302,12 +310,11 @@ export default function Index({
                                 : "📄 Download Laporan"}
                         </button>
 
-                        {/* ===== BARU: Daftar Hadir Piket ===== */}
                         <button
                             onClick={() => exportFile("daftar-hadir")}
                             disabled={loading === "daftar-hadir"}
                             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-                            title="Download daftar hadir piket format resmi kedinasan (H/A/I/S/DL)"
+                            title="Daftar hadir piket format resmi kedinasan (H/A/I/S/DL)"
                         >
                             {loading === "daftar-hadir"
                                 ? "⏳ Menyiapkan..."
@@ -316,7 +323,7 @@ export default function Index({
                     </div>
                 </div>
 
-                {/* Ringkasan */}
+                {/* ===== RINGKASAN ===== */}
                 <div className="rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-white shadow">
                     <h3 className="mb-3 text-base font-semibold">
                         📊 Ringkasan Data
@@ -325,43 +332,44 @@ export default function Index({
                         Periode: {labelPeriode}
                     </p>
                     <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
-                        <div className="rounded-lg bg-white/15 p-3 backdrop-blur">
-                            <p className="text-xs opacity-80">Total Record</p>
-                            <p className="text-2xl font-bold">
-                                {ringkasan?.total ?? 0}
-                            </p>
-                        </div>
-                        <div className="rounded-lg bg-white/15 p-3 backdrop-blur">
-                            <p className="text-xs opacity-80">Terlambat</p>
-                            <p className="text-2xl font-bold">
-                                {ringkasan?.keterlambatan ?? 0}
-                            </p>
-                        </div>
-                        <div className="rounded-lg bg-white/15 p-3 backdrop-blur">
-                            <p className="text-xs opacity-80">Izin Keluar</p>
-                            <p className="text-2xl font-bold">
-                                {ringkasan?.izin_keluar ?? 0}
-                            </p>
-                        </div>
-                        <div className="rounded-lg bg-white/15 p-3 backdrop-blur">
-                            <p className="text-xs opacity-80">Pelanggaran</p>
-                            <p className="text-2xl font-bold">
-                                {ringkasan?.pelanggaran ?? 0}
-                            </p>
-                        </div>
-                        <div className="rounded-lg bg-white/15 p-3 backdrop-blur">
-                            <p className="text-xs opacity-80">Tamu</p>
-                            <p className="text-2xl font-bold">
-                                {ringkasan?.tamu ?? 0}
-                            </p>
-                        </div>
+                        {[
+                            {
+                                label: "Total Record",
+                                value: ringkasan?.total ?? 0,
+                            },
+                            {
+                                label: "Terlambat",
+                                value: ringkasan?.keterlambatan ?? 0,
+                            },
+                            {
+                                label: "Izin Keluar",
+                                value: ringkasan?.izin_keluar ?? 0,
+                            },
+                            {
+                                label: "Pelanggaran",
+                                value: ringkasan?.pelanggaran ?? 0,
+                            },
+                            { label: "Tamu", value: ringkasan?.tamu ?? 0 },
+                        ].map((item, i) => (
+                            <div
+                                key={i}
+                                className="rounded-lg bg-white/15 p-3 backdrop-blur"
+                            >
+                                <p className="text-xs opacity-80">
+                                    {item.label}
+                                </p>
+                                <p className="text-2xl font-bold">
+                                    {item.value}
+                                </p>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* Preview Tabel */}
+                {/* ===== PREVIEW TABEL ===== */}
                 <div className="rounded-lg bg-white p-6 shadow">
                     <h3 className="mb-4 text-base font-semibold text-gray-800">
-                        👁️ Preview Data (10 teratas)
+                        👁️ Preview Data (15 teratas)
                     </h3>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
