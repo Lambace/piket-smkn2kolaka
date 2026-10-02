@@ -72,33 +72,33 @@ function SelectCustom({
     );
 }
 
-// ===== KOMPONEN MODAL =====
-function Modal({ open, onClose, title, icon, children }) {
-    if (!open) return null;
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-                onClick={onClose}
-            />
-            <div className="relative w-full max-w-md rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-2xl">
-                <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3">
-                    <h3 className="text-base font-bold text-white">
-                        {icon} {title}
-                    </h3>
-                    <button
+        /// ===== KOMPONEN MODAL (SCROLLABLE) =====
+        function Modal({ open, onClose, title, icon, children }) {
+            if (!open) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                         onClick={onClose}
-                        className="rounded-lg bg-slate-700 px-2.5 py-1 text-sm text-slate-300 transition hover:bg-slate-600"
-                        title="Tutup"
-                    >
-                        ✕
-                    </button>
+                    />
+                    <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-700 bg-slate-800 p-5 shadow-2xl">
+                        <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3 sticky top-0 bg-slate-800 z-10">
+                            <h3 className="text-base font-bold text-white">
+                                {icon} {title}
+                            </h3>
+                            <button
+                                onClick={onClose}
+                                className="rounded-lg bg-slate-700 px-2.5 py-1 text-sm text-slate-300 transition hover:bg-slate-600"
+                                title="Tutup"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        {children}
+                    </div>
                 </div>
-                {children}
-            </div>
-        </div>
-    );
-}
+            );
+        }
 
 export default function Tampil(props) {
     usePoll(60000);
@@ -342,38 +342,40 @@ export default function Tampil(props) {
                         />
                     </div>
 
-                    {/* ===== PANEL DATE PICKER RENTANG (MUNCUL HANYA JIKA BULANAN) ===== */}
+                    {/* ===== PANEL DATE PICKER RENTANG ===== */}
                     {downloadPeriode === "bulanan" && (
-                        <div className="space-y-3 rounded-lg border border-slate-600 bg-slate-700/50 p-3">
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-400">
-                                    📅 Dari Tanggal
-                                </label>
-                                <input
-                                    type="date"
-                                    value={downloadDari}
-                                    max={downloadSampai}
-                                    onChange={(e) =>
-                                        setDownloadDari(e.target.value)
-                                    }
-                                    className="w-full rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
-                                />
+                        <div className="space-y-2 rounded-lg border border-slate-600 bg-slate-700/50 p-2.5">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-400">
+                                        Dari Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={downloadDari}
+                                        max={downloadSampai}
+                                        onChange={(e) =>
+                                            setDownloadDari(e.target.value)
+                                        }
+                                        className="w-full rounded-lg border-0 bg-slate-800 px-2 py-1.5 text-xs text-white focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-400">
+                                        📅 Sampai Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={downloadSampai}
+                                        min={downloadDari}
+                                        onChange={(e) =>
+                                            setDownloadSampai(e.target.value)
+                                        }
+                                        className="w-full rounded-lg border-0 bg-slate-800 px-2 py-1.5 text-xs text-white focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-400">
-                                    📅 Sampai Tanggal
-                                </label>
-                                <input
-                                    type="date"
-                                    value={downloadSampai}
-                                    min={downloadDari}
-                                    onChange={(e) =>
-                                        setDownloadSampai(e.target.value)
-                                    }
-                                    className="w-full rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
-                            <div className="rounded bg-slate-800/50 p-2 text-xs text-slate-300">
+                            <div className="rounded bg-slate-800/50 px-2 py-1 text-[10px] text-slate-300">
                                 <span className="text-slate-500">
                                     Rentang aktif:{" "}
                                 </span>
@@ -418,7 +420,6 @@ export default function Tampil(props) {
                         >
                             📄 Laporan PDF
                         </button>
-                        
                     </div>
                 </div>
             </Modal>
