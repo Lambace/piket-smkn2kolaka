@@ -418,15 +418,7 @@ export default function Tampil(props) {
                         >
                             📄 Laporan PDF
                         </button>
-                        <button
-                            onClick={() => {
-                                downloadDaftarHadir();
-                                setModalDownload(false);
-                            }}
-                            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-blue-700"
-                        >
-                            📋 Daftar Hadir
-                        </button>
+                        
                     </div>
                 </div>
             </Modal>
