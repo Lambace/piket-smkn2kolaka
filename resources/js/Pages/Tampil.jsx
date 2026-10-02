@@ -15,7 +15,7 @@ const labelPeriode = {
     semester: "Semester",
 };
 
-// ===== DROPDOWN CUSTOM =====
+/// ===== DROPDOWN CUSTOM =====
 function SelectCustom({
     value,
     onChange,
@@ -46,7 +46,8 @@ function SelectCustom({
                         className="fixed inset-0 z-40"
                         onClick={() => setOpen(false)}
                     />
-                    <ul className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-auto rounded-lg border border-slate-600 bg-slate-800 py-1 shadow-2xl">
+                    {/* 🔑 KUNCI: max-h-32 (128px) agar dropdown tidak terlalu panjang */}
+                    <ul className="absolute left-0 right-0 z-50 mt-1 max-h-32 overflow-auto rounded-lg border border-slate-600 bg-slate-800 py-1 shadow-2xl">
                         {options.map((o) => (
                             <li key={o.value}>
                                 <button
@@ -73,35 +74,36 @@ function SelectCustom({
 }
 
         // ===== KOMPONEN MODAL (FLEX & SCROLLABLE) =====
+// ===== KOMPONEN MODAL =====
 function Modal({ open, onClose, title, icon, children }) {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-            
-            {/* Wadah Utama: Flex Column, Max Height 90% Layar */}
+            <div
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                onClick={onClose}
+            />
             <div className="relative flex flex-col w-full max-w-md max-h-[90vh] rounded-xl border border-slate-700 bg-slate-800 shadow-2xl">
-                
-                {/* Header: Sticky di Atas */}
                 <div className="flex items-center justify-between border-b border-slate-700 p-5 sticky top-0 bg-slate-800 z-10 rounded-t-xl">
-                    <h3 className="text-base font-bold text-white">{icon} {title}</h3>
+                    <h3 className="text-base font-bold text-white">
+                        {icon} {title}
+                    </h3>
                     <button
                         onClick={onClose}
                         className="rounded-lg bg-slate-700 px-2.5 py-1 text-sm text-slate-300 transition hover:bg-slate-600"
+                        title="Tutup"
                     >
                         ✕
                     </button>
                 </div>
-
-                {/* Body: Scrollable jika konten kepanjangan */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                {/* 🔑 KUNCI: pb-48 = padding bottom 12rem (192px) untuk ruang dropdown */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-4 pb-48">
                     {children}
                 </div>
             </div>
         </div>
     );
 }
-
 export default function Tampil(props) {
     usePoll(60000);
 
