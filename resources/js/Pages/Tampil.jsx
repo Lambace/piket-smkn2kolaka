@@ -11,11 +11,11 @@ import AktivitasTerbaru from "./Dashboard/Components/AktivitasTerbaru";
 
 const labelPeriode = {
     harian: "Harian",
-    bulanan: "Bulanan",
+    bulanan: "Bulanan (Rentang)",
     semester: "Semester",
 };
 
-// ===== DROPDOWN CUSTOM (menu terkunci dalam wadah) =====
+// ===== DROPDOWN CUSTOM =====
 function SelectCustom({
     value,
     onChange,
@@ -111,6 +111,55 @@ export default function Tampil(props) {
     const [downloadFilterHari, setDownloadFilterHari] = useState("Semua Hari");
     const [modalDownload, setModalDownload] = useState(false);
 
+    // ===== STATE KHUSUS RENTANG BULAN =====
+    const [downloadRentang, setDownloadRentang] = useState("bulan_ini");
+
+    // Helper untuk menghitung tanggal berdasarkan preset
+    const getRentangDates = (key) => {
+        const now = new Date();
+        const fmt = (d) => d.toISOString().split("T")[0];
+        switch (key) {
+            case "bulan_ini": {
+                const start = new Date(now.getFullYear(), now.getMonth(), 1);
+                return { dari: fmt(start), sampai: fmt(now) };
+            }
+            case "bulan_lalu": {
+                const start = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 1,
+                    1,
+                );
+                const end = new Date(now.getFullYear(), now.getMonth(), 0);
+                return { dari: fmt(start), sampai: fmt(end) };
+            }
+            case "2_bulan": {
+                const ago = new Date();
+                ago.setDate(now.getDate() - 60);
+                return { dari: fmt(ago), sampai: fmt(now) };
+            }
+            case "3_bulan": {
+                const ago = new Date();
+                ago.setDate(now.getDate() - 90);
+                return { dari: fmt(ago), sampai: fmt(now) };
+            }
+            case "semester": {
+                const start =
+                    now.getMonth() < 6
+                        ? new Date(now.getFullYear(), 0, 1)
+                        : new Date(now.getFullYear(), 6, 1);
+                return { dari: fmt(start), sampai: fmt(now) };
+            }
+            case "1ags_2okt":
+                return { dari: "2026-08-01", sampai: "2026-10-02" };
+            default:
+                return { dari: fmt(now), sampai: fmt(now) };
+        }
+    };
+
+    const initialDates = getRentangDates("bulan_ini");
+    const [downloadDari, setDownloadDari] = useState(initialDates.dari);
+    const [downloadSampai, setDownloadSampai] = useState(initialDates.sampai);
+
     // ===== STATE KHUSUS TAMPILAN =====
     const [dariTanggal, setDariTanggal] = useState(
         currentFilters?.dari_tanggal ?? new Date().toISOString().split("T")[0],
@@ -127,6 +176,23 @@ export default function Tampil(props) {
     const today = new Date().toISOString().split("T")[0];
     const semesterOtomatis =
         new Date().getMonth() + 1 >= 7 ? "ganjil" : "genap";
+
+    // ===== HANDLERS =====
+    const handleDownloadPeriodeChange = (value) => {
+        setDownloadPeriode(value);
+        if (value === "bulanan") {
+            const dates = getRentangDates(downloadRentang);
+            setDownloadDari(dates.dari);
+            setDownloadSampai(dates.sampai);
+        }
+    };
+
+    const handleRentangChange = (value) => {
+        setDownloadRentang(value);
+        const dates = getRentangDates(value);
+        setDownloadDari(dates.dari);
+        setDownloadSampai(dates.sampai);
+    };
 
     const applyFilter = () => {
         router.get(
@@ -145,11 +211,7 @@ export default function Tampil(props) {
         setSampaiTanggal(today);
         router.get(
             route("tampil"),
-            {
-                k: props.displayKey,
-                dari_tanggal: today,
-                sampai_tanggal: today,
-            },
+            { k: props.displayKey, dari_tanggal: today, sampai_tanggal: today },
             { preserveState: true, preserveScroll: true },
         );
     };
@@ -157,25 +219,38 @@ export default function Tampil(props) {
     const downloadLaporan = () => {
         const params = new URLSearchParams({
             jenis: "gabungan",
-            periode: downloadPeriode,
             filter_hari: downloadFilterHari,
-            tanggal: today,
             semester: semesterOtomatis,
-            dari_tanggal: dariTanggal,
-            sampai_tanggal: sampaiTanggal,
         });
+
+        // Jika bulanan, kirim sebagai 'rentang' agar backend pakai dari & sampai
+        if (downloadPeriode === "bulanan") {
+            params.set("periode", "rentang");
+            params.set("dari", downloadDari);
+            params.set("sampai", downloadSampai);
+        } else {
+            params.set("periode", downloadPeriode);
+            params.set("tanggal", today);
+        }
+
         if (props.displayKey) params.set("k", props.displayKey);
         window.location.href = `${route("tampil.laporan")}?${params.toString()}`;
     };
 
     const downloadDaftarHadir = () => {
         const params = new URLSearchParams({
-            periode: "harian",
-            tanggal: today,
             filter_hari: downloadFilterHari,
-            dari_tanggal: dariTanggal,
-            sampai_tanggal: sampaiTanggal,
         });
+
+        if (downloadPeriode === "bulanan") {
+            params.set("periode", "rentang");
+            params.set("dari", downloadDari);
+            params.set("sampai", downloadSampai);
+        } else {
+            params.set("periode", downloadPeriode);
+            params.set("tanggal", today);
+        }
+
         if (props.displayKey) params.set("k", props.displayKey);
         window.location.href = `${route("tampil.daftar-hadir")}?${params.toString()}`;
     };
@@ -184,7 +259,7 @@ export default function Tampil(props) {
         <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-900 p-2 sm:p-4 md:p-6">
             <Head title="Papan Informasi Piket" />
 
-            {/* ===== HEADER: Logo & Judul (Kiri) ===== */}
+            {/* ===== HEADER ===== */}
             <div className="mb-3 flex items-center gap-2 sm:mb-4 sm:gap-3">
                 {logoSrc ? (
                     <img
@@ -207,29 +282,16 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== TOMBOL KONTROL + TRAPESIUM + AKSEN KIRI (TINGGI SINKRON MOCKUP) ===== */}
+            {/* ===== TOMBOL KONTROL ===== */}
             <div className="mb-5 mt-8 flex justify-end sm:mb-8 sm:mt-12">
                 <div className="relative w-1/4 sm:w-auto sm:max-w-none">
-                    {/* WADAH AKSEN KIRI: inset-y IDENTIK dengan lapisan putih mockup
-            → tinggi wadah = tinggi mockup (H) di semua ukuran layar,
-               otomatis sinkron meski ukuran tombol berubah */}
                     <div className="pointer-events-none absolute -inset-y-1.5 -left-[52px] w-9 sm:-inset-y-5 sm:-left-[126px] sm:w-[66px]">
-                        {/* AKSEN BELAKANG: slate (kanan-atas) — tinggi 84% wadah */}
                         <div className="absolute left-3 top-0 h-[84%] w-6 rounded-md bg-slate-400 shadow-md [transform:skewX(-14deg)] sm:left-[22px] sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
-
-                        {/* AKSEN DEPAN: terang/putih (kiri-bawah) — mulai 16% dari atas, tinggi 84%
-                → 16% + 84% = 100% = tinggi mockup persis,
-                  overlap horizontal tetap 50% lebar aksen slate */}
                         <div className="absolute left-0 top-[16%] h-[84%] w-6 rounded-md bg-gray-300 shadow-md [transform:skewX(-14deg)] sm:w-11 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-20deg)]" />
                     </div>
-
-                    {/* Lapisan 1: putih miring membulat (tidak menyentuh aksen, celah ±12px) */}
                     <div className="pointer-events-none absolute -inset-y-1.5 -left-2 -right-6 rounded-lg bg-white shadow-lg [transform:skewX(-14deg)] sm:-inset-y-5 sm:-left-12 sm:-right-14 sm:rounded-2xl sm:shadow-xl sm:[transform:skewX(-20deg)]" />
-
-                    {/* Lapisan 2: abu-abu miring membulat */}
                     <div className="pointer-events-none absolute -inset-y-0.5 -left-1 -right-4 rounded-md bg-slate-400 shadow-md [transform:skewX(-12deg)] sm:-inset-y-1.5 sm:-left-7 sm:-right-10 sm:rounded-xl sm:shadow-lg sm:[transform:skewX(-16deg)]" />
 
-                    {/* Lapisan 3: tombol (lurus, depan) */}
                     <div className="relative flex flex-col gap-1 sm:gap-2">
                         <button
                             onClick={() => setModalDownload(true)}
@@ -262,18 +324,15 @@ export default function Tampil(props) {
 
             {/* ===== KONTEN TAMPILAN ===== */}
             <div className="space-y-4 sm:space-y-6">
-                {/* Card Petugas Piket (langsung di bawah tombol) */}
                 <div className="min-w-0">
                     <KartuAbsensiPetugas
                         data={props.absensiPetugas ?? []}
                         displayKey={props.displayKey}
                     />
                 </div>
-
                 <div className="min-w-0">
                     <KartuStatistik stats={props.stats} />
                 </div>
-
                 <div className="min-w-0">
                     <DataHariIni
                         keterlambatanList={props.keterlambatanList ?? []}
@@ -282,7 +341,6 @@ export default function Tampil(props) {
                         bukuTamuList={props.bukuTamuList ?? []}
                     />
                 </div>
-
                 <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
                     <div className="min-w-0 lg:col-span-2">
                         <GrafikKeterlambatan
@@ -297,7 +355,6 @@ export default function Tampil(props) {
                         />
                     </div>
                 </div>
-
                 <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
                     <div className="min-w-0">
                         <TabelTerlambatTertinggi data={props.topTerlambat} />
@@ -311,7 +368,7 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== MODAL 1: UNDUH LAPORAN PDF ===== */}
+            {/* ===== MODAL 1: UNDUH LAPORAN PDF (DIPERBAIKI) ===== */}
             <Modal
                 open={modalDownload}
                 onClose={() => setModalDownload(false)}
@@ -325,15 +382,78 @@ export default function Tampil(props) {
                         </label>
                         <SelectCustom
                             value={downloadPeriode}
-                            onChange={setDownloadPeriode}
+                            onChange={handleDownloadPeriodeChange}
                             focusRing="focus:ring-red-500"
                             options={[
                                 { value: "harian", label: "📅 Harian" },
-                                { value: "bulanan", label: "📆 Bulanan" },
+                                {
+                                    value: "bulanan",
+                                    label: "📆 Bulanan (Rentang)",
+                                },
                                 { value: "semester", label: "🎓 Semester" },
                             ]}
                         />
                     </div>
+
+                    {/* ===== PANEL RENTANG BULAN (MUNCUL HANYA JIKA BULANAN) ===== */}
+                    {downloadPeriode === "bulanan" && (
+                        <div className="space-y-3 rounded-lg border border-slate-600 bg-slate-700/50 p-3">
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-slate-400">
+                                    📆 Pilih Rentang Bulan
+                                </label>
+                                <SelectCustom
+                                    value={downloadRentang}
+                                    onChange={handleRentangChange}
+                                    focusRing="focus:ring-indigo-500"
+                                    options={[
+                                        {
+                                            value: "bulan_ini",
+                                            label: "📅 Bulan ini",
+                                        },
+                                        {
+                                            value: "bulan_lalu",
+                                            label: "📅 Bulan lalu penuh",
+                                        },
+                                        {
+                                            value: "2_bulan",
+                                            label: "📅 2 bulan terakhir",
+                                        },
+                                        {
+                                            value: "3_bulan",
+                                            label: "📅 3 bulan terakhir",
+                                        },
+                                        {
+                                            value: "semester",
+                                            label: "🎓 Semester berjalan",
+                                        },
+                                        {
+                                            value: "1ags_2okt",
+                                            label: "📊 1 Ags – 2 Okt 2026",
+                                        },
+                                    ]}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 rounded bg-slate-800/50 p-2 text-xs text-slate-300">
+                                <div>
+                                    <span className="text-slate-500">
+                                        Dari:
+                                    </span>{" "}
+                                    <span className="font-mono font-bold text-white">
+                                        {downloadDari}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500">
+                                        Sampai:
+                                    </span>{" "}
+                                    <span className="font-mono font-bold text-white">
+                                        {downloadSampai}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <label className="mb-1 block text-xs font-medium text-slate-400">
@@ -355,15 +475,26 @@ export default function Tampil(props) {
                         />
                     </div>
 
-                    <button
-                        onClick={() => {
-                            downloadLaporan();
-                            setModalDownload(false);
-                        }}
-                        className="w-full rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-red-700"
-                    >
-                        📄 Download Laporan {labelPeriode[downloadPeriode]}
-                    </button>
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                        <button
+                            onClick={() => {
+                                downloadLaporan();
+                                setModalDownload(false);
+                            }}
+                            className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-red-700"
+                        >
+                            📄 Laporan PDF
+                        </button>
+                        <button
+                            onClick={() => {
+                                downloadDaftarHadir();
+                                setModalDownload(false);
+                            }}
+                            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-blue-700"
+                        >
+                            📋 Daftar Hadir
+                        </button>
+                    </div>
                 </div>
             </Modal>
 
@@ -399,7 +530,6 @@ export default function Tampil(props) {
                             className="w-full rounded-lg border-0 bg-slate-700 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
                         />
                     </div>
-
                     <div className="grid grid-cols-2 gap-2 pt-1">
                         <button
                             onClick={() => {
