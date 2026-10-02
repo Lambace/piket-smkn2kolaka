@@ -415,7 +415,7 @@ export default function Tampil(props) {
                         }}
                         className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow transition hover:bg-red-700"
                     >
-                        <span>📄</span> PDF
+                        <span>📄</span> Download
                     </button>
                     
                 </div>
