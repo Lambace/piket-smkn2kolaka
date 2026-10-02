@@ -105,93 +105,40 @@ export default function Tampil(props) {
 
     const pengaturan = usePage().props.pengaturan ?? {};
     const currentFilters = usePage().props.currentFilters ?? {};
+    const today = new Date().toISOString().split("T")[0];
 
     // ===== STATE KHUSUS DOWNLOAD =====
     const [downloadPeriode, setDownloadPeriode] = useState("harian");
     const [downloadFilterHari, setDownloadFilterHari] = useState("Semua Hari");
     const [modalDownload, setModalDownload] = useState(false);
 
-    // ===== STATE KHUSUS RENTANG BULAN =====
-    const [downloadRentang, setDownloadRentang] = useState("bulan_ini");
-
-    // Helper untuk menghitung tanggal berdasarkan preset
-    const getRentangDates = (key) => {
-        const now = new Date();
-        const fmt = (d) => d.toISOString().split("T")[0];
-        switch (key) {
-            case "bulan_ini": {
-                const start = new Date(now.getFullYear(), now.getMonth(), 1);
-                return { dari: fmt(start), sampai: fmt(now) };
-            }
-            case "bulan_lalu": {
-                const start = new Date(
-                    now.getFullYear(),
-                    now.getMonth() - 1,
-                    1,
-                );
-                const end = new Date(now.getFullYear(), now.getMonth(), 0);
-                return { dari: fmt(start), sampai: fmt(end) };
-            }
-            case "2_bulan": {
-                const ago = new Date();
-                ago.setDate(now.getDate() - 60);
-                return { dari: fmt(ago), sampai: fmt(now) };
-            }
-            case "3_bulan": {
-                const ago = new Date();
-                ago.setDate(now.getDate() - 90);
-                return { dari: fmt(ago), sampai: fmt(now) };
-            }
-            case "semester": {
-                const start =
-                    now.getMonth() < 6
-                        ? new Date(now.getFullYear(), 0, 1)
-                        : new Date(now.getFullYear(), 6, 1);
-                return { dari: fmt(start), sampai: fmt(now) };
-            }
-            case "1ags_2okt":
-                return { dari: "2026-08-01", sampai: "2026-10-02" };
-            default:
-                return { dari: fmt(now), sampai: fmt(now) };
-        }
-    };
-
-    const initialDates = getRentangDates("bulan_ini");
-    const [downloadDari, setDownloadDari] = useState(initialDates.dari);
-    const [downloadSampai, setDownloadSampai] = useState(initialDates.sampai);
+    // ===== STATE KHUSUS RENTANG BULAN (DATE PICKER) =====
+    const [downloadDari, setDownloadDari] = useState(today);
+    const [downloadSampai, setDownloadSampai] = useState(today);
 
     // ===== STATE KHUSUS TAMPILAN =====
     const [dariTanggal, setDariTanggal] = useState(
-        currentFilters?.dari_tanggal ?? new Date().toISOString().split("T")[0],
+        currentFilters?.dari_tanggal ?? today,
     );
     const [sampaiTanggal, setSampaiTanggal] = useState(
-        currentFilters?.sampai_tanggal ??
-            new Date().toISOString().split("T")[0],
+        currentFilters?.sampai_tanggal ?? today,
     );
     const [modalFilter, setModalFilter] = useState(false);
 
     const logoSrc =
         pengaturan.logo_url ??
         (pengaturan.logo ? `/storage/${pengaturan.logo}` : null);
-    const today = new Date().toISOString().split("T")[0];
     const semesterOtomatis =
         new Date().getMonth() + 1 >= 7 ? "ganjil" : "genap";
 
     // ===== HANDLERS =====
     const handleDownloadPeriodeChange = (value) => {
         setDownloadPeriode(value);
-        if (value === "bulanan") {
-            const dates = getRentangDates(downloadRentang);
-            setDownloadDari(dates.dari);
-            setDownloadSampai(dates.sampai);
+        // Opsional: reset ke hari ini saat ganti ke bulanan jika kosong
+        if (value === "bulanan" && (!downloadDari || !downloadSampai)) {
+            setDownloadDari(today);
+            setDownloadSampai(today);
         }
-    };
-
-    const handleRentangChange = (value) => {
-        setDownloadRentang(value);
-        const dates = getRentangDates(value);
-        setDownloadDari(dates.dari);
-        setDownloadSampai(dates.sampai);
     };
 
     const applyFilter = () => {
@@ -368,7 +315,7 @@ export default function Tampil(props) {
                 </div>
             </div>
 
-            {/* ===== MODAL 1: UNDUH LAPORAN PDF (DIPERBAIKI) ===== */}
+            {/* ===== MODAL 1: UNDUH LAPORAN PDF ===== */}
             <Modal
                 open={modalDownload}
                 onClose={() => setModalDownload(false)}
@@ -395,62 +342,48 @@ export default function Tampil(props) {
                         />
                     </div>
 
-                    {/* ===== PANEL RENTANG BULAN (MUNCUL HANYA JIKA BULANAN) ===== */}
+                    {/* ===== PANEL DATE PICKER RENTANG (MUNCUL HANYA JIKA BULANAN) ===== */}
                     {downloadPeriode === "bulanan" && (
                         <div className="space-y-3 rounded-lg border border-slate-600 bg-slate-700/50 p-3">
                             <div>
                                 <label className="mb-1 block text-xs font-medium text-slate-400">
-                                    📆 Pilih Rentang Bulan
+                                    📅 Dari Tanggal
                                 </label>
-                                <SelectCustom
-                                    value={downloadRentang}
-                                    onChange={handleRentangChange}
-                                    focusRing="focus:ring-indigo-500"
-                                    options={[
-                                        {
-                                            value: "bulan_ini",
-                                            label: "📅 Bulan ini",
-                                        },
-                                        {
-                                            value: "bulan_lalu",
-                                            label: "📅 Bulan lalu penuh",
-                                        },
-                                        {
-                                            value: "2_bulan",
-                                            label: "📅 2 bulan terakhir",
-                                        },
-                                        {
-                                            value: "3_bulan",
-                                            label: "📅 3 bulan terakhir",
-                                        },
-                                        {
-                                            value: "semester",
-                                            label: "🎓 Semester berjalan",
-                                        },
-                                        {
-                                            value: "1ags_2okt",
-                                            label: "📊 1 Ags – 2 Okt 2026",
-                                        },
-                                    ]}
+                                <input
+                                    type="date"
+                                    value={downloadDari}
+                                    max={downloadSampai}
+                                    onChange={(e) =>
+                                        setDownloadDari(e.target.value)
+                                    }
+                                    className="w-full rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-2 rounded bg-slate-800/50 p-2 text-xs text-slate-300">
-                                <div>
-                                    <span className="text-slate-500">
-                                        Dari:
-                                    </span>{" "}
-                                    <span className="font-mono font-bold text-white">
-                                        {downloadDari}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-500">
-                                        Sampai:
-                                    </span>{" "}
-                                    <span className="font-mono font-bold text-white">
-                                        {downloadSampai}
-                                    </span>
-                                </div>
+                            <div>
+                                <label className="mb-1 block text-xs font-medium text-slate-400">
+                                    📅 Sampai Tanggal
+                                </label>
+                                <input
+                                    type="date"
+                                    value={downloadSampai}
+                                    min={downloadDari}
+                                    onChange={(e) =>
+                                        setDownloadSampai(e.target.value)
+                                    }
+                                    className="w-full rounded-lg border-0 bg-slate-800 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div className="rounded bg-slate-800/50 p-2 text-xs text-slate-300">
+                                <span className="text-slate-500">
+                                    Rentang aktif:{" "}
+                                </span>
+                                <span className="font-mono font-bold text-white">
+                                    {downloadDari}
+                                </span>
+                                <span className="text-slate-500"> s/d </span>
+                                <span className="font-mono font-bold text-white">
+                                    {downloadSampai}
+                                </span>
                             </div>
                         </div>
                     )}
