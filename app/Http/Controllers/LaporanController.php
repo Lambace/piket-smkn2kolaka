@@ -81,10 +81,8 @@ class LaporanController extends Controller
     }
 
     // ===== LAPORAN PIKET (PDF BERWARNA) =====
-
     public function pdf(Request $request)
     {
-    
         try {
             if ($request->routeIs('tampil.*')) {
                 $key = config('services.display.key');
@@ -100,17 +98,34 @@ class LaporanController extends Controller
 
             $tanggalRef = Carbon::parse($tanggal, 'Asia/Makassar');
 
+            // ===== SATU SWITCH FLAT: semua periode termasuk rentang =====
             switch ($periode) {
+                case 'rentang':
+                    $dariRaw   = $request->input('dari',   $request->input('start',         $request->input('tanggal_mulai')));
+                    $sampaiRaw = $request->input('sampai', $request->input('end',           $request->input('tanggal_selesai')));
+
+                    $dari   = Carbon::parse($dariRaw   ?: $tanggalRef->toDateString())->startOfDay();
+                    $sampai = Carbon::parse($sampaiRaw ?: $tanggalRef->toDateString())->endOfDay();
+
+                    if ($dari->gt($sampai)) {
+                        [$dari, $sampai] = [$sampai, $dari];
+                    }
+
+                    $labelPeriode = 'Rentang — ' . $dari->isoFormat('D MMM Y') . ' s/d ' . $sampai->isoFormat('D MMM Y');
+                    break;
+
                 case 'mingguan':
                     $dari = $tanggalRef->copy()->startOfWeek();
                     $sampai = $tanggalRef->copy()->endOfWeek();
                     $labelPeriode = 'Mingguan — ' . $dari->isoFormat('D MMM') . ' s/d ' . $sampai->isoFormat('D MMM Y');
                     break;
+
                 case 'bulanan':
                     $dari = $tanggalRef->copy()->startOfMonth();
                     $sampai = $tanggalRef->copy()->endOfMonth();
                     $labelPeriode = 'Bulanan — ' . $tanggalRef->isoFormat('MMMM Y');
                     break;
+
                 case 'semester':
                     $bulan = $tanggalRef->month;
                     if ($semester === 'genap' || ($bulan >= 1 && $bulan <= 6)) {
@@ -124,6 +139,8 @@ class LaporanController extends Controller
                     }
                     $labelPeriode = 'Semester ' . $labelSemester . ' — ' . $tanggalRef->year;
                     break;
+
+                case 'harian':
                 default:
                     $dari = $tanggalRef->copy()->startOfDay();
                     $sampai = $tanggalRef->copy()->endOfDay();
@@ -324,7 +341,6 @@ class LaporanController extends Controller
                 $logoInstansi = 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($pengaturan->logo_instansi));
             }
 
-            // ===== LOGIKA TTD LAPORAN PIKET =====
             if ($periode === 'harian') {
                 $hariDokumen = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
             } else {
@@ -397,19 +413,19 @@ class LaporanController extends Controller
             ], 500);
         }
     }
-       // ===== DAFTAR HADIR PIKET (CHECKLIST) =====
+
+    // ===== DAFTAR HADIR PIKET (CHECKLIST) =====
     public function daftarHadir(Request $request)
-   {
-    // ===== Guard HANYA untuk periode harian; rentang bebas =====
-    if ($request->query('periode', 'harian') === 'harian') {
-        if ($resp = $this->guardJadwalKosong(
-            $request,
-            'Tidak ada Petugas yang dijadwalkan Hari ini',
-            'Daftar Hadir Tidak Tersedia'
-        )) {
-            return $resp;
+    {
+        if ($request->query('periode', 'harian') === 'harian') {
+            if ($resp = $this->guardJadwalKosong(
+                $request,
+                'Tidak ada Petugas yang dijadwalkan Hari ini',
+                'Daftar Hadir Tidak Tersedia'
+            )) {
+                return $resp;
+            }
         }
-    }
 
         $periode     = $request->input('periode', 'harian');
         $filterHari  = $request->input('filter_hari', 'Semua Hari');
@@ -453,23 +469,17 @@ class LaporanController extends Controller
         $dariStr   = $dari->toDateString();
         $sampaiStr = min($sampai->toDateString(), Carbon::now('Asia/Makassar')->toDateString());
 
-        // Hari target: dari filter atau dari tanggal acuan
         $namaHariTanggal = $filterHari !== 'Semua Hari' ? $filterHari : $tanggalRef->isoFormat('dddd');
 
         $semuaPetugas = User::whereIn('role', ['petugas', 'koordinator'])->orderBy('name')->get();
 
-        // ===== FILTER KETAT: ambil SEMUA petugas dengan hari_piket = hari target =====
-        // Termasuk yang tidak pernah absen (selalu alpha)
         $petugasRelevan = $semuaPetugas
             ->filter(fn ($u) => $u->hari_piket === $namaHariTanggal)
             ->values();
 
-        // ===== MAP DATA ABSENSI =====
         $rows = $petugasRelevan->map(function ($u) use ($dari, $sampaiStr, $dariStr, $periode, $filterHari) {
-            // Ambil semua absensi user dalam rentang
             $absensiUserQuery = AbsensiPetugas::where('nama', $u->name)->whereBetween('tanggal', [$dariStr, $sampaiStr]);
             
-            // Jika ada filter hari, terapkan juga di query absensi
             if ($filterHari !== 'Semua Hari') {
                 $dayMap = ['Minggu' => 1, 'Senin' => 2, 'Selasa' => 3, 'Rabu' => 4, 'Kamis' => 5, 'Jumat' => 6, 'Sabtu' => 7];
                 $dayNum = $dayMap[$filterHari] ?? null;
@@ -481,7 +491,6 @@ class LaporanController extends Controller
             $absensiUser = $absensiUserQuery->get();
 
             if ($periode === 'harian') {
-                // Mode harian: cukup cek 1 hari
                 $absen = $absensiUser->first();
                 if ($absen) {
                     $h  = in_array($absen->status, ['tepat_waktu', 'terlambat']) ? 1 : 0;
@@ -490,12 +499,9 @@ class LaporanController extends Controller
                     $s  = $absen->status === 'sakit' ? 1 : 0;
                     $dl = $absen->status === 'dl' ? 1 : 0;
                 } else {
-                    // Tidak ada record = alpha
                     $h = 0; $a = 1; $i = 0; $s = 0; $dl = 0;
                 }
             } else {
-                // Mode rekap (mingguan/bulanan/semester/rentang)
-                // Hitung ekspektasi: berapa kali user ini seharusnya piket dalam rentang
                 $ekspektasi = 0;
                 $cursor = $dari->copy();
                 $sekarang = Carbon::now('Asia/Makassar')->toDateString();
@@ -503,13 +509,11 @@ class LaporanController extends Controller
                 while ($cursor->toDateString() <= $sampaiStr) {
                     $hariIniCursor = $cursor->isoFormat('dddd');
                     
-                    // Cek apakah hari ini cocok dengan jadwal user atau filter
                     $cocokHari = ($filterHari === 'Semua Hari') 
                         ? ($u->hari_piket === $hariIniCursor) 
                         : ($filterHari === $hariIniCursor);
 
                     if ($cocokHari) {
-                        // Hanya hitung jika tanggal sudah lewat atau hari ini
                         if ($cursor->toDateString() <= $sekarang) {
                             $ekspektasi++;
                         }
@@ -517,7 +521,6 @@ class LaporanController extends Controller
                     $cursor->addDay();
                 }
 
-                // Hitung status dari record absensi yang ada
                 $statuses = $absensiUser->groupBy(fn($r) => \Carbon\Carbon::parse($r->tanggal)->toDateString())
                     ->map(fn($grup) => $grup->first()->status)->values();
 
@@ -526,7 +529,6 @@ class LaporanController extends Controller
                 $s  = $statuses->filter(fn($st) => $st === 'sakit')->count();
                 $dl = $statuses->filter(fn($st) => $st === 'dl')->count();
                 
-                // Alpha = ekspektasi - (h + i + s + dl)
                 $a  = max(0, $ekspektasi - ($h + $i + $s + $dl));
             }
 
@@ -539,9 +541,8 @@ class LaporanController extends Controller
                 'h'      => $h, 'a' => $a, 'i' => $i, 's' => $s, 'dl' => $dl,
                 'ket'    => '',
             ];
-        }); // PENTING: TIDAK ADA ->values() atau filter lain di sini!
+        });
 
-        // ===== LIBUR OTOMATIS (hanya untuk harian) =====
         $namaHariIni = Carbon::now('Asia/Makassar')->isoFormat('dddd');
         $totalAbsensiTanggal = AbsensiPetugas::whereDate('tanggal', $dariStr)->count();
 
@@ -556,7 +557,6 @@ class LaporanController extends Controller
             $pesanLibur = 'Tidak ada Petugas Piket yang dijadwalkan Hari ini';
         }
 
-        // ===== DATA PENDUKUNG =====
         $pengaturan = Pengaturan::first();
         $logo = null;
         if ($pengaturan?->logo && Storage::disk('public')->exists($pengaturan->logo)) {
@@ -573,7 +573,6 @@ class LaporanController extends Controller
             ? $tanggalRef->isoFormat('dddd, D MMMM Y')
             : $dari->isoFormat('D MMMM Y') . ' s/d ' . Carbon::parse($sampaiStr, 'Asia/Makassar')->isoFormat('D MMMM Y');
 
-        // ===== TTD: SELALU koordinator hari itu =====
         $hariDokumen = $namaHariTanggal;
 
         $koordinator = User::where('role', 'koordinator')
@@ -603,21 +602,39 @@ class LaporanController extends Controller
 
         return $pdf->download('Daftar-Hadir-Piket-' . $periode . '-' . $dariStr . '.pdf');
     }
+
+    // ===== HITUNG RENTANG TANGGAL =====
     private function hitungRentang(string $periode, string $tanggal, string $semester): array
     {
         $date = Carbon::parse($tanggal, 'Asia/Makassar');
 
         switch ($periode) {
+            case 'rentang':
+                $dariRaw   = request()->input('dari',   request()->input('start',         request()->input('tanggal_mulai')));
+                $sampaiRaw = request()->input('sampai', request()->input('end',           request()->input('tanggal_selesai')));
+
+                $start = Carbon::parse($dariRaw   ?: $date->toDateString())->startOfDay();
+                $end   = Carbon::parse($sampaiRaw ?: $date->toDateString())->endOfDay();
+
+                if ($start->gt($end)) {
+                    [$start, $end] = [$end, $start];
+                }
+
+                $label = 'Rentang ' . $start->isoFormat('D MMM Y') . ' - ' . $end->isoFormat('D MMM Y');
+                break;
+
             case 'mingguan':
                 $start = $date->copy()->startOfWeek(Carbon::MONDAY);
                 $end = $date->copy()->endOfWeek(Carbon::SUNDAY);
                 $label = 'Minggu ' . $start->isoFormat('D MMM') . ' - ' . $end->isoFormat('D MMM Y');
                 break;
+
             case 'bulanan':
                 $start = $date->copy()->startOfMonth();
                 $end = $date->copy()->endOfMonth();
                 $label = 'Bulan ' . $start->isoFormat('MMMM Y');
                 break;
+
             case 'semester':
                 $tahun = $date->year;
                 if ($semester === 'genap') {
@@ -630,6 +647,7 @@ class LaporanController extends Controller
                     $label = 'Semester Ganjil (Juli - Desember ' . $tahun . ')';
                 }
                 break;
+
             case 'harian':
             default:
                 $start = $date->copy()->startOfDay();
@@ -731,31 +749,28 @@ class LaporanController extends Controller
         return $data->sortByDesc('tanggal')->values();
     }
 
-         /**
- * Guard harian: batalkan unduhan jika tidak ada petugas terjadwal di hari target.
- */
-private function guardJadwalKosong(Request $request, string $pesanCustom = null, string $judulCustom = null)
-{
-    $hariFilter = $request->query('hari');
-    $tanggal    = $request->query('tanggal', now('Asia/Makassar')->toDateString());
+    private function guardJadwalKosong(Request $request, string $pesanCustom = null, string $judulCustom = null)
+    {
+        $hariFilter = $request->query('hari');
+        $tanggal    = $request->query('tanggal', now('Asia/Makassar')->toDateString());
 
-    $hariTarget = ($hariFilter && $hariFilter !== 'semua')
-        ? $hariFilter
-        : \Illuminate\Support\Carbon::parse($tanggal, 'Asia/Makassar')
-            ->locale('id')->isoFormat('dddd');
+        $hariTarget = ($hariFilter && $hariFilter !== 'semua')
+            ? $hariFilter
+            : \Illuminate\Support\Carbon::parse($tanggal, 'Asia/Makassar')
+                ->locale('id')->isoFormat('dddd');
 
-    $adaJadwal = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
-        ->where('hari_piket', $hariTarget)
-        ->exists();
+        $adaJadwal = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
+            ->where('hari_piket', $hariTarget)
+            ->exists();
 
-    if ($adaJadwal) {
-        return null; // ✅ lanjut generate
+        if ($adaJadwal) {
+            return null;
+        }
+
+        return response()->view('laporan-tidak-tersedia', [
+            'judul'      => $judulCustom ?? 'Daftar Hadir Tidak Tersedia',
+            'pesan'      => $pesanCustom ?? 'Tidak ada Petugas yang dijadwalkan Hari ini',
+            'hariTarget' => $hariTarget,
+        ], 404);
     }
-
-    return response()->view('laporan-tidak-tersedia', [
-        'judul'      => $judulCustom ?? 'Daftar Hadir Tidak Tersedia',
-        'pesan'      => $pesanCustom ?? 'Tidak ada Petugas yang dijadwalkan Hari ini',
-        'hariTarget' => $hariTarget,
-    ], 404);
-}
 }
