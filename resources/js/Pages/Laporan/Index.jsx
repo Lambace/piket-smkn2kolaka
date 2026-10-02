@@ -3,6 +3,18 @@ import { Head, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
 
 const today = new Date().toISOString().split("T")[0];
+const [tanggalAcuan, setTanggalAcuan] = useState(
+    props.tanggal ?? new Date().toISOString().split("T")[0],
+);
+const [dari, setDari] = useState(() => {
+    // Default: 1 bulan yang lalu
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().split("T")[0];
+});
+const [sampai, setSampai] = useState(
+    () => new Date().toISOString().split("T")[0],
+);
 
 export default function Index({
     ringkasan,
@@ -98,12 +110,17 @@ export default function Index({
                             <select
                                 value={periode}
                                 onChange={(e) => setPeriode(e.target.value)}
-                                className={inputClass}
+                                className="w-full rounded-lg border-slate-600 bg-slate-700 px-3 py-2 text-white"
                             >
                                 <option value="harian">📅 Harian</option>
                                 <option value="mingguan">🗓️ Mingguan</option>
-                                <option value="bulanan">📆 Bulanan</option>
+                                <option value="bulanan">
+                                    📆 Bulanan (1 bulan penuh)
+                                </option>
                                 <option value="semester">🎓 Semester</option>
+                                <option value="rentang">
+                                    🔀 Rentang Bebas
+                                </option>
                             </select>
                         </div>
 
@@ -138,6 +155,130 @@ export default function Index({
                                         Genap (Jan - Jun)
                                     </option>
                                 </select>
+
+                                {periode === "rentang" && (
+                                    <div className="mt-3 space-y-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="mb-1 block text-xs font-semibold text-slate-400">
+                                                    📅 Dari Tanggal
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={dari}
+                                                    onChange={(e) =>
+                                                        setDari(e.target.value)
+                                                    }
+                                                    className="w-full rounded-lg border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-white"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="mb-1 block text-xs font-semibold text-slate-400">
+                                                    📅 Sampai Tanggal
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={sampai}
+                                                    onChange={(e) =>
+                                                        setSampai(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full rounded-lg border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-white"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const today = new Date();
+                                                    const ago30 = new Date();
+                                                    ago30.setDate(
+                                                        today.getDate() - 30,
+                                                    );
+                                                    setDari(
+                                                        ago30
+                                                            .toISOString()
+                                                            .split("T")[0],
+                                                    );
+                                                    setSampai(
+                                                        today
+                                                            .toISOString()
+                                                            .split("T")[0],
+                                                    );
+                                                }}
+                                                className="rounded bg-slate-600 px-2 py-0.5 text-xs hover:bg-slate-500"
+                                            >
+                                                30 hari terakhir
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const today = new Date();
+                                                    const ago60 = new Date();
+                                                    ago60.setDate(
+                                                        today.getDate() - 60,
+                                                    );
+                                                    setDari(
+                                                        ago60
+                                                            .toISOString()
+                                                            .split("T")[0],
+                                                    );
+                                                    setSampai(
+                                                        today
+                                                            .toISOString()
+                                                            .split("T")[0],
+                                                    );
+                                                }}
+                                                className="rounded bg-slate-600 px-2 py-0.5 text-xs hover:bg-slate-500"
+                                            >
+                                                60 hari terakhir
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const today = new Date();
+                                                    const semesterStart =
+                                                        today.getMonth() < 6
+                                                            ? new Date(
+                                                                  today.getFullYear(),
+                                                                  0,
+                                                                  1,
+                                                              )
+                                                            : new Date(
+                                                                  today.getFullYear(),
+                                                                  6,
+                                                                  1,
+                                                              );
+                                                    setDari(
+                                                        semesterStart
+                                                            .toISOString()
+                                                            .split("T")[0],
+                                                    );
+                                                    setSampai(
+                                                        today
+                                                            .toISOString()
+                                                            .split("T")[0],
+                                                    );
+                                                }}
+                                                className="rounded bg-slate-600 px-2 py-0.5 text-xs hover:bg-slate-500"
+                                            >
+                                                Semester berjalan
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setDari("2026-08-01");
+                                                    setSampai("2026-10-02");
+                                                }}
+                                                className="rounded bg-indigo-600 px-2 py-0.5 text-xs hover:bg-indigo-500"
+                                            >
+                                                📊 1 Ags – 2 Okt
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
