@@ -101,6 +101,7 @@ function Modal({ open, onClose, title, icon, children }) {
         </div>
     );
 }
+
 export default function Tampil(props) {
     usePoll(60000);
 
@@ -414,7 +415,7 @@ export default function Tampil(props) {
                     >
                         <span>📄</span> PDF
                     </button>
-                   
+                    
                 </div>
             </Modal>
 
