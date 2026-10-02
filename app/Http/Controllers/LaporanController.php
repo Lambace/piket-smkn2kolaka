@@ -81,9 +81,14 @@ class LaporanController extends Controller
     }
 
     // ===== LAPORAN PIKET (PDF BERWARNA) =====
+
     public function pdf(Request $request)
     {
-        if ($resp = $this->guardJadwalKosong($request)) {
+    if ($resp = $this->guardJadwalKosong(
+        $request,
+        'Tidak ada Petugas yang dijadwalkan Hari ini',
+        'Laporan PDF Tidak Tersedia'
+    )) {
         return $resp;
     }
         try {
@@ -398,15 +403,17 @@ class LaporanController extends Controller
             ], 500);
         }
     }
-
-    // ===== DAFTAR HADIR PIKET (CHECKLIST) =====
        // ===== DAFTAR HADIR PIKET (CHECKLIST) =====
     public function daftarHadir(Request $request)
     {
-        if ($request->routeIs('tampil.*')) {
-            $key = config('services.display.key');
-            if ($key && $request->query('k') !== $key) abort(403, 'Akses ditolak.');
-        }
+    // ===== BARU: guard jadwal kosong =====
+    if ($resp = $this->guardJadwalKosong(
+        $request,
+        'Tidak ada Petugas yang dijadwalkan Hari ini',
+        'Daftar Hadir Tidak Tersedia'
+    )) {
+        return $resp;
+    }
 
         $periode     = $request->input('periode', 'harian');
         $filterHari  = $request->input('filter_hari', 'Semua Hari');
@@ -728,38 +735,61 @@ class LaporanController extends Controller
         return $data->sortByDesc('tanggal')->values();
     }
 
-                            /**
-             * Guard: batalkan unduhan & tampilkan notifikasi jika tidak ada jadwal piket.
-             * Return null jika aman untuk lanjut generate PDF.
-             */
-            private function guardJadwalKosong(Request $request)
-            {
-                $periode    = $request->query('periode', 'harian');
-                $hariFilter = $request->query('hari');
-                $tanggal    = $request->query('tanggal', now('Asia/Makassar')->toDateString());
+                    /**
+         * Guard: batalkan unduhan & tampilkan notifikasi jika tidak ada jadwal piket.
+         * Return null jika aman untuk lanjut.
+         */
+        private function guardJadwalKosong(Request $request, string $pesanCustom = null, string $judulCustom = null)
+        {
+            $periode    = $request->query('periode', 'harian');
+            $hariFilter = $request->query('hari');
+            $tanggal    = $request->query('tanggal', now('Asia/Makassar')->toDateString());
+            $dari       = $request->query('dari');
+            $sampai     = $request->query('sampai');
 
-                // Hari yang jadi target filter
+            // ===== Tentukan hari target berdasarkan periode =====
+            if ($periode === 'rentang' && $dari && $sampai) {
+                // Untuk rentang: cek apakah ada petugas apa pun dalam rentang tanggal
+                $tanggalMulai = \Illuminate\Support\Carbon::parse($dari, 'Asia/Makassar');
+                $tanggalAkhir = \Illuminate\Support\Carbon::parse($sampai, 'Asia/Makassar');
+
+                // Kumpulkan semua hari unik dalam rentang
+                $hariDalamRentang = collect();
+                $cursor = $tanggalMulai->copy();
+                while ($cursor->lte($tanggalAkhir)) {
+                    $hariDalamRentang->push($cursor->locale('id')->isoFormat('dddd'));
+                    $cursor->addDay();
+                }
+
+                $adaJadwal = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
+                    ->whereIn('hari_piket', $hariDalamRentang->unique())
+                    ->exists();
+
+                $hariTarget = $hariDalamRentang->unique()->implode(', ');
+            } else {
+                // Periode harian
                 $hariTarget = ($hariFilter && $hariFilter !== 'semua')
                     ? $hariFilter
                     : \Illuminate\Support\Carbon::parse($tanggal, 'Asia/Makassar')
                         ->locale('id')->isoFormat('dddd');
 
-                // Cek apakah ada petugas yang dijadwalkan
                 $adaJadwal = \App\Models\User::whereIn('role', ['petugas', 'koordinator'])
-                    ->when($periode === 'harian', fn ($q) => $q->where('hari_piket', $hariTarget))
-                    ->when($periode !== 'harian', fn ($q) => $q->whereNotNull('hari_piket'))
+                    ->where('hari_piket', $hariTarget)
                     ->exists();
-
-                if ($adaJadwal) {
-                    return null; // ✅ aman, lanjut generate PDF
-                }
-
-                // ❌ tidak ada jadwal → tampilkan notifikasi, unduhan dibatalkan
-                return response()->view('laporan-tidak-tersedia', [
-                    'judul'      => 'Laporan PDF Tidak Tersedia',
-                    'pesan' => 'Tidak ada Petugas yang dijadwalkan Hari ini',
-                    'hariTarget' => $hariTarget,
-                ], 404);
             }
 
+            if ($adaJadwal) {
+                return null; // ✅ aman, lanjut generate
+            }
+
+            // ❌ tidak ada jadwal → tampilkan notifikasi
+            $pesan = $pesanCustom ?? 'Tidak ada Petugas yang dijadwalkan Hari ini';
+            $judul = $judulCustom ?? 'Laporan Tidak Tersedia';
+
+            return response()->view('laporan-tidak-tersedia', [
+                'judul'      => $judul,
+                'pesan'      => $pesan,
+                'hariTarget' => $hariTarget,
+            ], 404);
+        }
 }
