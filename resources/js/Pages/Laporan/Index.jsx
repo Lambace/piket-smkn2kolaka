@@ -11,8 +11,14 @@ export default function Index({
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
+    // ===== NORMALISASI: tangani `?periode=rentang` dari URL =====
+    const isRentang =
+        params.periode === "rentang" || params.periode === "rentang_bulanan";
+
     const [jenis, setJenis] = useState(params.jenis ?? "gabungan");
-    const [periode, setPeriode] = useState(params.periode ?? "harian");
+    const [periode, setPeriode] = useState(
+        isRentang ? "rentang_bulanan" : (params.periode ?? "harian"),
+    );
     const [tanggal, setTanggal] = useState(params.tanggal ?? todayStr);
     const [semester, setSemester] = useState(params.semester ?? "ganjil");
     const [filterHari, setFilterHari] = useState(
@@ -20,16 +26,13 @@ export default function Index({
     );
     const [loading, setLoading] = useState(null);
 
-    // ===== State untuk mode rentang =====
     const [dari, setDari] = useState(params.dari ?? "");
     const [sampai, setSampai] = useState(params.sampai ?? "");
-    const [rentangBulan, setRentangBulan] = useState("bulan_ini");
+    const [rentangBulan, setRentangBulan] = useState("custom");
 
-    // ===== HELPER: generate preset tanggal =====
     const getPreset = (key) => {
         const now = new Date();
         const fmt = (d) => d.toISOString().split("T")[0];
-
         switch (key) {
             case "bulan_ini": {
                 const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -64,39 +67,29 @@ export default function Index({
             case "1ags_2okt":
                 return { dari: "2026-08-01", sampai: "2026-10-02" };
             default:
-                return { dari: fmt(now), sampai: fmt(now) };
+                return { dari, sampai };
         }
     };
 
-    // ===== HANDLER: ganti preset rentang =====
     const handleRentangChange = (key) => {
         setRentangBulan(key);
-        if (key) {
+        if (key && key !== "custom") {
             const preset = getPreset(key);
             setDari(preset.dari);
             setSampai(preset.sampai);
         }
     };
 
-    // ===== HANDLER: ganti periode =====
     const handlePeriodeChange = (value) => {
         setPeriode(value);
-        if (value === "rentang_bulanan") {
-            // Masuk mode rentang, langsung isi preset default
+        if (value === "rentang_bulanan" && !dari) {
             handleRentangChange("bulan_ini");
         }
     };
 
-    // ===== APPLY FILTER (preview tabel) =====
     const apply = () => {
-        const query = {
-            jenis,
-            semester,
-            filter_hari: filterHari,
-        };
-
-        // Mode rentang: kirim dari/sampai sebagai periode 'rentang'
-        if (periode === "rentang_bulanan") {
+        const query = { jenis, semester, filter_hari: filterHari };
+        if (["rentang", "rentang_bulanan"].includes(periode)) {
             query.periode = "rentang";
             query.dari = dari;
             query.sampai = sampai;
@@ -104,29 +97,20 @@ export default function Index({
             query.periode = periode;
             query.tanggal = tanggal;
         }
-
         router.get(route("laporan.index"), query, {
             preserveState: true,
             preserveScroll: true,
         });
     };
 
-    // ===== EXPORT PDF / DAFTAR HADIR =====
     const exportFile = (type) => {
         setLoading(type);
-
         const urls = {
             pdf: route("laporan.pdf"),
             "daftar-hadir": route("laporan.daftar-hadir"),
         };
-
-        const queryParams = {
-            jenis,
-            semester,
-            filter_hari: filterHari,
-        };
-
-        if (periode === "rentang_bulanan") {
+        const queryParams = { jenis, semester, filter_hari: filterHari };
+        if (["rentang", "rentang_bulanan"].includes(periode)) {
             queryParams.periode = "rentang";
             queryParams.dari = dari;
             queryParams.sampai = sampai;
@@ -134,7 +118,6 @@ export default function Index({
             queryParams.periode = periode;
             queryParams.tanggal = tanggal;
         }
-
         const query = new URLSearchParams(queryParams).toString();
         window.location.href = `${urls[type]}?${query}`;
         setTimeout(() => setLoading(null), 2000);
@@ -154,14 +137,12 @@ export default function Index({
             <Head title="Laporan" />
 
             <div className="space-y-6">
-                {/* ===== FORM FILTER ===== */}
                 <div className="rounded-lg bg-white p-6 shadow">
                     <h3 className="mb-4 text-base font-semibold text-gray-800">
                         📋 Filter Laporan
                     </h3>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        {/* Jenis Laporan */}
                         <div>
                             <label className="text-sm font-medium text-gray-700">
                                 Jenis Laporan
@@ -187,7 +168,6 @@ export default function Index({
                             </select>
                         </div>
 
-                        {/* Periode */}
                         <div>
                             <label className="text-sm font-medium text-gray-700">
                                 Periode
@@ -208,25 +188,22 @@ export default function Index({
                             </select>
                         </div>
 
-                        {/* Tanggal (untuk harian/mingguan) */}
-                        {periode !== "rentang_bulanan" &&
-                            periode !== "semester" && (
-                                <div>
-                                    <label className="text-sm font-medium text-gray-700">
-                                        Tanggal Acuan
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={tanggal}
-                                        onChange={(e) =>
-                                            setTanggal(e.target.value)
-                                        }
-                                        className={inputClass}
-                                    />
-                                </div>
-                            )}
+                        {!["rentang", "rentang_bulanan", "semester"].includes(
+                            periode,
+                        ) && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Tanggal Acuan
+                                </label>
+                                <input
+                                    type="date"
+                                    value={tanggal}
+                                    onChange={(e) => setTanggal(e.target.value)}
+                                    className={inputClass}
+                                />
+                            </div>
+                        )}
 
-                        {/* Semester */}
                         {periode === "semester" && (
                             <div>
                                 <label className="text-sm font-medium text-gray-700">
@@ -249,7 +226,6 @@ export default function Index({
                             </div>
                         )}
 
-                        {/* Filter Hari */}
                         <div>
                             <label className="text-sm font-medium text-gray-700">
                                 Filter Hari
@@ -273,8 +249,8 @@ export default function Index({
                         </div>
                     </div>
 
-                    {/* ===== PANEL RENTANG BULAN ===== */}
-                    {periode === "rentang_bulanan" && (
+                    {/* ===== PANEL RENTANG (muncul untuk `rentang` dan `rentang_bulanan`) ===== */}
+                    {["rentang", "rentang_bulanan"].includes(periode) && (
                         <div className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
                             <div className="mb-3 flex items-center gap-2">
                                 <span className="text-lg">📆</span>
@@ -290,13 +266,10 @@ export default function Index({
                                 }
                                 className="w-full rounded-md border-gray-300 bg-white text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             >
-                                <option value="bulan_ini">
-                                    📅 Bulan ini (1{" "}
-                                    {new Date().toLocaleString("id-ID", {
-                                        month: "long",
-                                    })}{" "}
-                                    – hari ini)
+                                <option value="custom">
+                                    ✏️ Custom (isi manual di bawah)
                                 </option>
+                                <option value="bulan_ini">📅 Bulan ini</option>
                                 <option value="bulan_lalu">
                                     📅 Bulan lalu penuh
                                 </option>
@@ -314,19 +287,50 @@ export default function Index({
                                 </option>
                             </select>
 
-                            {/* Info rentang terpilih */}
+                            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                        📅 Dari Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={dari}
+                                        onChange={(e) => {
+                                            setDari(e.target.value);
+                                            setRentangBulan("custom");
+                                        }}
+                                        className={inputClass}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                        📅 Sampai Tanggal
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={sampai}
+                                        onChange={(e) => {
+                                            setSampai(e.target.value);
+                                            setRentangBulan("custom");
+                                        }}
+                                        className={inputClass}
+                                    />
+                                </div>
+                            </div>
+
                             <div className="mt-3 flex items-center gap-3 rounded-md bg-white px-3 py-2 text-xs text-gray-700">
                                 <span className="font-semibold text-indigo-700">
                                     Rentang aktif:
                                 </span>
-                                <span className="font-mono">{dari}</span>
+                                <span className="font-mono">{dari || "-"}</span>
                                 <span className="text-gray-400">→</span>
-                                <span className="font-mono">{sampai}</span>
+                                <span className="font-mono">
+                                    {sampai || "-"}
+                                </span>
                             </div>
                         </div>
                     )}
 
-                    {/* ===== TOMBOL AKSI ===== */}
                     <div className="mt-5 flex flex-wrap gap-2">
                         <button
                             onClick={apply}
@@ -334,7 +338,6 @@ export default function Index({
                         >
                             🔍 Tampilkan Data
                         </button>
-
                         <button
                             onClick={() => exportFile("pdf")}
                             disabled={loading === "pdf"}
@@ -344,7 +347,6 @@ export default function Index({
                                 ? "⏳ Menyiapkan..."
                                 : "📄 Download Laporan"}
                         </button>
-
                         <button
                             onClick={() => exportFile("daftar-hadir")}
                             disabled={loading === "daftar-hadir"}
@@ -357,7 +359,6 @@ export default function Index({
                     </div>
                 </div>
 
-                {/* ===== RINGKASAN ===== */}
                 <div className="rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-white shadow">
                     <h3 className="mb-3 text-base font-semibold">
                         📊 Ringkasan Data
@@ -400,7 +401,6 @@ export default function Index({
                     </div>
                 </div>
 
-                {/* ===== PREVIEW TABEL ===== */}
                 <div className="rounded-lg bg-white p-6 shadow">
                     <h3 className="mb-4 text-base font-semibold text-gray-800">
                         👁️ Preview Data (15 teratas)
