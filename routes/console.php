@@ -41,7 +41,7 @@ Schedule::command('tv:kirim-grup')
     ->timezone('Asia/Makassar')
     ->withoutOverlapping()
     ->when(fn () => !Notifikasi::whereDate('created_at', $todayWita())
-        ->where('jenis', 'whatsapp')
+        ->where('jenis', 'gabungan') // ✅ DIPERBAIKI: Sesuai dengan isi command KirimTvKeGrup
         ->exists())
     ->onSuccess(fn () => Log::info('Banner TV berhasil terkirim ke grup sekolah.'))
     ->onFailure(fn () => Log::error('Banner TV gagal terkirim.'));
