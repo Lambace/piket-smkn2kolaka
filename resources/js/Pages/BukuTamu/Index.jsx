@@ -2,7 +2,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, router, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 
-const today = new Date().toISOString().split("T")[0];
+const today = new Date().toLocaleDateString('en-CA');
 
 const emptyForm = {
     nama: "",
