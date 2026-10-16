@@ -169,4 +169,14 @@ Route::get('/cron/schedule-run', function () {
     return response()->json(['ok' => true]);
 });
 
+// ===== perinyah download db hapus setelah selesai =====
+
+   Route::get('/unduh-db-rahasia', function () {
+       set_time_limit(0); 
+       $file = storage_path('app/backup.sql');
+       $command = "mysqldump -u " . env('DB_USERNAME') . " -p" . env('DB_PASSWORD') . " -h " . env('DB_HOST') . " " . env('DB_DATABASE') . " > " . $file;
+       exec($command);
+       return response()->download($file)->deleteFileAfterSend(true);
+   });
+
 require __DIR__.'/auth.php';
