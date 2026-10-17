@@ -169,41 +169,6 @@ Route::get('/cron/schedule-run', function () {
     return response()->json(['ok' => true]);
 });
 
-// ===== ROUTE EXPORT DB SEMENTARA - HAPUS SETELAH SELESAI! =====
-Route::get('/export-db-piket123', function () {
-    set_time_limit(0);
-    $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
-    $out = ['SET FOREIGN_KEY_CHECKS=0;', 'SET NAMES utf8mb4;'];
-
-    $tables = array_map(
-        fn ($r) => array_values((array) $r)[0],
-        \Illuminate\Support\Facades\DB::select('SHOW TABLES')
-    );
-
-    foreach ($tables as $t) {
-        $out[] = "DROP TABLE IF EXISTS `$t`;";
-        $create = \Illuminate\Support\Facades\DB::selectOne("SHOW CREATE TABLE `$t`");
-        $out[] = $create->{'Create Table'} . ';';
-
-        foreach (\Illuminate\Support\Facades\DB::table($t)->get() as $row) {
-            $arr  = (array) $row;
-            $cols = '`' . implode('`, `', array_keys($arr)) . '`';
-            $vals = implode(', ', array_map(
-                fn ($v) => $v === null ? 'NULL' : $pdo->quote((string) $v),
-                array_values($arr)
-            ));
-            $out[] = "INSERT INTO `$t` ($cols) VALUES ($vals);";
-        }
-    }
-
-    $out[] = 'SET FOREIGN_KEY_CHECKS=1;';
-
-    return response(implode("\n", $out), 200, [
-        'Content-Type'        => 'text/plain',
-        'Content-Disposition' => 'attachment; filename="backup-cloud-' . date('Y-m-d-His') . '.sql"',
-    ]);
-});
-// ===== AKHIR ROUTE EXPORT =====
 // ===== AKHIR ROUTE EXPORT =====
 
 require __DIR__.'/auth.php';
