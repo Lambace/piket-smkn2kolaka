@@ -170,7 +170,7 @@ Route::get('/cron/schedule-run', function () {
 });
 
 // ===== ROUTE EXPORT DB SEMENTARA - HAPUS SETELAH SELESAI! =====
-Route::get('https://piket-smkn2kolaka-production-u6avh3.laravel.cloud/export-db-piket@123', function () {
+Route::get('/export-db-piket123', function () {
     set_time_limit(0);
     $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
     $out = ['SET FOREIGN_KEY_CHECKS=0;', 'SET NAMES utf8mb4;'];
@@ -203,6 +203,7 @@ Route::get('https://piket-smkn2kolaka-production-u6avh3.laravel.cloud/export-db-
         'Content-Disposition' => 'attachment; filename="backup-cloud-' . date('Y-m-d-His') . '.sql"',
     ]);
 });
+// ===== AKHIR ROUTE EXPORT =====
 // ===== AKHIR ROUTE EXPORT =====
 
 require __DIR__.'/auth.php';
